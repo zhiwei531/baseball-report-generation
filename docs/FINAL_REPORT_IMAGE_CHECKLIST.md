@@ -1,0 +1,95 @@
+# Final Report Image Checklist
+
+Source schema checked:
+
+```text
+baseball-analysis/reports/vicon_2026_julian_coach 4/julian_coach_metrics_section.html
+```
+
+Status labels:
+
+- `included`: builder is included in this repo.
+- `pitching-interface`: image is under `pitch_assets/`; this repo only copies it from `--pitch-report`.
+
+## Sequential Image Map
+
+| # | Final report image path | Status | Builder / interface |
+|---:|---|---|---|
+| 1 | `assets/vicon_reconstruction_annotated/julian_speed_annotated.gif` | included | `scripts/build_julian_coach_annotated_speed_gifs.py` |
+| 2 | `assets/vicon_reconstruction_annotated/coach_speed_annotated.gif` | included | `scripts/build_julian_coach_annotated_speed_gifs.py` |
+| 3 | `assets/vicon_reconstruction_events/julian_ready.gif` | included | `scripts/build_julian_coach_event_gifs.py` |
+| 4 | `assets/vicon_2d_geometry_annotations/ready_position_vicon_geometry_on_2d.png` | included | `scripts/render_vicon_geometry_metrics_on_2d.py` |
+| 5 | `assets/frontend_metric_illustrations_annotated_standalone/ready_balance_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 6 | `assets/frontend_metric_illustrations_annotated_standalone/ready_lower_body_load_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 7 | `assets/frontend_metric_illustrations_annotated_standalone/ready_lower_body_load_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 8 | `assets/frontend_metric_illustrations_annotated_standalone/ready_torso_coil_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 9 | `assets/frontend_metric_illustrations_annotated_standalone/ready_bat_readiness_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 10 | `assets/frontend_metric_illustrations_annotated_standalone/ready_bat_readiness_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 11 | `assets/frontend_metric_illustrations_annotated_standalone/contact_stability_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 12 | `assets/vicon_reconstruction_events/julian_contact.gif` | included | `scripts/build_julian_coach_event_gifs.py` |
+| 13 | `assets/vicon_2d_geometry_annotations/contact_position_vicon_geometry_on_2d.png` | included | `scripts/render_vicon_geometry_metrics_on_2d.py` |
+| 14 | `assets/frontend_metric_illustrations_annotated_standalone/contact_bat_efficiency_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 15 | `assets/frontend_metric_illustrations_annotated_standalone/contact_swing_path_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 16 | `assets/frontend_metric_illustrations_annotated_standalone/contact_lower_body_posture_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 17 | `assets/frontend_metric_illustrations_annotated_standalone/contact_upper_body_posture_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 18 | `assets/frontend_metric_illustrations_annotated_standalone/contact_front_leg_support_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 19 | `assets/frontend_metric_illustrations_annotated_standalone/contact_swing_path_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 20 | `pitch_assets/vicon_reconstruction_events/julian_player_movement.gif` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 21 | `pitch_assets/vicon_reconstruction_events/coach_player_movement.gif` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 22 | `pitch_assets/vicon_reconstruction_events/julian_peak_knee.gif` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 23 | `pitch_assets/video_2d_alignment/julian_pitch_peak_knee_2d_overlay.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 24 | `pitch_assets/frontend_metric_illustrations_pitch_event/knee_height_pct.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 25 | `pitch_assets/frontend_metric_illustrations_pitch_event/front_knee_peak_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 26 | `pitch_assets/frontend_metric_illustrations_pitch_event/rear_knee_peak_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 27 | `pitch_assets/vicon_reconstruction_events/julian_foot_plant.gif` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 28 | `pitch_assets/video_2d_alignment/julian_pitch_foot_plant_2d_overlay.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 29 | `pitch_assets/frontend_metric_illustrations_pitch_event/stride_distance_pct.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 30 | `pitch_assets/frontend_metric_illustrations_pitch_event/stride_direction_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 31 | `pitch_assets/frontend_metric_illustrations_pitch_event/front_knee_plant_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 32 | `pitch_assets/frontend_metric_illustrations_pitch_event/rear_knee_plant_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 33 | `pitch_assets/frontend_metric_illustrations_pitch_event/elbow_vs_shoulder_cm.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 34 | `pitch_assets/frontend_metric_illustrations_pitch_event/shoulder_abduction_plant_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 35 | `pitch_assets/vicon_reconstruction_events/julian_release.gif` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 36 | `pitch_assets/video_2d_alignment/julian_pitch_release_2d_overlay.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 37 | `pitch_assets/frontend_metric_illustrations_pitch_event/front_knee_release_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 38 | `pitch_assets/frontend_metric_illustrations_pitch_event/front_knee_change_plant_to_release_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 39 | `pitch_assets/frontend_metric_illustrations_pitch_event/shoulder_abduction_release_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 40 | `pitch_assets/frontend_metric_illustrations_pitch_event/elbow_flex_release_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 41 | `pitch_assets/frontend_metric_illustrations_pitch_event/arm_slot_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 42 | `pitch_assets/frontend_metric_illustrations_pitch_event/release_height_pct.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 43 | `pitch_assets/frontend_metric_illustrations_pitch_event/hand_speed_mps.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 44 | `assets/frontend_metric_illustrations_annotated_standalone/issue_high_center_of_mass_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 45 | `assets/frontend_metric_illustrations_annotated_standalone/issue_dropped_rear_elbow_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 46 | `assets/frontend_metric_illustrations_annotated_standalone/issue_insufficient_bat_load_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 47 | `assets/frontend_metric_illustrations_annotated_standalone/issue_early_wrist_roll_annotated.png` | included | `scripts/annotate_frontend_metric_illustrations.py` |
+| 48 | `pitch_assets/frontend_metric_illustrations_pitch/knee_height_pct.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 49 | `pitch_assets/frontend_metric_illustrations_pitch/stride_distance_pct.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 50 | `pitch_assets/frontend_metric_illustrations_pitch/max_hss_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 51 | `pitch_assets/frontend_metric_illustrations_pitch/rear_knee_drive_extension_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 52 | `pitch_assets/frontend_metric_illustrations_pitch/arm_slot_deg.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 53 | `pitch_assets/frontend_metric_illustrations_pitch/hand_speed_mps.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 54 | `assets/kinetic_chain/julian_batting_kinetic_chain_flow.png` | included | `scripts/build_julian_coach_metrics_section.py` / `scripts/apply_batting_coach_values.py` |
+| 55 | `assets/kinetic_chain/julian_batting_kinetic_speed_time_curve.png` | included | `scripts/build_julian_coach_metrics_section.py` / `scripts/apply_batting_coach_values.py` |
+| 56 | `assets/analyst_charts/julian_batting_bat1_speed_time_curve.png` | included | `scripts/build_julian_coach_metrics_section.py` / `scripts/apply_batting_coach_values.py` |
+| 57 | `assets/analyst_charts/julian_batting_bat_axis_angle_time_curve.png` | included | `scripts/build_julian_coach_metrics_section.py` / `scripts/apply_batting_coach_values.py` |
+| 58 | `pitch_assets/kinetic_chain/julian_pitch_kinetic_chain_flow.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 59 | `pitch_assets/kinetic_chain/julian_kinetic_chain_time_curves.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 60 | `pitch_assets/analyst_charts/julian_pitch_angle_time_curve.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+| 61 | `pitch_assets/analyst_charts/julian_pitch_speed_time_curve.png` | pitching-interface | copied from `--pitch-report` `assets/` |
+
+## Batting Builder Coverage Summary
+
+All batting image families used by the final schema are covered by scripts in this repo:
+
+- Opening 3D annotated GIFs: `build_julian_coach_annotated_speed_gifs.py`.
+- Ready/Contact event 3D GIFs: `build_julian_coach_event_gifs.py`.
+- Ready/Contact 2D metric overlay PNGs: `render_vicon_geometry_metrics_on_2d.py`.
+- Metric card annotated illustrations: `annotate_frontend_metric_illustrations.py`.
+- Researcher section batting kinetic-chain and graphs: `build_julian_coach_metrics_section.py`, refreshed by `apply_batting_coach_values.py`.
+
+Pitching images are intentionally not generated here. They must arrive via:
+
+```bash
+python scripts/build_julian_coach_metrics_section.py --pitch-report path/to/pitching/index.html
+```
+

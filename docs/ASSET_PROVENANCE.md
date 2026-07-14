@@ -2,6 +2,8 @@
 
 This document maps the final `vicon_2026_julian_coach 4` report schema to the builder that creates each asset family.
 
+For the exact image-by-image checklist in final report order, see `docs/FINAL_REPORT_IMAGE_CHECKLIST.md`.
+
 ## Scope
 
 Implemented here:
