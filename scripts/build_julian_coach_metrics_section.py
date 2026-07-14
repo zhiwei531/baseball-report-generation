@@ -1813,6 +1813,10 @@ def load_pitch_report_parts(pitch_report: Path, out_dir: Path) -> tuple[str, dic
     pitch_html = pitch_report.read_text(encoding="utf-8")
     pitch_style = extract_html_block(pitch_html, "style")
     pitch_css = scope_css(pitch_style)
+    pitch_css = pitch_css.replace(
+        ".pitch-report .analyst-chart-grid {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px;}",
+        ".pitch-report .analyst-chart-grid {display:grid; grid-template-columns:1fr; gap:18px;}",
+    )
     groups: dict[str, list[str]] = {"player": [], "coach": [], "researcher": []}
     for section in extract_sections(pitch_html):
         title = section_title_text(section)
@@ -2190,7 +2194,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
     .kinetic-node-note span {{ display:block; color:#667085; font-size:12px; line-height:18px; font-weight:700; }}
     .kinetic-analysis {{ margin-top:22px; display:grid; gap:12px; padding:18px; border:1px solid #e4e7ec; border-radius:18px; background:#f9fafb; }}
     .kinetic-analysis h4 {{ font-size:20px; line-height:28px; margin:0; }}
-    .analyst-chart-grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }}
+    .analyst-chart-grid {{ display:grid; grid-template-columns:minmax(0,1fr); gap:18px; margin-top:18px; }}
     .analyst-chart-card {{ display:grid; gap:14px; padding:22px; }}
     .analyst-chart-figure {{ margin:0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff; }}
     .analyst-chart-figure img {{ width:100%; aspect-ratio:1600/720; object-fit:contain; display:block; background:#fff; }}

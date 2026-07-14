@@ -805,7 +805,20 @@ def write_json_summary(bundles: list[TrialBundle]) -> None:
 def render_html(bundles: list[TrialBundle]) -> str:
     existing = OUT_DIR / "index.html"
     if existing.exists():
-        return existing.read_text(encoding="utf-8")
+        html_text = existing.read_text(encoding="utf-8")
+        html_text = html_text.replace(
+            ".analyst-chart-grid {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px;}",
+            ".analyst-chart-grid {display:grid; grid-template-columns:1fr; gap:18px;}",
+        )
+        html_text = html_text.replace(
+            ".analyst-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }",
+            ".analyst-chart-grid { display:grid; grid-template-columns:1fr; gap:18px; margin-top:18px; }",
+        )
+        html_text = html_text.replace(
+            ".analyst-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }",
+            ".analyst-chart-grid { display:grid; grid-template-columns:1fr; gap:18px; }",
+        )
+        return html_text
     raise RuntimeError("index.html is required for this template report rebuild")
 
 
