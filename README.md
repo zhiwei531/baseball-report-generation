@@ -10,8 +10,8 @@ This repository intentionally contains only the scripts used by the current batt
 scripts/
   report_cli.py                              unified entry point
   run_batting_report_pipeline.py             staged batting report pipeline
-  align_2d_video_vicon.py                    optional raw 2D video -> Vicon alignment
-  render_aligned_2d_overlay.py               optional aligned 2D skeleton preview
+  align_2d_video_vicon.py                    raw 2D video -> Vicon alignment
+  render_aligned_2d_overlay.py               aligned 2D skeleton preview
   build_vicon_2026_metrics.py                C3D -> metrics/points/pose3d CSV
   render_vicon_reconstruction_images.py      Vicon 3D PNG/GIF/OBJ rendering
   run_vicon_c3d_pipeline.py                  C3D pipeline wrapper
@@ -42,12 +42,6 @@ python3 -m venv .venv
 pip install -r requirements.txt
 npm install
 npx playwright install chromium
-```
-
-Optional raw-video alignment support:
-
-```bash
-pip install -r requirements-optional.txt
 ```
 
 The Excel export script uses `@oai/artifact-tool`, which is available in the Codex/OpenAI document runtime. If running outside that environment, skip `--with-xlsx` or replace that script with a local Excel writer.
@@ -82,7 +76,7 @@ python scripts/report_cli.py build-batting-report \
   --alignment-dir outputs/julian_bat_2d_vicon_alignment
 ```
 
-Optional raw 2D video alignment path:
+Raw 2D video alignment path:
 
 ```bash
 python scripts/report_cli.py build-batting-report \
@@ -167,7 +161,7 @@ Included scripts are limited to the batting report build path documented in `doc
 
 Excluded on purpose:
 
-- RTMPose/MediaPipe/GVHMR pose model implementation and model folders.
+- RTMPose/GVHMR pose model implementation and model folders. MediaPipe video alignment code is included; the `.task` model file is an input artifact and is not committed.
 - Pitching-specific builders. The current repo keeps only the `--pitch-report` integration interface and expected `pitch_assets/` contract.
 - Old 2D ablation scripts and Suzhou experiment runners.
 - `external/`, `models/`, `src/baseball_pose/`, tests, raw data, C3D files, videos, `node_modules`.

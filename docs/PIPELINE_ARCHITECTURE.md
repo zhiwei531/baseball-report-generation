@@ -7,7 +7,7 @@ Vicon C3D folder + batting 2D video
   -> C3D metrics CSV
   -> 3D reconstruction assets
   -> batting dashboard metrics
-  -> optional 2D/Vicon alignment and 2D metric annotations
+  -> 2D/Vicon alignment and 2D metric annotations
   -> static metric illustration annotations
   -> final HTML schema
   -> optional XLSX body-metrics workbook
@@ -26,7 +26,7 @@ python scripts/run_batting_report_pipeline.py \
   --pitch-report ../julian_pitch_template_report_2026-07-06/index.html
 ```
 
-When a prepared 2D alignment folder is not available, the optional MediaPipe alignment stage can be used:
+When a prepared 2D alignment folder is not available, the MediaPipe alignment stage can be used directly:
 
 ```bash
 python scripts/run_batting_report_pipeline.py \
@@ -36,7 +36,7 @@ python scripts/run_batting_report_pipeline.py \
   --mediapipe-model models/pose_landmarker_heavy.task
 ```
 
-The raw-video path requires the MediaPipe task model and the `mediapipe` Python package. It is optional so the core Vicon pipeline remains lightweight.
+The raw-video path requires the MediaPipe task model file. The `mediapipe` Python package is part of the main requirements.
 
 ## Stages
 
@@ -47,8 +47,8 @@ The raw-video path requires the MediaPipe task model and the `mediapipe` Python 
 | Batting metrics | `build_batting_dashboard_metrics.py` | `vicon_2026_points_all.csv` | `batting_dashboard_metrics.csv`, `batting_dashboard_metrics_wide.csv` |
 | Batting event GIFs | `build_julian_coach_event_gifs.py` | `batting_dashboard_metrics.csv` + source C3D | `assets/vicon_reconstruction_events/*.gif` |
 | Annotated speed GIFs | `build_julian_coach_annotated_speed_gifs.py` | metrics + point summary + source C3D | `assets/vicon_reconstruction_annotated/*.gif` |
-| Optional 2D alignment | `align_2d_video_vicon.py` | 2D video + single C3D + MediaPipe model | `alignment_summary.json`, `pose2d_landmarks.csv` |
-| Optional aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4` |
+| 2D alignment | `align_2d_video_vicon.py` | 2D video + single C3D + MediaPipe model | `alignment_summary.json`, `pose2d_landmarks.csv` |
+| Aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4` |
 | 2D metric annotations | `render_vicon_geometry_metrics_on_2d.py` | alignment folder + metrics | `assets/vicon_2d_geometry_annotations/*.png` |
 | Metric illustrations | `annotate_frontend_metric_illustrations.py` | static illustration sources + metrics | `assets/frontend_metric_illustrations_annotated_standalone/*.png` |
 | HTML schema | `build_julian_coach_metrics_section.py` | metrics + assets + optional pitching HTML | `julian_coach_metrics_section.html` |

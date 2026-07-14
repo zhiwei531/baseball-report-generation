@@ -212,7 +212,7 @@ def xlsx_stage(args: argparse.Namespace, metrics: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build the batting report from Vicon C3D plus optional aligned 2D video inputs."
+        description="Build the batting report from Vicon C3D plus aligned 2D video inputs."
     )
     parser.add_argument("--c3d-dir", type=Path, default=ROOT.parent / "vicon_2026")
     parser.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
@@ -220,7 +220,7 @@ def main() -> None:
     parser.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
     parser.add_argument("--alignment-dir", type=Path, default=None)
     parser.add_argument("--video", type=Path, default=None)
-    parser.add_argument("--c3d-file", type=Path, default=None, help="Single batting C3D used for optional 2D/Vicon alignment.")
+    parser.add_argument("--c3d-file", type=Path, default=None, help="Single batting C3D used for 2D/Vicon alignment.")
     parser.add_argument("--mediapipe-model", type=Path, default=None)
     parser.add_argument("--video-capture-fps", type=float, default=None)
     parser.add_argument("--video-event-frame", type=int, default=None)
