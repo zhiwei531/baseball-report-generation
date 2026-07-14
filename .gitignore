@@ -21,3 +21,5 @@ raw/
 *.xlsx
 *.pdf
 *.pptx
+configs/pitching_manifest.json
+PROMPT_USED.*

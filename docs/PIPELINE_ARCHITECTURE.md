@@ -13,7 +13,7 @@ Vicon C3D folder + batting 2D video
   -> optional XLSX body-metrics workbook
 ```
 
-Pitching remains an external interface. The batting report builder accepts a teammate-produced pitching HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
+Pitching is now a sibling pipeline. The batting report builder accepts its completed HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
 
 ## Unified Command
 
@@ -87,9 +87,17 @@ Automated when alignment/static inputs exist:
 - 2D metric overlay PNGs.
 - Metric illustration annotation PNGs.
 
-Interface only:
+Implemented as separate commands:
 
-- Pitching image generation and pitching report generation.
+- Pitching C3D metrics and report assets: `build-pitch-report`.
+- Standalone single-video 2D report: `build-video-report`.
+- 2D video/Vicon timing alignment: `sync-vicon-video`.
+
+Optional external inputs remain:
+
+- Prepared pitching 2D alignment images.
+- Base line-art illustrations.
+- MediaPipe task model files and other model weights.
 
 Current schema role constraint:
 

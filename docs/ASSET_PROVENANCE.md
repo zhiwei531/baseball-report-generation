@@ -14,13 +14,10 @@ Implemented here:
 - Batting frontend illustration annotation builder.
 - Batting kinetic-chain and analyst chart builders.
 - Final batting HTML schema polish pass.
+- Pitching C3D metrics, Vicon event reconstruction, metric illustrations, kinetic-chain chart, and professional presentation charts.
+- Standalone 2D video report assets and templates.
 
-Interface only:
-
-- Pitching report sections and `pitch_assets/*`.
-- Pitching 2D overlay images, pitching metric illustrations, pitching kinetic-chain charts, and pitching Vicon event GIFs.
-
-Pitching assets must be produced by the separate pitching workflow, then passed to this repo through `--pitch-report`.
+The combined report still passes a completed pitching report through `--pitch-report`; the producer for that input now lives in this repository.
 
 ## Final HTML Builder
 
@@ -272,7 +269,7 @@ scripts/apply_batting_coach_values.py
 
 `build_julian_coach_metrics_section.py` creates the initial chart assets. `apply_batting_coach_values.py` regenerates the research assets during the final schema polish pass so chart copy, peak labels, and cache-busting timestamps match the final report.
 
-## Pitching Assets: Interface Only
+## Pitching Assets
 
 The final schema contains pitching sections and references assets under:
 
@@ -287,7 +284,18 @@ pitch_assets/
   lineart_actions/
 ```
 
-This repository does not generate those assets. It only accepts them through:
+Generate the pitching report and its sibling `assets/` directory with:
+
+```bash
+python scripts/report_cli.py build-pitch-report \
+  --manifest configs/pitching_manifest.json \
+  --template-dir reports/vicon_2026_julian_coach \
+  --out-dir reports/pitching
+```
+
+The core builder currently creates C3D-derived metrics, Vicon event reconstruction, frontend metric illustrations, and kinetic-chain assets. Prepared 2D alignment and base line-art inputs remain optional external inputs. See `docs/PITCHING_PIPELINE.md` for exact provenance and limitations.
+
+Pass the completed pitching report into the combined report with:
 
 ```bash
 python scripts/build_julian_coach_metrics_section.py \
@@ -301,4 +309,4 @@ The builder behavior is:
 3. Rewrite pitching section asset paths from `assets/...` to `pitch_assets/...`.
 4. Embed the pitching sections into the final combined schema.
 
-When the pitching workflow is ready, its repo should guarantee that `index.html` and sibling `assets/` contain the directories listed above.
+The pitching workflow guarantees an `index.html` with a sibling `assets/` directory. Missing optional 2D asset families must remain visibly absent or marked unavailable; they must not be replaced with fabricated placeholders.

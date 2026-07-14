@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}}</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --ink: #07111f;
+      --muted: #526174;
+      --soft: #718096;
+      --line: #d7e0ec;
+      --card: #ffffff;
+      --wash: #eef3f9;
+      --orange: #f9732b;
+      --red: #e9433a;
+      --yellow: #e89918;
+      --green: #2f8f4e;
+      --blue: #4f5eea;
+      --violet: #7c4dff;
+      --shadow: 0 6px 14px rgba(23, 39, 64, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(249, 115, 43, 0.12), transparent 34rem),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 34rem);
+      line-height: 1.5;
+    }
+    main {
+      width: min(1220px, calc(100vw - 40px));
+      margin: 32px auto 64px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      max-width: 760px;
+      font-size: clamp(36px, 5vw, 68px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+    h2 {
+      font-size: clamp(26px, 3vw, 38px);
+      line-height: 1.12;
+      margin: 42px 0 18px;
+      text-wrap: balance;
+    }
+    h3 {
+      font-size: 18px;
+      line-height: 1.25;
+      text-wrap: balance;
+    }
+    .zh, .en {
+      display: block;
+    }
+    .en {
+      margin-top: 3px;
+      color: #435169;
+      font-size: 0.88em;
+      line-height: 1.45;
+    }
+    h1 .en {
+      color: #344256;
+      font-size: clamp(22px, 2.6vw, 34px);
+      font-weight: 700;
+      margin-top: 12px;
+    }
+    h2 .en, h3 .en {
+      color: #526174;
+      font-weight: 700;
+    }
+    .metric-title {
+      display: grid;
+      gap: 2px;
+    }
+    p { text-wrap: pretty; }
+    .brand {
+      color: var(--orange);
+      font-weight: 850;
+      margin-bottom: 12px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+      gap: 28px;
+      align-items: stretch;
+      margin-bottom: 28px;
+    }
+    .hero-copy {
+      padding: clamp(22px, 4vw, 44px) 0;
+    }
+    .summary {
+      color: #344256;
+      font-size: 18px;
+      max-width: 760px;
+      margin-top: 18px;
+    }
+    .meta-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #fff;
+      color: #42526a;
+      border: 1px solid var(--line);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .hero-panel {
+      background: #111827;
+      color: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 430px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: 1fr auto;
+    }
+    .motion-canvas {
+      position: relative;
+      min-height: 320px;
+      background:
+        linear-gradient(135deg, rgba(249, 115, 43, 0.22), transparent 40%),
+        linear-gradient(180deg, #172033, #0d1422);
+      overflow: hidden;
+    }
+    .motion-canvas svg {
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      display: block;
+    }
+    .hero-panel-footer {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+    .hero-panel-footer div {
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .hero-panel-footer strong {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 3px;
+    }
+    .hero-panel-footer span {
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+    }
+    .section {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.76);
+      border-radius: 16px;
+      padding: clamp(18px, 3vw, 28px);
+      margin-top: 18px;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+    }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+    .section-head p {
+      max-width: 680px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 17px;
+      min-height: 148px;
+    }
+    .card.good { border-color: rgba(47, 143, 78, 0.38); }
+    .card.warning { border-color: rgba(232, 153, 24, 0.42); }
+    .card.concern, .card.suspicious { border-color: rgba(233, 67, 58, 0.42); }
+    .card.unavailable { border-color: #cbd5e1; background: #f9fbfd; }
+    .metric-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .value {
+      font-size: 32px;
+      font-weight: 850;
+      margin: 14px 0 6px;
+      line-height: 1;
+    }
+    .good .value { color: var(--green); }
+    .warning .value { color: var(--yellow); }
+    .concern .value, .suspicious .value { color: var(--red); }
+    .unavailable .value { color: #697586; }
+    .badge {
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .badge.good { background: #e7f5ec; color: #246f3c; }
+    .badge.warning { background: #fff2d8; color: #9b620b; }
+    .badge.concern, .badge.suspicious { background: #feeceb; color: #b9231d; }
+    .badge.unavailable { background: #eef2f7; color: #5f6f83; }
+    .explain {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .small-note {
+      color: var(--soft);
+      font-size: 13px;
+    }
+    .priority-list {
+      display: grid;
+      gap: 10px;
+    }
+    .priority-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .rank {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 850;
+      background: var(--orange);
+    }
+    .visual {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 18px;
+      min-height: 220px;
+    }
+    .media-stack {
+      display: grid;
+      gap: 12px;
+    }
+    .pose3d-showcase {
+      background: #121a29;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .pose3d-viewer {
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      color: var(--ink);
+    }
+    .pose3d-viewer canvas {
+      width: 100%;
+      min-height: 520px;
+      display: block;
+      border-radius: 10px;
+      background: #fbfdff;
+      touch-action: none;
+      cursor: grab;
+    }
+    .pose3d-viewer canvas:active {
+      cursor: grabbing;
+    }
+    .pose3d-toolbar {
+      display: grid;
+      grid-template-columns: repeat(5, auto) minmax(120px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .pose3d-toolbar button {
+      border: 1px solid rgba(255,255,255,0.22);
+      background: #ffffff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .pose3d-toolbar input {
+      width: 100%;
+      accent-color: var(--orange);
+    }
+    .pose3d-time {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .evidence-video, .evidence-image {
+      width: 100%;
+      border-radius: 10px;
+      background: #0d1422;
+      border: 1px solid rgba(7, 17, 31, 0.12);
+      display: block;
+    }
+    .evidence-video {
+      max-height: 620px;
+      object-fit: contain;
+    }
+    .pose3d-gif {
+      min-height: 420px;
+      object-fit: contain;
+      border-color: rgba(255,255,255,0.16);
+    }
+    .bars {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 74px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .track {
+      height: 10px;
+      border-radius: 999px;
+      background: #e8eef6;
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--blue);
+      width: var(--w);
+    }
+    .chain {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .chain-step {
+      display: grid;
+      grid-template-columns: 1fr 54px;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+    .chain-step strong { font-size: 15px; }
+    .chain-step span { text-align: right; font-weight: 850; }
+    .timeline {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .time-item {
+      display: grid;
+      grid-template-columns: 110px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 12px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+    }
+    .time-bar {
+      height: 8px;
+      border-radius: 999px;
+      background: #e8eef6;
+      overflow: hidden;
+    }
+    .time-bar span {
+      display: block;
+      height: 100%;
+      width: var(--w);
+      background: var(--orange);
+      border-radius: inherit;
+    }
+    .radar-wrap {
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 16px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .radar svg { width: 100%; max-width: 240px; display: block; }
+    .legend {
+      display: grid;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .researcher-module {
+      display: grid;
+      gap: 18px;
+    }
+    .researcher-note {
+      border: 1px solid #b8d7ff;
+      background: #eff7ff;
+      color: #344256;
+      border-radius: 12px;
+      padding: 14px 16px;
+      line-height: 1.7;
+    }
+    .research-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .research-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #ffffff;
+      padding: 22px;
+    }
+    .research-card h4 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+    .research-svg {
+      width: 100%;
+      display: block;
+      margin: 4px 0 14px;
+    }
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .heat-cell {
+      min-height: 112px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 12px;
+      background: #fff;
+    }
+    .heat-cell strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+    .heat-cell.good { background: #edf8f1; border-color: #c9e8d2; }
+    .heat-cell.warning { background: #fff7e8; border-color: #f1d89f; }
+    .heat-cell.concern, .heat-cell.suspicious { background: #fff0ef; border-color: #f3c7c4; }
+    .training {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 14px;
+    }
+    .day-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 15px;
+      background: #fff;
+      min-height: 178px;
+    }
+    .day-card h3 {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .checklist {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .checklist span::before {
+      content: "";
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 2px solid var(--orange);
+      margin-right: 8px;
+      vertical-align: -1px;
+    }
+    .recommendations {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 14px;
+    }
+    .rec strong { display: block; margin-bottom: 8px; font-size: 18px; }
+    .rec p { color: var(--muted); margin-top: 7px; }
+    .source-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+      gap: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th { color: #42526a; background: #f7f9fc; }
+    tr:last-child td { border-bottom: 0; }
+    .data-scroll {
+      max-height: 380px;
+      overflow: auto;
+      border-radius: 12px;
+    }
+    .trend-chart {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      display: block;
+    }
+    .print-only {
+      display: none;
+    }
+    @media (max-width: 960px) {
+      main { width: min(100vw - 24px, 1220px); margin-top: 22px; }
+      .hero, .split, .source-grid, .radar-wrap { grid-template-columns: 1fr; }
+      .pose3d-toolbar { grid-template-columns: repeat(5, 1fr); }
+      .pose3d-toolbar input, .pose3d-time { grid-column: 1 / -1; }
+      .hero-panel { min-height: 360px; }
+      .research-grid { grid-template-columns: 1fr; }
+      .heatmap { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .section-head { display: block; }
+      .bar-row, .time-item { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .hero-panel-footer { grid-template-columns: 1fr; }
+      .heatmap { grid-template-columns: 1fr; }
+      .priority-item { grid-template-columns: 34px 1fr; }
+      .priority-item .badge { grid-column: 2; width: fit-content; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .card, .visual, .day-card, .priority-item {
+        transition: transform 180ms ease-out, border-color 180ms ease-out;
+      }
+      .card:hover, .visual:hover, .day-card:hover, .priority-item:hover {
+        transform: translateY(-2px);
+      }
+    }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      body {
+        background: #fff !important;
+        color: #07111f;
+      }
+      main {
+        width: 100%;
+        margin: 0;
+      }
+      .hero, .split, .source-grid, .pitch-focus {
+        grid-template-columns: 1fr !important;
+      }
+      .section, .card, .visual, .day-card, .priority-item {
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+      .section {
+        margin-top: 12px;
+        padding: 16px;
+      }
+      video {
+        display: none !important;
+      }
+      .print-only {
+        display: block;
+      }
+      .no-print {
+        display: none !important;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="brand">SRS AI Baseball</div>
+        <h1>{{title}}<span class="en">Motion Analysis Report</span></h1>
+        <p class="summary">{{summary}}<span class="en">This report pairs video-based motion evidence with plain-language interpretation and practice recommendations.</span></p>
+        <div class="meta-line">
+          <span class="pill">报告 ID：{{report_id}}</span>
+          <span class="pill">生成日期：{{created_at}}</span>
+          <span class="pill">球员：{{athlete_name}} / {{age_group}}</span>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <div class="motion-canvas">{{evidence_scene}}</div>
+        <div class="hero-panel-footer">{{hero_stats}}</div>
+      </aside>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>本次先看什么<span class="en">What to review first</span></h2>
+          <p>把红黄绿结论、可复测指标和训练优先级放在第一页，家长不用先读原始参数。<span class="en">The first section highlights status, repeatable metrics, and training priorities before any technical data.</span></p>
+        </div>
+      </div>
+      <div class="split">
+        <div class="priority-list">{{priority_items}}</div>
+        <div class="visual">
+          <h3>打击六维评分图<span class="en">Six-dimension batting radar</span></h3>
+          <div class="radar-wrap">
+            <div class="radar">{{radar_chart}}</div>
+            <div class="legend">{{radar_legend}}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <h2>球员视角：孩子和家长看得懂<span class="en">Player view: readable for children and parents</span></h2>
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>击球指标<span class="en">Hitting metrics</span></h3>
+          <p>每个专业参数都配一句家长解读和证据，先说“代表什么”，再说“该怎么练”。<span class="en">Each metric explains what it means, what evidence supports it, and how to practice it.</span></p>
+        </div>
+      </div>
+      <div class="grid">{{player_bat_cards}}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>投球指标<span class="en">Pitching metrics</span></h3>
+          <p>投球页保留关键角度和速度 proxy，同时明确哪些只能做同机位复测。<span class="en">Pitching values keep the key angles and speed proxies, while marking which ones are only comparable from the same camera setup.</span></p>
+        </div>
+      </div>
+      <div class="grid">{{player_pitch_cards}}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>动作证据与阶段时间轴<span class="en">Motion evidence and phase timeline</span></h3>
+          <p>把“启动、跨步、击球点、随挥”排成动作故事，让非专业观众知道问题发生在哪一段。<span class="en">The motion is organized into phases so non-technical viewers can see where the issue appears.</span></p>
+        </div>
+      </div>
+      <div class="split">
+        <div class="visual">
+          <h3>2D 骨架 + 3D 姿态方向<span class="en">2D skeleton and estimated 3D direction</span></h3>
+          {{pose_evidence}}
+        </div>
+        <div class="visual">
+          <h3>击球阶段时间轴<span class="en">Hitting phase timeline</span></h3>
+          <div class="timeline">{{phase_timeline}}</div>
+        </div>
+      </div>
+    </section>
+
+    <h2>教练视角：对比、动力链和训练方案<span class="en">Coach view: comparison, kinetic chain, and practice plan</span></h2>
+    <section class="section">
+      <div class="split">
+        <div class="visual">
+          <h3>孩子 vs 同龄样本 vs Vicon 教练<span class="en">Athlete vs peer sample vs Vicon coach reference</span></h3>
+          <p class="small-note">Vicon 不是装饰项，它作为 3D 参考值帮助解释 CV 估算指标。<span class="en">Vicon is used as a 3D reference to explain the video-based CV estimates.</span></p>
+          <div class="bars">{{comparison_bars}}</div>
+        </div>
+        <div class="visual">
+          <h3>动力链流程<span class="en">Kinetic chain flow</span></h3>
+          <p class="small-note">不是只看手，先看身体是否把力量从下肢和躯干传到手部。<span class="en">The report looks beyond the hand and checks how force transfers from the lower body and trunk.</span></p>
+          <div class="chain">{{kinetic_chain}}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>动作偏差热力图<span class="en">Motion deviation heatmap</span></h3>
+          <p>按身体区域分组，教练可以快速知道该从上肢、躯干、下肢还是稳定性入手。<span class="en">Issues are grouped by body region so coaches can choose the first correction target.</span></p>
+        </div>
+      </div>
+      <div class="heatmap">{{heatmap}}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>改善建议<span class="en">Practice recommendations</span></h3>
+          <p>每条建议都绑定指标、证据、家长观察点和复测指标，避免“多练练”这种空话。<span class="en">Each recommendation is tied to a metric, evidence, a parent check, and a retest target.</span></p>
+        </div>
+      </div>
+      <div class="recommendations">{{recommendation_cards}}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>7 天家庭训练与复测计划<span class="en">7-day home practice and retest plan</span></h3>
+          <p>把建议变成可执行日程。第 7 天用同角度视频复测，下一份报告能做前后对比。<span class="en">The plan turns recommendations into a weekly schedule and asks for a same-angle retest video on day 7.</span></p>
+        </div>
+      </div>
+      <div class="training">{{training_plan}}</div>
+    </section>
+
+    <h2>研究者视角：趋势图和可信边界<span class="en">Research view: trend charts and confidence boundaries</span></h2>
+    <section class="section">
+      <div class="source-grid">
+        <div class="visual">
+          <h3>Vicon 3D 校准说明<span class="en">Vicon 3D calibration note</span></h3>
+          {{vicon_panel}}
+        </div>
+        <div class="visual">
+          <h3>评分规则摘要<span class="en">Scoring rule summary</span></h3>
+          {{scoring_explainer}}
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>CV 时间序列趋势图<span class="en">CV time-series trend charts</span></h3>
+          <p>主报告不再展开每一个 marker 字段，而是展示角度、速度和稳定性随时间变化的折线图。<span class="en">The main report no longer lists every marker field. It shows angle, speed, and stability curves over time.</span></p>
+        </div>
+      </div>
+      <div class="data-scroll">{{cv_raw_table}}</div>
+      <div class="section-head" style="margin-top:24px;">
+        <div>
+          <h3>校准数据说明<span class="en">Calibration data note</span></h3>
+          <p>用于对比真实 3D 速度、棒角和关键姿态，不直接替代 CV 指标。<span class="en">Calibration data helps compare true 3D speed, bat angle, and key poses. It does not replace the CV evidence.</span></p>
+        </div>
+      </div>
+      <div class="data-scroll">{{vicon_raw_table}}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>本次限制<span class="en">Limitations</span></h3>
+          <p>N/A、proxy 和无法判断项必须明确展示，报告可信度来自边界清楚。<span class="en">N/A values, proxy metrics, and unavailable judgments are shown clearly because trust depends on clear boundaries.</span></p>
+        </div>
+      </div>
+      <div class="grid">{{limitations}}</div>
+    </section>
+  </main>
+</body>
+</html>

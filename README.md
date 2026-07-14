@@ -1,8 +1,8 @@
 # baseball-report-generation
 
-Standalone report-generation scripts for the baseball Vicon batting report workflow.
+Standalone report-generation scripts for baseball Vicon batting/pitching workflows and a single-video 2D report workflow.
 
-This repository intentionally contains only the scripts used by the current batting report-generation process. Pitching sections are part of the final HTML schema, but pitching asset generation is owned by a separate teammate workflow and is represented here only as an integration interface.
+The repository is organized by reproducible build path. Raw athlete data, videos, C3D files, generated reports, model weights, and personal machine paths are deliberately excluded.
 
 ## Contents
 
@@ -26,11 +26,26 @@ scripts/
   generate_vicon_kinetic_chain_flow.py       kinetic-chain PNG utility
   annotate_frontend_metric_illustrations.py  metric illustration annotation
   build_batting_metrics_xlsx.mjs             batting metrics Excel export
+  build_pitch_template_metrics_report.py     pitching C3D metrics/assets builder
+  annotate_pitch_lineart_metrics.py           computed values on pitching line art
+  generate_professional_pitch_charts.py       pitching presentation charts
+  sync_vicon_video.py                         2D video/Vicon event synchronization
+  video_report/                               standalone 2D video-to-report pipeline
+prompts/
+  pitch_report_generation.md
+  pitch_chart_redraw.md
+  video_report_interpretation.md
+  video_report_recommendation.md
+configs/
+  pitching_manifest.example.json
 docs/
   ASSET_PROVENANCE.md
   DESIGN.md
   PIPELINE_ARCHITECTURE.md
   REPORT_README.md
+  PITCHING_PIPELINE.md
+  VIDEO_REPORT_PIPELINE.md
+  VICON_VIDEO_SYNC.md
   vicon_batting_csv_to_report_metrics.md
 ```
 
@@ -146,23 +161,53 @@ python scripts/report_cli.py julian-coach-section --apply-final-schema
 
 `--with-xlsx` exports the batting body metrics workbook from `batting_dashboard_metrics.csv` to `outputs/batting_metrics_excel/`.
 
-Pitching interface:
+Build the pitching metrics and assets from a C3D manifest:
+
+```bash
+python scripts/report_cli.py build-pitch-report \
+  --manifest configs/pitching_manifest.json \
+  --template-dir reports/vicon_2026_julian_coach \
+  --out-dir reports/pitching
+```
+
+The example manifest uses placeholder relative paths. Copy it to `configs/pitching_manifest.json` and point it to local, ignored C3D inputs. See `docs/PITCHING_PIPELINE.md` for the output contract and metric limitations.
+
+Build a standalone report from one 2D video:
+
+```bash
+python scripts/report_cli.py build-video-report \
+  --input path/to/pitch.mp4 \
+  --kind pitch \
+  --side right \
+  --athlete-name "Example Player" \
+  --age-group U12
+```
+
+Synchronize raw sideline videos to Vicon:
+
+```bash
+python scripts/report_cli.py sync-vicon-video \
+  --pair bat path/to/bat.mp4 path/to/bat.c3d \
+  --pair pitch path/to/pitch.mp4 path/to/pitch.c3d
+```
+
+Combine a built pitching report into the batting report:
 
 ```bash
 python scripts/report_cli.py julian-coach-section \
   --pitch-report ../julian_pitch_template_report_2026-07-06/index.html
 ```
 
-`--pitch-report` expects an already-built pitching template HTML. `build_julian_coach_metrics_section.py` copies that template's `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections. This repository does not generate `pitch_assets/*`; those builders should be added by the teammate who owns pitching.
+`--pitch-report` expects the `index.html` produced by the pitching workflow. `build_julian_coach_metrics_section.py` copies the sibling `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections.
 
 ## Source Selection
 
-Included scripts are limited to the batting report build path documented in `docs/REPORT_README.md` and `docs/ASSET_PROVENANCE.md`.
+Included scripts are limited to the batting, pitching, Vicon synchronization, and standalone 2D report paths documented under `docs/`.
 
 Excluded on purpose:
 
 - RTMPose/GVHMR pose model implementation and model folders. MediaPipe video alignment code is included; the `.task` model file is an input artifact and is not committed.
-- Pitching-specific builders. The current repo keeps only the `--pitch-report` integration interface and expected `pitch_assets/` contract.
 - Old 2D ablation scripts and Suzhou experiment runners.
+- One-off HTML patch scripts with athlete-specific values or personal absolute paths.
 - `external/`, `models/`, `src/baseball_pose/`, tests, raw data, C3D files, videos, `node_modules`.
 - Generated report outputs, binary previews, zips, OBJ models, MP4/AVI files, and macOS `._*` metadata files.
