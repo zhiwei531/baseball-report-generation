@@ -1029,6 +1029,21 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
         flags=re.DOTALL,
     )
 
+    coach_heading = '<div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>'
+    player_html, coach_html = html_text.split(coach_heading, 1)
+
+    def reset_player_marker_color(match: re.Match[str]) -> str:
+        style = re.sub(r';?\s*background:[^;\"]*', '', match.group(1))
+        style = re.sub(r';?\s*--marker-color:[^;\"]*', '', style).strip().rstrip(';')
+        return f'<span class="peer-dot current-player" style="{style}"'
+
+    player_html = re.sub(
+        r'<span class="peer-dot current-player" style="([^\"]*)"',
+        reset_player_marker_color,
+        player_html,
+    )
+    html_text = player_html + coach_heading + coach_html
+
     player_color = PEER_COLORS.get(peer_key(PLAYER_KEY), BLUE)
 
     def highlight_current_player(match: re.Match[str]) -> str:
