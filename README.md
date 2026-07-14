@@ -30,6 +30,7 @@ scripts/
   annotate_pitch_lineart_metrics.py           computed values on pitching line art
   generate_professional_pitch_charts.py       pitching presentation charts
   sync_vicon_video.py                         2D video/Vicon event synchronization
+  run_pitching_vicon_2d_alignment.py          one-command pitching 2D/Vicon alignment
   video_report/                               standalone 2D video-to-report pipeline
 prompts/
   pitch_report_generation.md
@@ -190,6 +191,18 @@ python scripts/report_cli.py sync-vicon-video \
   --pair bat path/to/bat.mp4 path/to/bat.c3d \
   --pair pitch path/to/pitch.mp4 path/to/pitch.c3d
 ```
+
+Run the complete pitching alignment path, including MediaPipe landmarks, frame mapping, and aligned skeleton MP4:
+
+```bash
+python scripts/run_pitching_vicon_2d_alignment.py \
+  --video path/to/pitch.mp4 \
+  --c3d path/to/pitch.c3d \
+  --model path/to/pose_landmarker_heavy.task \
+  --out-dir outputs/pitching_vicon_2d_alignment
+```
+
+See `docs/PITCHING_VICON_2D_ALIGNMENT.md` for slow-motion capture FPS and manual release-frame overrides.
 
 Combine a built pitching report into the batting report:
 
