@@ -323,7 +323,7 @@ def apply_css(html: str) -> str:
     )
     html = html.replace(
         "    .peer-dot.current-player { width:12px; height:12px; background:#101828; box-shadow:0 0 0 2px rgba(37,99,235,.28),0 0 0 1px rgba(16,24,40,.18); }\n",
-        "    .peer-dot.current-player { z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }\n",
+        "    .peer-dot.current-player { z-index:4; width:16px; height:16px; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#2563eb) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }\n",
     )
     html = re.sub(
         r"\n\s*\.two-column-metrics \.peer-range \{[^\n]*\}"
@@ -348,7 +348,7 @@ def apply_css(html: str) -> str:
             "    .issue-metrics .compare-pill b { color:#667085; font-size:11px; line-height:14px; }\n",
             (
                 "    .issue-metrics .compare-pill b { color:#667085; font-size:11px; line-height:14px; }\n"
-                "    .issue-metrics .peer-dot.current-player { z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }\n"
+                "    .issue-metrics .peer-dot.current-player { z-index:4; width:16px; height:16px; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#2563eb) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }\n"
             ),
         )
     html = re.sub(r"\n\s*\.batting-coach-reference[^\n]*", "", html)

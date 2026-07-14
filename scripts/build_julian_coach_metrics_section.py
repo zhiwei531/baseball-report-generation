@@ -875,8 +875,9 @@ def peer_range_bar(
         color = peer_color(item.get("name"), int(item.get("color_index", 0)))
         is_current_player = not missing and peer_key(item.get("name")) == peer_key(ACTIVE_PLAYER_SAMPLE)
         klass = "peer-dot missing" if missing else "peer-dot current-player" if is_current_player else "peer-dot"
+        current_marker = f"; --marker-color:{esc(color)}" if is_current_player else ""
         return (
-            f'<span class="{klass}" style="left:{pos:.2f}%; top:{top:.1f}%; background:{esc(color)}" '
+            f'<span class="{klass}" style="left:{pos:.2f}%; top:{top:.1f}%; background:{esc(color)}{current_marker}" '
             f'title="{esc(title)}"></span>'
         )
 
@@ -909,7 +910,7 @@ def peer_range_bar(
     elif current_score is not None and math.isfinite(current_score):
         pos = 2.0 + clamp((current_score - axis_low) / axis_span * 100.0) * 0.96
         dots.append(
-            f'<span class="peer-dot current-player" style="left:{pos:.2f}%; top:50.0%" '
+            f'<span class="peer-dot current-player" style="left:{pos:.2f}%; top:50.0%; background:{esc(peer_color(ACTIVE_PLAYER_SAMPLE, 0))}; --marker-color:{esc(peer_color(ACTIVE_PLAYER_SAMPLE, 0))}" '
             f'title="该球员: {peer_axis_text(current_score, unit)}"></span>'
         )
     klass = "peer-range" if show_markers else "peer-range no-markers"
@@ -1015,8 +1016,9 @@ def peer_metric_range_bar(
         color = peer_color(item.get("name"), int(item.get("color_index", 0)))
         is_current_player = not missing and peer_key(item.get("name")) == peer_key(ACTIVE_PLAYER_SAMPLE)
         klass = "peer-dot missing" if missing else "peer-dot current-player" if is_current_player else "peer-dot"
+        current_marker = f"; --marker-color:{esc(color)}" if is_current_player else ""
         return (
-            f'<span class="{klass}" style="left:{pos:.2f}%; top:50.0%; background:{esc(color)}" '
+            f'<span class="{klass}" style="left:{pos:.2f}%; top:50.0%; background:{esc(color)}{current_marker}" '
             f'title="{esc(title)}"></span>'
         )
 
@@ -1043,7 +1045,7 @@ def peer_metric_range_bar(
     elif current_value is not None and math.isfinite(current_value):
         pos = 2.0 + clamp((current_value - axis_low) / axis_span * 100.0) * 0.96
         dots.append(
-            f'<span class="peer-dot current-player" style="left:{pos:.2f}%; top:50.0%" '
+            f'<span class="peer-dot current-player" style="left:{pos:.2f}%; top:50.0%; background:{esc(peer_color(ACTIVE_PLAYER_SAMPLE, 0))}; --marker-color:{esc(peer_color(ACTIVE_PLAYER_SAMPLE, 0))}" '
             f'title="该球员: {peer_axis_text(current_value, unit)}"></span>'
         )
 
@@ -2205,7 +2207,7 @@ def render(
     .peer-track {{ position:relative; height:28px; border-radius:999px; background:linear-gradient(180deg,transparent 0 11px,#eef2f7 11px 17px,transparent 17px); }}
     .peer-span {{ position:absolute; top:11px; height:6px; border-radius:999px; background:linear-gradient(90deg,#dcfce7,#bae6fd); }}
     .peer-dot {{ position:absolute; top:50%; width:10px; height:10px; border:2px solid #fff; border-radius:999px; transform:translate(-50%,-50%); box-shadow:0 0 0 1px rgba(16,24,40,.12); }}
-    .peer-dot.current-player {{ z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }}
+    .peer-dot.current-player {{ z-index:4; width:16px; height:16px; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#2563eb) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }}
     .peer-range.no-markers .peer-track {{ height:18px; background:linear-gradient(180deg,transparent 0 6px,#eef2f7 6px 12px,transparent 12px); }}
     .peer-range.no-markers .peer-span {{ top:6px; }}
     .peer-dot.missing {{ opacity:.45; box-shadow:0 0 0 1px rgba(16,24,40,.22),0 0 0 4px rgba(16,24,40,.04); }}

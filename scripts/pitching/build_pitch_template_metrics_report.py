@@ -713,7 +713,8 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
         return '<div class="peer-empty">同组区间暂不可用</div>'
     span = max(mx - mn, 1e-6)
     left = max(0, min(100, (jv - mn) / span * 100))
-    dots = [f'<span class="peer-dot current-player" style="left:{left:.2f}%" title="{esc(PLAYER_NAME)}: {esc(fmt(jv, unit))}"></span>']
+    player_color = PEER_COLORS.get(peer_key(PLAYER_KEY), BLUE)
+    dots = [f'<span class="peer-dot current-player" style="left:{left:.2f}%; background:{player_color}; --marker-color:{player_color}" title="{esc(PLAYER_NAME)}: {esc(fmt(jv, unit))}"></span>']
     if show_all:
         colors = [BLUE, GREEN, ORANGE, PURPLE, RED, "#0891b2", "#ca8a04"]
         for idx, b in enumerate(bundles):
@@ -1016,8 +1017,8 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .pitch-compare-pills {{ display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 4px; }}
     .pitch-compare-pills span {{ display:inline-grid; gap:2px; min-width:112px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
     .pitch-compare-pills span b {{ color:#667085; font-size:11px; line-height:14px; }}
-    .peer-dot.current-player {{ z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }}
-    .coach-issue-card .peer-dot.current-player {{ z-index:4 !important; width:20px !important; height:20px !important; background:#ef4444 !important; border:3px solid #fff !important; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15) !important; }}
+    .peer-dot.current-player {{ z-index:4; width:16px; height:16px; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#2563eb) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }}
+    .coach-issue-card .peer-dot.current-player {{ z-index:4 !important; width:16px !important; height:16px !important; border:3px solid #fff !important; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#2563eb) 20%, transparent),0 0 0 1px rgba(16,24,40,.15) !important; }}
     .pitch-peer-color-legend {{ display:grid; gap:8px; margin:0 0 18px; padding:12px 14px; border:1px solid #d0d5dd; border-radius:14px; background:#fff; }}
     .pitch-peer-color-legend > b {{ color:#667085; font-size:12px; line-height:16px; }}
     .pitch-peer-color-legend > div {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 16px; }}
@@ -1036,6 +1037,20 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     html_text = html_text.replace("优秀学员 Bryan", f"球员 {PLAYER_NAME}")
     html_text = html_text.replace("优秀学员 julian", f"球员 {PLAYER_SLUG}")
     html_text = html_text.replace("peer-dot julian", "peer-dot current-player")
+
+    player_color = PEER_COLORS.get(peer_key(PLAYER_KEY), BLUE)
+
+    def highlight_current_player(match: re.Match[str]) -> str:
+        style = match.group(1)
+        if "background:" in style:
+            return match.group(0)
+        return f'<span class="peer-dot current-player" style="{style}; background:{player_color}; --marker-color:{player_color}"'
+
+    html_text = re.sub(
+        r'<span class="peer-dot current-player" style="([^"]*)"',
+        highlight_current_player,
+        html_text,
+    )
     for filename in (f"{PLAYER_SLUG}_player_movement.gif", "coach_player_movement.gif"):
         asset = ASSET_DIR / "vicon_reconstruction_events" / filename
         if not asset.exists():
