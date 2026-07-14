@@ -501,9 +501,24 @@ def render_movement_panel(
     if trajectory.size:
         trail = trajectory[np.isfinite(trajectory).all(axis=1)]
         if len(trail) >= 2:
-            ax.plot(trail[:, 0], trail[:, 1], trail[:, 2], color="#16803a", linewidth=3.0, label="RFIN手部轨迹")
+            ax.plot(
+                trail[:, 0],
+                trail[:, 1],
+                trail[:, 2],
+                color=recon.TRAJECTORY_COLOR,
+                linewidth=0.85,
+                linestyle=(0, (3, 4)),
+                label="RFIN手部轨迹",
+            )
     handles = [
-        Line2D([0], [0], color="#16803a", lw=3.0, label="RFIN手部轨迹"),
+        Line2D(
+            [0],
+            [0],
+            color=recon.TRAJECTORY_COLOR,
+            lw=0.85,
+            linestyle=(0, (3, 4)),
+            label="RFIN手部轨迹",
+        ),
         Line2D([0], [0], color="red", lw=2.0, label="身体骨架"),
     ]
     ax.legend(handles=handles, loc="upper right", frameon=True, prop=zh_font_prop(), fontsize=9)
@@ -537,7 +552,8 @@ def render_movement_gif(bundle: TrialBundle, out: Path, title: str, subtitle: st
     out.parent.mkdir(parents=True, exist_ok=True)
     release = bundle.events["release"]
     start = max(0, release - int(0.55 * bundle.trial.rate_hz))
-    frames = np.linspace(start, release, 18).astype(int)
+    end = min(bundle.trial.points.shape[0] - 1, release + int(0.30 * bundle.trial.rate_hz))
+    frames = np.linspace(start, end, 24).astype(int)
     # Keep the coordinate extent fixed for the complete animation.  Deriving
     # limits from each pose makes Matplotlib rescale the grid every frame.
     limits = recon.trial_axis_limits(bundle.trial, frame_indices=frames)
