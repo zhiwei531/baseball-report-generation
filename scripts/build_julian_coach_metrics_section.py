@@ -176,7 +176,29 @@ FRONT_FEEDBACK_EN = {
 }
 
 
-PEER_COLORS = ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#dc2626", "#0891b2", "#ca8a04", "#db2777", "#475569"]
+PEER_COLORS = ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#ef4444", "#0891b2", "#ca8a04", "#db2777", "#475569"]
+PEER_COLOR_BY_NAME = {
+    "bryan": "#2563eb",
+    "7zai": "#16a34a",
+    "xuanxuan": "#f97316",
+    "green": "#a855f7",
+    "julian": "#ef4444",
+    "youyou": "#0891b2",
+    "james": "#ca8a04",
+    "branden": "#db2777",
+    "brandon": "#db2777",
+}
+PEER_DISPLAY_BY_NAME = {
+    "bryan": "Bryan陈柏谚",
+    "7zai": "席启源",
+    "xuanxuan": "姚槿宏",
+    "green": "杜子墨",
+    "julian": "Julian",
+    "youyou": "费怡然",
+    "james": "桑禹诚",
+    "branden": "缪炜昱",
+    "brandon": "缪炜昱",
+}
 BLUE = "#2563eb"
 GREEN = "#16a34a"
 ORANGE = "#f97316"
@@ -184,6 +206,19 @@ RED = "#ef4444"
 PURPLE = "#7c3aed"
 INK = "#101828"
 MID = "#667085"
+
+
+def peer_key(name: object) -> str:
+    return str(name or "").strip().casefold().replace(" ", "")
+
+
+def peer_color(name: object, fallback_index: int = 0) -> str:
+    return PEER_COLOR_BY_NAME.get(peer_key(name), PEER_COLORS[fallback_index % len(PEER_COLORS)])
+
+
+def peer_display_name(name: object) -> str:
+    raw_name = str(name or "peer")
+    return PEER_DISPLAY_BY_NAME.get(peer_key(raw_name), raw_name)
 
 BAT_SPEED_U8_U10_GOOD_MIN_KMH = 48.0
 BAT_SPEED_U8_U10_EXCELLENT_MIN_KMH = 72.0
@@ -837,7 +872,7 @@ def peer_range_bar(
         offset_idx = min(lane, len(x_offsets) - 1)
         pos = clamp(pos + x_offsets[offset_idx], 2.0, 98.0)
         top = 50 + y_offsets[offset_idx]
-        color = PEER_COLORS[int(item.get("color_index", 0)) % len(PEER_COLORS)]
+        color = peer_color(item.get("name"), int(item.get("color_index", 0)))
         klass = "peer-dot missing" if missing else "peer-dot"
         return (
             f'<span class="{klass}" style="left:{pos:.2f}%; top:{top:.1f}%; background:{esc(color)}" '
@@ -976,7 +1011,7 @@ def peer_metric_range_bar(
         x_offsets = [0.0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, 4.4]
         offset_idx = min(lane, len(x_offsets) - 1)
         pos = clamp(pos + x_offsets[offset_idx], 2.0, 98.0)
-        color = PEER_COLORS[int(item.get("color_index", 0)) % len(PEER_COLORS)]
+        color = peer_color(item.get("name"), int(item.get("color_index", 0)))
         klass = "peer-dot missing" if missing else "peer-dot"
         return (
             f'<span class="{klass}" style="left:{pos:.2f}%; top:50.0%; background:{esc(color)}" '
@@ -2021,8 +2056,9 @@ def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anon
         return ""
     items = []
     for idx, row in enumerate(peer_rows):
-        color = PEER_COLORS[idx % len(PEER_COLORS)]
-        label = anonymous_peer_label(idx) if anonymize_names else str(row.get("name", "peer"))
+        name = row.get("name", "peer")
+        color = peer_color(name, idx)
+        label = anonymous_peer_label(idx) if anonymize_names else peer_display_name(name)
         items.append(
             f'<li><span class="legend-dot" style="background:{esc(color)}"></span>{esc(label)}</li>'
         )

@@ -20,6 +20,29 @@ COACH_SAMPLE_NAME = "coach"
 PLAYER_SLUG = "julian"
 PLAYER_LABEL = "Julian"
 
+PEER_COLOR_BY_NAME = {
+    "bryan": "#2563eb",
+    "7zai": "#16a34a",
+    "xuanxuan": "#f97316",
+    "green": "#a855f7",
+    "julian": "#ef4444",
+    "youyou": "#0891b2",
+    "james": "#ca8a04",
+    "branden": "#db2777",
+    "brandon": "#db2777",
+}
+PEER_DISPLAY_BY_NAME = {
+    "bryan": "Bryan陈柏谚",
+    "7zai": "席启源",
+    "xuanxuan": "姚槿宏",
+    "green": "杜子墨",
+    "julian": "Julian",
+    "youyou": "费怡然",
+    "james": "桑禹诚",
+    "branden": "缪炜昱",
+    "brandon": "缪炜昱",
+}
+
 PLAYER_CARD_METRIC_KEYS = [
     "ready_com_height_ratio",
     "ready_rear_hip_flexion_deg",
@@ -385,26 +408,41 @@ def update_player_batting_cards(html: str, values: dict[str, str]) -> str:
 
 
 def update_legend_names(html: str) -> str:
-    def rename(match: re.Match[str]) -> str:
-        legend = match.group(0)
-        legend = legend.replace("Bryan陈柏谚", "陈柏谚")
-        legend = legend.replace("陈柏谚", "Bryan陈柏谚")
-        legend = legend.replace("黄炜宸", "Julian")
-        return legend
+    def key(name: str) -> str:
+        return name.strip().casefold().replace(" ", "")
+
+    def display(name: str) -> str:
+        return PEER_DISPLAY_BY_NAME.get(key(name), name)
+
+    def dot_replacement(match: re.Match[str]) -> str:
+        prefix, old_color, between, raw_name, suffix = match.groups()
+        return f"{prefix}{PEER_COLOR_BY_NAME.get(key(raw_name), old_color)}{between}{display(raw_name)}{suffix}"
 
     html = re.sub(
-        r'<aside class="peer-legend" aria-label="其他球员颜色图例">.*?</aside>',
-        rename,
+        r'(<span class="peer-dot[^>]*style="[^"]*background:)(#[0-9a-fA-F]+)([^"]*" title=")([^":]+)(:)',
+        dot_replacement,
         html,
-        flags=re.S,
     )
+
+    def legend_replacement(match: re.Match[str]) -> str:
+        prefix, old_color, between, raw_name, suffix = match.groups()
+        return f"{prefix}{PEER_COLOR_BY_NAME.get(key(raw_name), old_color)}{between}{display(raw_name)}{suffix}"
+
     html = re.sub(
-        r'<aside class="peer-legend coach-legend" aria-label="颜色图例">.*?</aside>',
-        rename,
+        r'(<li><span class="legend-dot" style="background:)(#[0-9a-fA-F]+)(\"></span>)([^<]+)(</li>)',
+        legend_replacement,
         html,
-        flags=re.S,
     )
-    return html
+
+    def compact_legend_replacement(match: re.Match[str]) -> str:
+        prefix, old_color, between, raw_name, suffix = match.groups()
+        return f"{prefix}{PEER_COLOR_BY_NAME.get(key(raw_name), old_color)}{between}{display(raw_name)}{suffix}"
+
+    return re.sub(
+        r'(<span class="peer-legend-item"><i class="peer-legend-dot" style="background:)(#[0-9a-fA-F]+)(\"></i>)([^<]+)(</span>)',
+        compact_legend_replacement,
+        html,
+    )
 
 
 def update_peer_range_labels(html: str) -> str:
