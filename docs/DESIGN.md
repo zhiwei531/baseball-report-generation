@@ -640,7 +640,7 @@ HTML 报告可以有折叠详情、视频播放、模型动态展示和导出按
 - 图表 caption/title 要短，不要把方法说明塞进图内；方法说明放在图下“怎么看”或 module note。
 
 **Current HTML Implementation Requirements**
-- 当前可复用的 batting final-schema report 由 `python scripts/report_cli.py build-batting-report` 生成；路径和主体配置集中在 `configs/default_report_pipeline.json`，核心编排在 `scripts/run_batting_report_pipeline.py`。该入口会从 Vicon C3D 生成中间 CSV、3D reconstruction 资产、batting metrics、MediaPipe 2D alignment、2D metric annotations、HTML schema、researcher charts 和 XLSX。`scripts/build_benchmark_report_html.py` 仍保留为早期 Bryan/Green benchmark report 的 legacy builder，不是新球员 batting report 的推荐入口。
+- 当前可复用的 batting final-schema report 由 `python scripts/report_cli.py --config configs/default_report_pipeline.json` 生成；路径和主体配置集中在 config，核心编排在 `scripts/run_batting_report_pipeline.py`。该入口会从 Vicon C3D 生成中间 CSV、3D reconstruction 资产、batting metrics、经人工确认事件帧的 MediaPipe 2D alignment、2D-vs-Vicon-3D QA、2D metric annotations、HTML schema、researcher charts 和 XLSX。其它 builder 仅是实现细节，不是报告入口。
 - 当前主体 raw data source 必须统一为 Vicon C3D 及其派生表；旧 benchmark 视频 CV/GVHMR 身体数据不得混入当前主体指标、曲线或 C3D 来源表。默认 Julian/Coach config 使用 `../vicon_2026` 和 `reports/vicon_2026_julian_coach/`；新球员必须复制 config 并写入 `reports/vicon_2026_<player_slug>_coach/`，不要覆盖 Julian 参考目录。
 - Julian/Coach batting metrics section 是当前独立打击 dashboard 的设计样例：前端卡片只展示聚合后的前端指标和评分，后台 Vicon 几何/速度字段用于加权计算和 Excel 追溯。Ready/Contact 的 2D 几何标注图应直接放在 section title 下方，不放进右侧 GIF 卡；右侧保留 Julian 事件 GIF。Ready 标注后髋、后膝和髋肩分离，右打假设下后腿为右腿；Contact 标注骨盆旋转、躯干旋转和前膝，右打假设下前腿为左腿。角度标注必须贴合实际夹角和补角语义：如果报告值是 `180 - angle(...)` 的屈曲角，视觉上要保留夹角处虚线延长线，并用 leader line 指向该屈曲角数值，避免在明显大于 90 度的身体夹角上画一个 40-50 度的错误 arc。
 - 姿态纠正图不得再使用固定 SVG placeholder。当前实现口径：球员投球样本出手附近帧作为浅蓝虚线，教练三维序列出手侧手部速度峰值附近帧作为绿色参考，偏差最大的球员骨段用红色强调。

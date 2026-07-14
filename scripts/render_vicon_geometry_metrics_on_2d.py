@@ -673,6 +673,13 @@ def main() -> None:
     write_hold_video([ready_frame, contact_frame], video_out, float(summary["video_meta"]["fps"]))
 
     report = {
+        "provenance": {
+            "sample_name": args.sample_name,
+            "metrics": str(args.metrics.resolve()),
+            "video": str(base_video.resolve()),
+            "alignment_summary": str(args.summary.resolve()),
+            "c3d": str(Path(summary["c3d"]).resolve()),
+        },
         "ready": {
             "vicon_frame": ready_vicon,
             "video_frame": ready_video,
