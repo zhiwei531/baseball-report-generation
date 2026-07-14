@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "report_id": "srs-demo-real-data-001",
+    "schema_version": "0.1.0",
+    "created_at": "2026-06-18",
+    "language": "zh-CN"
+  },
+  "athlete": {
+    "name": "示例球员",
+    "age_group": "U12",
+    "dominant_side": "right"
+  },
+  "session": {
+    "session_id": "source-ppt-real-data",
+    "capture_note": "基于 PPT 中 CV 参数和 Vicon 参数整理",
+    "actions": ["bat", "pitch"]
+  },
+  "cv_metrics": {
+    "hit_vertical_02": {
+      "action": "bat",
+      "start_s": 2.033,
+      "event_s": 2.467,
+      "end_s": 2.9,
+      "hip_shoulder_separation_deg": 4.238,
+      "front_knee_angle_deg": 129.599,
+      "torso_tilt_deg": 15.498,
+      "com_transfer": null,
+      "head_stability_pct": 96.063,
+      "swing_speed_norm_s": 2.338,
+      "estimated_bat_speed_px_s": 1692.456,
+      "hip_rotation_deg": 51.308,
+      "attack_angle_deg": 43.452,
+      "wrist_speed_3d_units_s": 2.515,
+      "contact_time_s": null
+    },
+    "hit_horizontal_06": {
+      "action": "bat",
+      "start_s": 4.2,
+      "event_s": 4.467,
+      "end_s": 5.5,
+      "hip_shoulder_separation_deg": 20.263,
+      "front_knee_angle_deg": 131.79,
+      "torso_tilt_deg": 13.221,
+      "com_transfer": null,
+      "head_stability_pct": 99.148,
+      "swing_speed_norm_s": 2.297,
+      "estimated_bat_speed_px_s": 2856.713,
+      "hip_rotation_deg": 75.822,
+      "attack_angle_deg": -174.757,
+      "wrist_speed_3d_units_s": 3.064,
+      "contact_time_s": null
+    },
+    "pitch_vertical_10": {
+      "action": "pitch",
+      "event_s": 0.8,
+      "hip_shoulder_separation_deg": 8.543,
+      "front_knee_angle_deg": 126.939,
+      "torso_tilt_deg": 18.941,
+      "head_stability_pct": 92.928,
+      "elbow_flexion_deg": 68.069,
+      "arm_abduction_deg": 143.617,
+      "stride_angle_deg": 29.352,
+      "stride_length_body_ratio": 0.635,
+      "foot_direction_deg": 30.874,
+      "wrist_release_deg": 13.127,
+      "arm_speed_3d_units_s": 4.115,
+      "fingertip_speed_3d_units_s": 4.258,
+      "ball_speed_px_s": 1619.559
+    },
+    "pitch_vertical_09": {
+      "action": "pitch",
+      "event_s": 0.333,
+      "hip_shoulder_separation_deg": 7.241,
+      "front_knee_angle_deg": 139.372,
+      "torso_tilt_deg": 13.435,
+      "head_stability_pct": 73.196,
+      "elbow_flexion_deg": 92.035,
+      "arm_abduction_deg": 122.099,
+      "stride_angle_deg": 29.349,
+      "stride_length_body_ratio": 0.595,
+      "foot_direction_deg": 8.117,
+      "wrist_release_deg": 24.405,
+      "arm_speed_3d_units_s": 5.261,
+      "fingertip_speed_3d_units_s": 5.401,
+      "ball_speed_px_s": 2190.378
+    }
+  },
+  "vicon_metrics": {
+    "0506Coach_wave": {
+      "role": "coach_reference",
+      "bat_angle_deg": -27.1,
+      "bat1_speed_kmh": 131.7,
+      "bat4_speed_kmh": 87.9,
+      "wrist_marker_speed": 30.4,
+      "finger_marker_speed": 39.4,
+      "swing_time_s": 0.16,
+      "hip_rotation_deg": 34.523,
+      "hip_shoulder_separation_deg": 36.178,
+      "front_knee_angle_deg": 136.435,
+      "torso_tilt_deg": 24.262,
+      "head_stability_pct": 49.174
+    },
+    "Julian_wave02": {
+      "role": "peer_sample",
+      "bat_angle_deg": -26.3,
+      "bat1_speed_kmh": 74.0,
+      "bat4_speed_kmh": 45.3,
+      "wrist_marker_speed": 15.0,
+      "finger_marker_speed": 19.0,
+      "swing_time_s": 0.32,
+      "hip_rotation_deg": 65.436,
+      "hip_shoulder_separation_deg": 23.996,
+      "front_knee_angle_deg": 164.733,
+      "torso_tilt_deg": 41.206,
+      "head_stability_pct": 48.623
+    }
+  }
+}

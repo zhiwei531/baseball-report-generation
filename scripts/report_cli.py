@@ -194,6 +194,50 @@ def build_batting_report(args: argparse.Namespace) -> None:
     run(cmd, env=plot_env())
 
 
+def build_pitching_report(args: argparse.Namespace) -> None:
+    cmd = [
+        PYTHON,
+        "scripts/pitching/build_pitch_template_metrics_report.py",
+        "--manifest",
+        args.manifest,
+        "--template-dir",
+        args.template_dir,
+        "--out-dir",
+        args.out_dir,
+    ]
+    if args.previous_assets:
+        cmd.extend(["--previous-assets", args.previous_assets])
+    run(cmd, env=plot_env())
+
+
+def build_video_report(args: argparse.Namespace) -> None:
+    cmd = [
+        PYTHON,
+        "scripts/video_report/run_end_to_end_report.py",
+        "--input",
+        args.input,
+        "--kind",
+        args.kind,
+        "--side",
+        args.side,
+        "--athlete-name",
+        args.athlete_name,
+        "--age-group",
+        args.age_group,
+    ]
+    if args.out:
+        cmd.extend(["--out", args.out])
+    run(cmd)
+
+
+def sync_vicon_video(args: argparse.Namespace) -> None:
+    cmd = [PYTHON, "scripts/pitching/sync_vicon_video.py"]
+    for action, video, c3d in args.pair:
+        cmd.extend(["--pair", action, video, c3d])
+    cmd.extend(["--output-dir", args.output_dir])
+    run(cmd)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Unified entry point for baseball report generation scripts.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -297,6 +341,34 @@ def main() -> None:
 
     p = sub.add_parser("geometry-2d", help="Render Vicon-valued metric annotations on aligned 2D skeleton frames.")
     p.set_defaults(func=lambda _args: run([PYTHON, "scripts/render_vicon_geometry_metrics_on_2d.py"], env=plot_env()))
+
+    p = sub.add_parser("build-pitching-report", help="Build pitching metrics/assets from a C3D manifest and template.")
+    p.add_argument("--manifest", required=True, type=Path)
+    p.add_argument("--template-dir", required=True, type=Path)
+    p.add_argument("--previous-assets", type=Path, default=None)
+    p.add_argument("--out-dir", type=Path, default=ROOT / "reports" / "pitching")
+    p.set_defaults(func=build_pitching_report)
+
+    p = sub.add_parser("build-pitch-report", help="Compatibility alias for build-pitching-report.")
+    p.add_argument("--manifest", required=True, type=Path)
+    p.add_argument("--template-dir", required=True, type=Path)
+    p.add_argument("--previous-assets", type=Path, default=None)
+    p.add_argument("--out-dir", type=Path, default=ROOT / "reports" / "pitching")
+    p.set_defaults(func=build_pitching_report)
+
+    p = sub.add_parser("build-video-report", help="Build a standalone 2D video report.")
+    p.add_argument("--input", required=True, type=Path)
+    p.add_argument("--kind", choices=["auto", "hit", "pitch"], default="auto")
+    p.add_argument("--side", choices=["right", "left"], default="right")
+    p.add_argument("--athlete-name", default="Example Player")
+    p.add_argument("--age-group", default="U12")
+    p.add_argument("--out", type=Path, default=None)
+    p.set_defaults(func=build_video_report)
+
+    p = sub.add_parser("sync-vicon-video", help="Align 2D videos to Vicon C3D event timing.")
+    p.add_argument("--pair", action="append", nargs=3, required=True, metavar=("ACTION", "VIDEO", "C3D"))
+    p.add_argument("--output-dir", type=Path, default=ROOT / "outputs" / "vicon_video_sync")
+    p.set_defaults(func=sync_vicon_video)
 
     args = parser.parse_args()
     args.func(args)

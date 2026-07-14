@@ -1,6 +1,8 @@
 # Pipeline Architecture
 
-The repo is organized around a staged batting-report pipeline. The intended long-term input contract is:
+The repo is organized around separate staged batting and pitching pipelines. They do not write into the same output directory unless explicitly configured to do so.
+
+The batting input contract is:
 
 ```text
 Vicon C3D folder + batting 2D video
@@ -13,11 +15,22 @@ Vicon C3D folder + batting 2D video
   -> XLSX body-metrics workbook unless skipped
 ```
 
-Pitching remains an external interface. The batting report builder accepts a teammate-produced pitching HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
+The pitching input contract is:
+
+```text
+Pitching C3D manifest + pitching template directory
+  -> pitching metrics CSV/JSON
+  -> pitching 3D reconstruction events
+  -> pitching line-art metric annotations
+  -> pitching kinetic-chain assets
+  -> reports/pitching/index.html
+```
+
+The batting report builder accepts the independently built pitching HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
 
 ## Unified Command
 
-Preferred command:
+Preferred batting command:
 
 ```bash
 python scripts/report_cli.py build-batting-report
@@ -53,7 +66,25 @@ python scripts/report_cli.py build-batting-report \
 
 The raw-video path requires the MediaPipe task model file. Its default path comes from the config field `mediapipe_model`. The `mediapipe` Python package is part of the main requirements.
 
+Preferred pitching command:
+
+```bash
+python scripts/report_cli.py build-pitching-report \
+  --manifest configs/pitching/manifest.json \
+  --template-dir reports/pitching_template \
+  --out-dir reports/pitching
+```
+
+Combine a built pitching report into batting by setting `pitch_report` in the batting config or by passing:
+
+```bash
+python scripts/report_cli.py build-batting-report \
+  --pitch-report reports/pitching/index.html
+```
+
 ## Stages
+
+### Batting
 
 | Stage | Script | Inputs | Outputs |
 |---|---|---|---|
@@ -69,6 +100,16 @@ The raw-video path requires the MediaPipe task model file. Its default path come
 | HTML schema | `build_julian_coach_metrics_section.py` | metrics + assets + optional pitching HTML | `julian_coach_metrics_section.html` |
 | Final polish | `apply_batting_coach_values.py` | HTML + metrics + peer XLSX folder | final schema HTML and refreshed researcher charts |
 | XLSX | `build_batting_metrics_xlsx.mjs` | metrics CSV | `*_batting_report_metrics.xlsx` |
+
+### Pitching
+
+| Stage | Script | Inputs | Outputs |
+|---|---|---|---|
+| Pitching metrics/assets | `pitching/build_pitch_template_metrics_report.py` | manifest + template dir | `reports/pitching/index.html`, metrics CSV/JSON, pitching assets |
+| Pitching line-art annotation | `pitching/annotate_pitch_lineart_metrics.py` | pitch summary + line-art source dir | `assets/lineart_actions/*_metrics.png` |
+| Pitching chart utility | `pitching/generate_professional_pitch_charts.py` | pitch summary JSON | `assets/professional_pitch_charts/*.png` |
+| Vicon/video sync | `pitching/sync_vicon_video.py` | video/C3D pairs | `outputs/vicon_video_sync/*.json` |
+| Standalone 2D video report | `video_report/run_end_to_end_report.py` | one video | standalone JSON/Markdown/HTML report |
 
 Individual builders still expose fallback defaults for local debugging. The report-generation contract is the config-driven `build-batting-report` entry; that command passes concrete paths into builders so reusable report builds do not depend on scattered script-local defaults.
 
@@ -109,9 +150,9 @@ Automated when static illustration sources exist:
 
 - Metric illustration annotation PNGs.
 
-Interface only:
+Built separately:
 
-- Pitching image generation and pitching report generation.
+- Pitching image generation and pitching report generation. Default output is `reports/pitching`; batting integration copies it into batting as `pitch_assets/`.
 
 Current schema role constraint:
 

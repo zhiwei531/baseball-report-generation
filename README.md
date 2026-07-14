@@ -1,8 +1,8 @@
 # baseball-report-generation
 
-Standalone report-generation scripts for the baseball Vicon batting report workflow.
+Standalone report-generation scripts for baseball Vicon batting and pitching report workflows.
 
-This repository intentionally contains only the scripts used by the current batting report-generation process. Pitching sections are part of the final HTML schema, but pitching asset generation is owned by a separate teammate workflow and is represented here only as an integration interface.
+This repository intentionally keeps batting and pitching build paths separate. Batting reports use the config-driven batting pipeline; pitching reports build their own template and assets under a separate output directory, then can be passed into the batting report through `--pitch-report`.
 
 ## Contents
 
@@ -27,18 +27,29 @@ scripts/
   generate_vicon_kinetic_chain_flow.py       kinetic-chain PNG utility
   annotate_frontend_metric_illustrations.py  metric illustration annotation
   build_batting_metrics_xlsx.mjs             batting metrics Excel export
+  pitching/                                  pitching C3D report builders
+  video_report/                              standalone 2D video report workflow
+configs/
+  default_report_pipeline.json               batting pipeline path config
+  pitching/manifest.example.json             pitching C3D manifest template
 docs/
   ASSET_PROVENANCE.md
   DESIGN.md
   FINAL_REPORT_IMAGE_CHECKLIST.md
   PIPELINE_ARCHITECTURE.md
+  pitching/
   REPORT_README.md
   vicon_batting_csv_to_report_metrics.md
+prompts/
+  pitch_report_generation.md
+  pitch_chart_redraw.md
+  video_report_interpretation.md
+  video_report_recommendation.md
 ```
 
 ## Current Architecture
 
-The supported report-generation path is config-driven:
+The supported batting report-generation path is config-driven:
 
 ```text
 configs/default_report_pipeline.json
@@ -47,7 +58,7 @@ configs/default_report_pipeline.json
   -> individual C3D, asset, HTML, and XLSX builders
 ```
 
-Use this path for reusable batting reports. The older subcommands and individual builders remain available for debugging or partial rebuilds, but they are not the preferred production entry.
+Use this path for reusable batting reports. Pitching is built separately with `build-pitching-report` and should write to `reports/pitching` or another explicit pitching output directory. The older subcommands and individual builders remain available for debugging or partial rebuilds, but they are not the preferred production entry.
 
 ## Path Config
 
@@ -183,21 +194,50 @@ For current builds, prefer `python scripts/report_cli.py build-batting-report`; 
 
 Pitching interface:
 
+Build pitching first:
+
 ```bash
-python scripts/report_cli.py build-batting-report \
-  --pitch-report ../julian_pitch_template_report_2026-07-06/index.html
+python scripts/report_cli.py build-pitching-report \
+  --manifest configs/pitching/manifest.json \
+  --template-dir reports/pitching_template \
+  --out-dir reports/pitching
 ```
 
-In the current staged pipeline, `pitch_report` should normally be set in the config. `--pitch-report` remains available as a CLI override. It expects an already-built pitching template HTML. `build_julian_coach_metrics_section.py` copies that template's `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections. This repository does not generate `pitch_assets/*`; those builders should be added by the teammate who owns pitching.
+Then combine that built pitching HTML into the batting report:
+
+```bash
+python scripts/report_cli.py build-batting-report \
+  --pitch-report reports/pitching/index.html
+```
+
+`build-pitching-report` does not write into the batting report directory. In the batting staged pipeline, `pitch_report` should normally be set in the batting config. `--pitch-report` remains available as a CLI override. It expects an already-built pitching `index.html`; `build_julian_coach_metrics_section.py` copies that HTML's sibling `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections.
+
+Standalone 2D video report:
+
+```bash
+python scripts/report_cli.py build-video-report \
+  --input path/to/pitch.mp4 \
+  --kind pitch \
+  --side right \
+  --athlete-name "Example Player" \
+  --age-group U12
+```
+
+Vicon/video synchronization:
+
+```bash
+python scripts/report_cli.py sync-vicon-video \
+  --pair pitch path/to/pitch.mp4 path/to/pitch.c3d \
+  --output-dir outputs/vicon_video_sync
+```
 
 ## Source Selection
 
-Included scripts are limited to the batting report build path documented in `docs/PIPELINE_ARCHITECTURE.md` and `docs/ASSET_PROVENANCE.md`.
+Included scripts are limited to the batting, pitching, standalone 2D report, and Vicon/video synchronization paths documented in `docs/PIPELINE_ARCHITECTURE.md`, `docs/ASSET_PROVENANCE.md`, and `docs/pitching/`.
 
 Excluded on purpose:
 
 - RTMPose/GVHMR pose model implementation and model folders. MediaPipe video alignment code is included; the `.task` model file is an input artifact and is not committed.
-- Pitching-specific builders. The current repo keeps only the `--pitch-report` integration interface and expected `pitch_assets/` contract.
 - Old 2D ablation scripts and Suzhou experiment runners.
 - `external/`, `models/`, `src/baseball_pose/`, tests, raw data, C3D files, videos, `node_modules`.
 - Generated report outputs, binary previews, zips, OBJ models, MP4/AVI files, and macOS `._*` metadata files.

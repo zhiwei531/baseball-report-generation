@@ -1,0 +1,29 @@
+{
+  "version": "0.1.0",
+  "rules": [
+    {
+      "item": "真实球速 / 转速",
+      "condition": "single_phone_video_without_ball_tracking",
+      "reason": "手机单目视频没有雷达或连续球追踪，不能稳定计算真实出球速度和旋转。",
+      "display_level": "warning"
+    },
+    {
+      "item": "接触时间",
+      "condition": "no_confirmed_contact_frame",
+      "reason": "没有球棒和球真实碰撞帧，只能估算接近程度，不能当作触球瞬间。",
+      "display_level": "warning"
+    },
+    {
+      "item": "2D 速度绝对值",
+      "condition": "pixel_speed_without_camera_calibration",
+      "reason": "px/s 会受拍摄距离、镜头焦距和裁切影响，只适合同机位前后对比。",
+      "display_level": "info"
+    },
+    {
+      "item": "Vicon 与 CV 对齐",
+      "condition": "different_capture_systems",
+      "reason": "Vicon 是标定 3D marker 数据，CV 是视频关键点估算；两者应作为校准和解释关系，不宜直接混成同一数值。",
+      "display_level": "info"
+    }
+  ]
+}

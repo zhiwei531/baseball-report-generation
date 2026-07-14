@@ -32,12 +32,12 @@ Implemented here:
 - Batting kinetic-chain and analyst chart builders.
 - Final batting HTML schema polish pass.
 
-Interface only:
+Built separately by the pitching pipeline:
 
 - Pitching report sections and `pitch_assets/*`.
 - Pitching 2D overlay images, pitching metric illustrations, pitching kinetic-chain charts, and pitching Vicon event GIFs.
 
-Pitching assets must be produced by the separate pitching workflow, then passed to this repo through `--pitch-report`.
+Pitching assets are produced by `python scripts/report_cli.py build-pitching-report ...`, then passed into the batting pipeline through `--pitch-report`.
 
 ## Final HTML Builder
 
@@ -282,7 +282,7 @@ scripts/apply_batting_coach_values.py
 
 `build_julian_coach_metrics_section.py` creates the initial chart assets. `apply_batting_coach_values.py` regenerates the research assets during the final schema polish pass so chart copy, peak labels, and cache-busting timestamps match the final report.
 
-## Pitching Assets: Interface Only
+## Pitching Assets: Separate Pipeline
 
 The final schema contains pitching sections and references assets under:
 
@@ -297,7 +297,16 @@ pitch_assets/
   lineart_actions/
 ```
 
-This repository does not generate those assets. The staged pipeline accepts them through the config field `pitch_report` or the CLI override:
+This repository generates those assets through the independent pitching command:
+
+```bash
+python scripts/report_cli.py build-pitching-report \
+  --manifest configs/pitching/manifest.json \
+  --template-dir reports/pitching_template \
+  --out-dir reports/pitching
+```
+
+The batting staged pipeline then accepts the built pitching report through the config field `pitch_report` or the CLI override:
 
 ```bash
 python scripts/report_cli.py build-batting-report \
@@ -311,4 +320,4 @@ The builder behavior is:
 3. Rewrite pitching section asset paths from `assets/...` to `pitch_assets/...`.
 4. Embed the pitching sections into the final combined schema.
 
-When the pitching workflow is ready, its repo should guarantee that `index.html` and sibling `assets/` contain the directories listed above.
+The pitching build should guarantee that `index.html` and sibling `assets/` contain the directories listed above. Keep `--out-dir` separate from the batting `report_dir`; the batting builder copies pitching assets into its own `pitch_assets/` folder during integration.
