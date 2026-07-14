@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "export:report": "node scripts/export_report_from_html.mjs",
+    "export:report:pdf": "node scripts/export_report_from_html.mjs --only pdf",
+    "export:report:pptx": "node scripts/export_report_from_html.mjs --only pptx"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

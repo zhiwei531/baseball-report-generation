@@ -1,0 +1,113 @@
+# baseball-report-generation
+
+Standalone report-generation scripts for the baseball Vicon report workflow.
+
+This repository intentionally contains only the scripts used by the current report-generation process. It excludes pose-model skeleton code, external model folders, `node_modules`, raw videos, C3D datasets, OBJ models, MP4/AVI exports, zip files, and other generated heavy artifacts.
+
+## Contents
+
+```text
+scripts/
+  report_cli.py                              unified entry point
+  build_vicon_2026_metrics.py                C3D -> metrics/points/pose3d CSV
+  render_vicon_reconstruction_images.py      Vicon 3D PNG/GIF/OBJ rendering
+  run_vicon_c3d_pipeline.py                  C3D pipeline wrapper
+  build_benchmark_report_html.py             full Chinese HTML report builder
+  export_report_from_html.mjs                HTML -> PDF/PPTX
+  build_batting_dashboard_metrics.py         Julian/Coach batting metrics
+  build_julian_coach_event_gifs.py           Ready/Contact event GIFs
+  build_julian_coach_annotated_speed_gifs.py frame-by-frame speed GIFs
+  render_vicon_geometry_metrics_on_2d.py     Vicon values on aligned 2D skeleton
+  build_julian_coach_metrics_section.py      standalone metrics HTML section
+  generate_vicon_kinetic_chain_flow.py       kinetic-chain PNG utility
+  annotate_frontend_metric_illustrations.py  metric illustration annotation
+  build_batting_metrics_xlsx.mjs             batting metrics Excel export
+docs/
+  DESIGN.md
+  REPORT_README.md
+  vicon_batting_csv_to_report_metrics.md
+```
+
+## Setup
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+npm install
+npx playwright install chromium
+```
+
+The Excel export script uses `@oai/artifact-tool`, which is available in the Codex/OpenAI document runtime. If running outside that environment, skip `--with-xlsx` or replace that script with a local Excel writer.
+
+## Data Layout
+
+Default paths assume this repository sits beside the data folder:
+
+```text
+final-project/
+  baseball-report-generation/
+  vicon_2026/
+```
+
+Generated outputs are written under this repository:
+
+```text
+reports/
+output/
+outputs/
+```
+
+These folders are ignored by Git except optional placeholder files.
+
+## Unified Entry
+
+Build the full Vicon report:
+
+```bash
+python scripts/report_cli.py full-vicon-report --input-dir ../vicon_2026
+```
+
+Run only C3D CSV/asset generation:
+
+```bash
+python scripts/report_cli.py c3d-pipeline --input-dir ../vicon_2026
+```
+
+Rebuild only the HTML from existing CSV/assets:
+
+```bash
+python scripts/report_cli.py benchmark-html
+```
+
+Export existing HTML to PDF/PPTX:
+
+```bash
+python scripts/report_cli.py export-html
+python scripts/report_cli.py export-html --only pdf
+python scripts/report_cli.py export-html --only pptx
+```
+
+Build the Julian/Coach batting metrics section and generated images:
+
+```bash
+python scripts/report_cli.py julian-coach-section
+```
+
+Optional Julian/Coach outputs:
+
+```bash
+python scripts/report_cli.py julian-coach-section --with-geometry-2d
+python scripts/report_cli.py julian-coach-section --with-xlsx
+```
+
+## Source Selection
+
+Included scripts are limited to the report build path documented in `docs/REPORT_README.md`.
+
+Excluded on purpose:
+
+- RTMPose/MediaPipe/GVHMR pose model implementation and model folders.
+- Old 2D ablation scripts and Suzhou experiment runners.
+- `external/`, `models/`, `src/baseball_pose/`, tests, raw data, C3D files, videos, `node_modules`.
+- Generated report outputs, binary previews, zips, OBJ models, MP4/AVI files, and macOS `._*` metadata files.
