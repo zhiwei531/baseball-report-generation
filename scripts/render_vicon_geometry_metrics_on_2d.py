@@ -144,9 +144,9 @@ def load_pose(path: Path) -> dict[int, dict[str, tuple[float, float, float]]]:
     return frames
 
 
-def load_metrics(path: Path) -> dict[str, dict[str, str]]:
+def load_metrics(path: Path, sample_name: str) -> dict[str, dict[str, str]]:
     with path.open(newline="", encoding="utf-8-sig") as f:
-        rows = [row for row in csv.DictReader(f) if row["sample_name"] == "julian"]
+        rows = [row for row in csv.DictReader(f) if row["sample_name"] == sample_name]
     return {row["metric_key"]: row for row in rows}
 
 
@@ -605,17 +605,29 @@ def parse_event_frames(row: dict[str, str]) -> list[int]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Annotate Vicon geometry metrics on aligned 2D skeleton frames.")
+    parser.add_argument(
+        "--alignment-dir",
+        type=Path,
+        default=None,
+        help="Directory containing alignment_summary.json, pose2d_landmarks.csv, and optional aligned_2d_skeleton_overlay.mp4.",
+    )
     parser.add_argument("--summary", type=Path, default=DEFAULT_SUMMARY)
     parser.add_argument("--pose", type=Path, default=DEFAULT_POSE)
     parser.add_argument("--overlay", type=Path, default=DEFAULT_OVERLAY, help="Fallback base video if the raw video from summary is unavailable.")
+    parser.add_argument("--video", type=Path, default=None, help="Override the base video used for annotation backgrounds.")
     parser.add_argument("--metrics", type=Path, default=DEFAULT_METRICS)
+    parser.add_argument("--sample-name", default="julian")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
+    if args.alignment_dir is not None:
+        args.summary = args.alignment_dir / "alignment_summary.json"
+        args.pose = args.alignment_dir / "pose2d_landmarks.csv"
+        args.overlay = args.alignment_dir / "aligned_2d_skeleton_overlay.mp4"
 
     summary = json.loads(args.summary.read_text(encoding="utf-8"))
     poses = load_pose(args.pose)
-    metrics = load_metrics(args.metrics)
-    base_video = Path(summary["video"])
+    metrics = load_metrics(args.metrics, args.sample_name)
+    base_video = args.video or Path(summary["video"])
     if not base_video.exists():
         base_video = args.overlay
 

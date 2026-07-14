@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import math
@@ -489,6 +490,20 @@ def draw_wrist_roll(d, v):
 
 
 def main():
+    global REPORT_DIR, SRC_DIR, OUT_DIR, METRICS_CSV
+
+    parser = argparse.ArgumentParser(description="Generate standalone annotated batting metric illustration PNGs.")
+    parser.add_argument("--report-dir", type=Path, default=REPORT_DIR)
+    parser.add_argument("--src-dir", type=Path, default=None)
+    parser.add_argument("--out-dir", type=Path, default=None)
+    parser.add_argument("--metrics", type=Path, default=None)
+    args = parser.parse_args()
+
+    REPORT_DIR = args.report_dir
+    SRC_DIR = args.src_dir or REPORT_DIR / "assets" / "frontend_metric_illustrations"
+    OUT_DIR = args.out_dir or REPORT_DIR / "assets" / "frontend_metric_illustrations_annotated_standalone"
+    METRICS_CSV = args.metrics or REPORT_DIR / "batting_dashboard_metrics.csv"
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     values = read_metric_values()
     manifest = []

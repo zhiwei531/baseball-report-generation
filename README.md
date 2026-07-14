@@ -9,6 +9,9 @@ This repository intentionally contains only the scripts used by the current batt
 ```text
 scripts/
   report_cli.py                              unified entry point
+  run_batting_report_pipeline.py             staged batting report pipeline
+  align_2d_video_vicon.py                    optional raw 2D video -> Vicon alignment
+  render_aligned_2d_overlay.py               optional aligned 2D skeleton preview
   build_vicon_2026_metrics.py                C3D -> metrics/points/pose3d CSV
   render_vicon_reconstruction_images.py      Vicon 3D PNG/GIF/OBJ rendering
   run_vicon_c3d_pipeline.py                  C3D pipeline wrapper
@@ -26,6 +29,7 @@ scripts/
 docs/
   ASSET_PROVENANCE.md
   DESIGN.md
+  PIPELINE_ARCHITECTURE.md
   REPORT_README.md
   vicon_batting_csv_to_report_metrics.md
 ```
@@ -38,6 +42,12 @@ python3 -m venv .venv
 pip install -r requirements.txt
 npm install
 npx playwright install chromium
+```
+
+Optional raw-video alignment support:
+
+```bash
+pip install -r requirements-optional.txt
 ```
 
 The Excel export script uses `@oai/artifact-tool`, which is available in the Codex/OpenAI document runtime. If running outside that environment, skip `--with-xlsx` or replace that script with a local Excel writer.
@@ -63,6 +73,24 @@ outputs/
 These folders are ignored by Git except optional placeholder files.
 
 ## Unified Entry
+
+Preferred staged batting pipeline:
+
+```bash
+python scripts/report_cli.py build-batting-report \
+  --c3d-dir ../vicon_2026 \
+  --alignment-dir outputs/julian_bat_2d_vicon_alignment
+```
+
+Optional raw 2D video alignment path:
+
+```bash
+python scripts/report_cli.py build-batting-report \
+  --c3d-dir ../vicon_2026 \
+  --video ../vicon_2026/julian/Bat_2D.mp4 \
+  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
+  --mediapipe-model models/pose_landmarker_heavy.task
+```
 
 Build the full Vicon report:
 

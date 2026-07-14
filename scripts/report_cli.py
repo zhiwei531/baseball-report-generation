@@ -145,6 +145,54 @@ def export_html(args: argparse.Namespace) -> None:
     run(cmd)
 
 
+def build_batting_report(args: argparse.Namespace) -> None:
+    cmd = [
+        PYTHON,
+        "scripts/run_batting_report_pipeline.py",
+        "--c3d-dir",
+        args.c3d_dir,
+        "--report-dir",
+        args.report_dir,
+        "--pitch-report",
+        args.pitch_report,
+        "--peers",
+        args.peers,
+        "--sample-name",
+        args.sample_name,
+        "--ready-valid-start-frame",
+        args.ready_valid_start_frame,
+        "--xlsx-out-dir",
+        args.xlsx_out_dir,
+    ]
+    if args.alignment_dir:
+        cmd.extend(["--alignment-dir", args.alignment_dir])
+    if args.video:
+        cmd.extend(["--video", args.video])
+    if args.c3d_file:
+        cmd.extend(["--c3d-file", args.c3d_file])
+    if args.mediapipe_model:
+        cmd.extend(["--mediapipe-model", args.mediapipe_model])
+    if args.video_capture_fps is not None:
+        cmd.extend(["--video-capture-fps", args.video_capture_fps])
+    if args.video_event_frame is not None:
+        cmd.extend(["--video-event-frame", args.video_event_frame])
+    if args.trial_id:
+        cmd.extend(["--trial-id", args.trial_id])
+    for flag in (
+        "skip_c3d",
+        "skip_reconstruction",
+        "skip_2d",
+        "skip_illustrations",
+        "skip_final_schema",
+        "skip_xlsx",
+        "require_2d",
+        "require_static_assets",
+    ):
+        if getattr(args, flag):
+            cmd.append("--" + flag.replace("_", "-"))
+    run(cmd, env=plot_env())
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Unified entry point for baseball report generation scripts.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -191,6 +239,31 @@ def main() -> None:
     p.add_argument("--pdf", type=Path, default=None)
     p.add_argument("--pptx", type=Path, default=None)
     p.set_defaults(func=export_html)
+
+    p = sub.add_parser("build-batting-report", help="Run the staged batting report pipeline.")
+    p.add_argument("--c3d-dir", type=Path, default=ROOT.parent / "vicon_2026")
+    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
+    p.add_argument("--pitch-report", type=Path, default=ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html")
+    p.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
+    p.add_argument("--alignment-dir", type=Path, default=None)
+    p.add_argument("--video", type=Path, default=None)
+    p.add_argument("--c3d-file", type=Path, default=None)
+    p.add_argument("--mediapipe-model", type=Path, default=None)
+    p.add_argument("--video-capture-fps", type=float, default=None)
+    p.add_argument("--video-event-frame", type=int, default=None)
+    p.add_argument("--ready-valid-start-frame", type=int, default=770)
+    p.add_argument("--xlsx-out-dir", type=Path, default=ROOT / "outputs" / "batting_metrics_excel")
+    p.add_argument("--sample-name", default="julian")
+    p.add_argument("--trial-id", default="")
+    p.add_argument("--skip-c3d", action="store_true")
+    p.add_argument("--skip-reconstruction", action="store_true")
+    p.add_argument("--skip-2d", action="store_true")
+    p.add_argument("--skip-illustrations", action="store_true")
+    p.add_argument("--skip-final-schema", action="store_true")
+    p.add_argument("--skip-xlsx", action="store_true")
+    p.add_argument("--require-2d", action="store_true")
+    p.add_argument("--require-static-assets", action="store_true")
+    p.set_defaults(func=build_batting_report)
 
     p = sub.add_parser("julian-coach-section", help="Build Julian/Coach batting metrics section and key images.")
     p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
