@@ -29,6 +29,10 @@ def full_vicon_report(args: argparse.Namespace) -> None:
         "scripts/run_vicon_c3d_pipeline.py",
         "--input-dir",
         str(args.input_dir),
+        "--reports-dir",
+        str(args.reports_dir),
+        "--assets-dir",
+        str(args.assets_dir),
     ]
     if args.skip_render:
         pipeline.append("--skip-render")
@@ -112,6 +116,22 @@ def julian_coach_section(args: argparse.Namespace) -> None:
         run(["node", "scripts/build_batting_metrics_xlsx.mjs"], env=env)
 
 
+def c3d_pipeline(args: argparse.Namespace) -> None:
+    cmd = [
+        PYTHON,
+        "scripts/run_vicon_c3d_pipeline.py",
+        "--input-dir",
+        str(args.input_dir),
+        "--reports-dir",
+        str(args.reports_dir),
+        "--assets-dir",
+        str(args.assets_dir),
+    ]
+    if args.skip_render:
+        cmd.append("--skip-render")
+    run(cmd)
+
+
 def export_html(args: argparse.Namespace) -> None:
     cmd = ["node", "scripts/export_report_from_html.mjs"]
     if args.only:
@@ -131,22 +151,34 @@ def main() -> None:
 
     p = sub.add_parser("full-vicon-report", help="Build Vicon CSVs/assets, report.html, and PDF/PPTX exports.")
     p.add_argument("--input-dir", type=Path, default=ROOT.parent / "vicon_2026")
+    p.add_argument("--reports-dir", type=Path, default=ROOT / "reports")
+    p.add_argument("--assets-dir", type=Path, default=ROOT / "reports" / "assets")
     p.add_argument("--skip-render", action="store_true")
     p.add_argument("--skip-export", action="store_true")
     p.set_defaults(func=full_vicon_report)
 
     p = sub.add_parser("c3d-pipeline", help="Run C3D metrics and reconstruction asset generation.")
     p.add_argument("--input-dir", type=Path, default=ROOT.parent / "vicon_2026")
+    p.add_argument("--reports-dir", type=Path, default=ROOT / "reports")
+    p.add_argument("--assets-dir", type=Path, default=ROOT / "reports" / "assets")
+    p.add_argument("--skip-render", action="store_true")
+    p.set_defaults(func=c3d_pipeline)
+
+    p = sub.add_parser(
+        "batting-c3d-pipeline",
+        help="Run C3D extraction and 3D reconstruction into the batting final-schema report folder.",
+    )
+    p.add_argument("--input-dir", type=Path, default=ROOT.parent / "vicon_2026")
+    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
     p.add_argument("--skip-render", action="store_true")
     p.set_defaults(
-        func=lambda args: run(
-            [
-                PYTHON,
-                "scripts/run_vicon_c3d_pipeline.py",
-                "--input-dir",
-                str(args.input_dir),
-                *(["--skip-render"] if args.skip_render else []),
-            ]
+        func=lambda args: c3d_pipeline(
+            argparse.Namespace(
+                input_dir=args.input_dir,
+                reports_dir=args.report_dir,
+                assets_dir=args.report_dir / "assets",
+                skip_render=args.skip_render,
+            )
         )
     )
 

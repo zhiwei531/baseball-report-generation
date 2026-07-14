@@ -76,6 +76,24 @@ Run only C3D CSV/asset generation:
 python scripts/report_cli.py c3d-pipeline --input-dir ../vicon_2026
 ```
 
+Run C3D extraction and 3D reconstruction directly into the batting final-schema workspace:
+
+```bash
+python scripts/report_cli.py batting-c3d-pipeline --input-dir ../vicon_2026
+```
+
+This writes:
+
+```text
+reports/vicon_2026_julian_coach/vicon_2026_metrics.csv
+reports/vicon_2026_julian_coach/vicon_2026_point_summary.csv
+reports/vicon_2026_julian_coach/vicon_2026_points_all.csv
+reports/vicon_2026_julian_coach/vicon_2026_pose3d.csv
+reports/vicon_2026_julian_coach/vicon_2026_key_pose_models.csv
+reports/vicon_2026_julian_coach/assets/vicon_reconstruction/
+reports/vicon_2026_julian_coach/assets/vicon_reconstruction_models/
+```
+
 Rebuild only the HTML from existing CSV/assets:
 
 ```bash
@@ -103,6 +121,8 @@ python scripts/report_cli.py julian-coach-section --with-geometry-2d
 python scripts/report_cli.py julian-coach-section --with-xlsx
 python scripts/report_cli.py julian-coach-section --apply-final-schema
 ```
+
+`--with-xlsx` exports the batting body metrics workbook from `batting_dashboard_metrics.csv` to `outputs/batting_metrics_excel/`.
 
 Pitching interface:
 
