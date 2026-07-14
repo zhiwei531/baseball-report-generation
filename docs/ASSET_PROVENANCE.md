@@ -310,7 +310,7 @@ The final schema contains pitching sections and references assets under:
 ```text
 pitch_assets/
   vicon_reconstruction_events/
-  video_2d_alignment/
+  vicon_2d_geometry_annotations/
   frontend_metric_illustrations_pitch/
   frontend_metric_illustrations_pitch_event/
   kinetic_chain/

@@ -729,7 +729,7 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
             <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_peak_knee.gif" alt="{esc(PLAYER_NAME)} 抬腿最高点 3D 动图" loading="lazy">
           </figure>
           <figure class="motion-2d-panel">
-            <img src="assets/video_2d_alignment/{esc(PLAYER_SLUG)}_pitch_peak_knee_2d_overlay.png" alt="{esc(PLAYER_NAME)} 抬腿最高点 2D 几何标注" loading="lazy">
+            <img src="assets/vicon_2d_geometry_annotations/peak_knee_position_vicon_geometry_on_2d.png" alt="{esc(PLAYER_NAME)} 抬腿最高点 2D 几何标注" loading="lazy">
           </figure>
         </article>
         <article class="motion-stage-card">
@@ -738,7 +738,7 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
             <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_foot_plant.gif" alt="{esc(PLAYER_NAME)} 前脚落地 3D 动图" loading="lazy">
           </figure>
           <figure class="motion-2d-panel">
-            <img src="assets/video_2d_alignment/{esc(PLAYER_SLUG)}_pitch_foot_plant_2d_overlay.png" alt="{esc(PLAYER_NAME)} 前脚落地 2D 几何标注" loading="lazy">
+            <img src="assets/vicon_2d_geometry_annotations/foot_plant_position_vicon_geometry_on_2d.png" alt="{esc(PLAYER_NAME)} 前脚落地 2D 几何标注" loading="lazy">
           </figure>
         </article>
         <article class="motion-stage-card">
@@ -747,7 +747,7 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
             <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_release.gif" alt="{esc(PLAYER_NAME)} 出手点 3D 动图" loading="lazy">
           </figure>
           <figure class="motion-2d-panel">
-            <img src="assets/video_2d_alignment/{esc(PLAYER_SLUG)}_pitch_release_2d_overlay.png" alt="{esc(PLAYER_NAME)} 出手点 2D 几何标注" loading="lazy">
+            <img src="assets/vicon_2d_geometry_annotations/release_position_vicon_geometry_on_2d.png" alt="{esc(PLAYER_NAME)} 出手点 2D 几何标注" loading="lazy">
           </figure>
         </article>
       </div>
