@@ -922,15 +922,6 @@ def peer_display_name(name: str) -> str:
     return PEER_DISPLAY_NAMES.get(peer_key(name), name)
 
 
-def peer_color_legend() -> str:
-    items = "".join(
-        f'<span class="pitch-peer-legend-item"><i style="background:{PEER_COLORS[key]}"></i>{esc(label)}</span>'
-        for key, label in PEER_DISPLAY_NAMES.items()
-        if key != "brandon"
-    )
-    return f'<div class="pitch-peer-color-legend"><b>同组球员颜色图例</b><div>{items}</div></div>'
-
-
 def reference_metric_values(metric_key: str, bundles: list[TrialBundle], coach: TrialBundle) -> tuple[float, float]:
     reference_path = TEMPLATE_DIR / "pitch_metrics_all_players.csv" if TEMPLATE_DIR is not None else None
     if reference_path is not None and reference_path.exists():
@@ -1015,17 +1006,13 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .two-column-metrics .metric-detail {{ gap:8px; }}
     .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:20px; }}
     .two-column-metrics .peer-range {{ grid-template-columns:max-content 34px minmax(52px,76px) 34px; gap:6px; max-width:100%; justify-self:start; }}
+    .analyst-chart-grid {{ grid-template-columns:1fr; }}
     .pitch-compare-pills {{ display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 4px; }}
     .pitch-compare-pills span {{ display:inline-grid; gap:2px; min-width:112px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
     .pitch-compare-pills span b {{ color:#667085; font-size:11px; line-height:14px; }}
     .peer-dot.current-player {{ z-index:4; width:16px; height:16px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }}
     .coach-issue-card .peer-dot.current-player {{ z-index:4 !important; width:16px !important; height:16px !important; border:3px solid #fff !important; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15) !important; }}
-    .pitch-peer-color-legend {{ display:grid; gap:8px; margin:0 0 18px; padding:12px 14px; border:1px solid #d0d5dd; border-radius:14px; background:#fff; }}
-    .pitch-peer-color-legend > b {{ color:#667085; font-size:12px; line-height:16px; }}
-    .pitch-peer-color-legend > div {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 16px; }}
-    .pitch-peer-legend-item {{ display:flex; align-items:center; gap:7px; min-width:0; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
-    .pitch-peer-legend-item i {{ width:10px; height:10px; border-radius:999px; box-shadow:0 0 0 1px rgba(16,24,40,.14); flex:0 0 auto; }}
-    @media (max-width:640px) {{ .pitch-compare-pills span {{ min-width:0; flex:1 1 110px; }} .pitch-peer-color-legend > div {{ grid-template-columns:1fr; }} }}
+    @media (max-width:640px) {{ .pitch-compare-pills span {{ min-width:0; flex:1 1 110px; }} }}
     """
     html_text = re.sub(rf"\s*/\* {re.escape(marker[3:-3])} \*/.*?(?=\s*</style>)", "", html_text, flags=re.DOTALL)
     return html_text.replace("</style>", css + "\n  </style>", 1)
@@ -1077,9 +1064,7 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     )
     html_text = add_pitch_comparisons(html_text, bundles, coach)
     html_text = apply_peer_display_mapping(html_text)
-    if '<div class="pitch-peer-color-legend">' not in html_text:
-        researcher_heading = '<div class="section-title"><span class="mark"></span><h2>研究者视角：动力链与时间曲线</h2></div>'
-        html_text = html_text.replace(researcher_heading, researcher_heading + peer_color_legend(), 1)
+    html_text = re.sub(r'\s*<div class="pitch-peer-color-legend">.*?</div></div>', "", html_text, flags=re.DOTALL)
     return inject_pitch_card_styles(html_text)
 
 
