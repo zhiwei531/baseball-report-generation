@@ -10,7 +10,7 @@ Vicon C3D folder + batting 2D video
   -> 2D/Vicon alignment and 2D metric annotations
   -> static metric illustration annotations
   -> final HTML schema
-  -> optional XLSX body-metrics workbook
+  -> XLSX body-metrics workbook unless skipped
 ```
 
 Pitching remains an external interface. The batting report builder accepts a teammate-produced pitching HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
@@ -99,9 +99,14 @@ Fully automated from Vicon C3D:
 - Researcher batting kinetic-chain and graphs.
 - XLSX body metrics.
 
-Automated when alignment/static inputs exist:
+Automated when raw 2D inputs or prepared alignment inputs exist:
 
+- MediaPipe 2D/Vicon alignment.
+- 2D skeleton overlay preview video.
 - 2D metric overlay PNGs.
+
+Automated when static illustration sources exist:
+
 - Metric illustration annotation PNGs.
 
 Interface only:

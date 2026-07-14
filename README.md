@@ -30,10 +30,24 @@ scripts/
 docs/
   ASSET_PROVENANCE.md
   DESIGN.md
+  FINAL_REPORT_IMAGE_CHECKLIST.md
   PIPELINE_ARCHITECTURE.md
   REPORT_README.md
   vicon_batting_csv_to_report_metrics.md
 ```
+
+## Current Architecture
+
+The supported report-generation path is config-driven:
+
+```text
+configs/default_report_pipeline.json
+  -> scripts/report_cli.py build-batting-report
+  -> scripts/run_batting_report_pipeline.py
+  -> individual C3D, asset, HTML, and XLSX builders
+```
+
+Use this path for reusable batting reports. The older subcommands and individual builders remain available for debugging or partial rebuilds, but they are not the preferred production entry.
 
 ## Path Config
 
@@ -70,7 +84,7 @@ npm install
 npx playwright install chromium
 ```
 
-The Excel export script uses `@oai/artifact-tool`, which is available in the Codex/OpenAI document runtime. If running outside that environment, skip `--with-xlsx` or replace that script with a local Excel writer.
+The Excel export script uses `@oai/artifact-tool`, which is available in the Codex/OpenAI document runtime. If running outside that environment, pass `--skip-xlsx` to the staged pipeline or replace that script with a local Excel writer.
 
 ## Data Layout
 
@@ -115,19 +129,19 @@ python scripts/report_cli.py build-batting-report \
   --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d"
 ```
 
-Build the full Vicon report:
+Legacy full-report builder, kept for the older Bryan/Green benchmark report:
 
 ```bash
 python scripts/report_cli.py full-vicon-report --input-dir ../vicon_2026
 ```
 
-Run only C3D CSV/asset generation:
+Debug-only C3D CSV/asset generation:
 
 ```bash
 python scripts/report_cli.py c3d-pipeline --input-dir ../vicon_2026
 ```
 
-Run C3D extraction and 3D reconstruction directly into the batting final-schema workspace:
+Compatibility wrapper for C3D extraction and 3D reconstruction into the default Julian/Coach batting workspace:
 
 ```bash
 python scripts/report_cli.py batting-c3d-pipeline --input-dir ../vicon_2026
@@ -159,34 +173,26 @@ python scripts/report_cli.py export-html --only pdf
 python scripts/report_cli.py export-html --only pptx
 ```
 
-Build the Julian/Coach batting metrics section and generated images:
+Legacy Julian/Coach section-only wrapper:
 
 ```bash
 python scripts/report_cli.py julian-coach-section
 ```
 
-Optional Julian/Coach outputs:
-
-```bash
-python scripts/report_cli.py julian-coach-section --with-geometry-2d
-python scripts/report_cli.py julian-coach-section --with-xlsx
-python scripts/report_cli.py julian-coach-section --apply-final-schema
-```
-
-`--with-xlsx` exports the batting body metrics workbook from `batting_dashboard_metrics.csv` to `outputs/batting_metrics_excel/`.
+For current builds, prefer `python scripts/report_cli.py build-batting-report`; it already runs the full staged pipeline and the XLSX stage unless `--skip-xlsx` is passed. Use `python scripts/report_cli.py julian-coach-section --help` only when debugging the legacy section-only path.
 
 Pitching interface:
 
 ```bash
-python scripts/report_cli.py julian-coach-section \
+python scripts/report_cli.py build-batting-report \
   --pitch-report ../julian_pitch_template_report_2026-07-06/index.html
 ```
 
-`--pitch-report` expects an already-built pitching template HTML. `build_julian_coach_metrics_section.py` copies that template's `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections. This repository does not generate `pitch_assets/*`; those builders should be added by the teammate who owns pitching.
+In the current staged pipeline, `pitch_report` should normally be set in the config. `--pitch-report` remains available as a CLI override. It expects an already-built pitching template HTML. `build_julian_coach_metrics_section.py` copies that template's `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections. This repository does not generate `pitch_assets/*`; those builders should be added by the teammate who owns pitching.
 
 ## Source Selection
 
-Included scripts are limited to the batting report build path documented in `docs/REPORT_README.md` and `docs/ASSET_PROVENANCE.md`.
+Included scripts are limited to the batting report build path documented in `docs/PIPELINE_ARCHITECTURE.md` and `docs/ASSET_PROVENANCE.md`.
 
 Excluded on purpose:
 

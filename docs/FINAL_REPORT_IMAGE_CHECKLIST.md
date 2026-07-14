@@ -11,6 +11,14 @@ Status labels:
 - `included`: builder is included in this repo.
 - `pitching-interface`: image is under `pitch_assets/`; this repo only copies it from `--pitch-report`.
 
+Current production entry:
+
+```bash
+python scripts/report_cli.py build-batting-report
+```
+
+This command runs the included batting builders through `scripts/run_batting_report_pipeline.py` using `configs/default_report_pipeline.json` or a copied `--config`. The table below names the lower-level builder or pitching interface responsible for each image family.
+
 ## Sequential Image Map
 
 | # | Final report image path | Status | Builder / interface |
@@ -90,6 +98,5 @@ All batting image families used by the final schema are covered by scripts in th
 Pitching images are intentionally not generated here. They must arrive via:
 
 ```bash
-python scripts/build_julian_coach_metrics_section.py --pitch-report path/to/pitching/index.html
+python scripts/report_cli.py build-batting-report --pitch-report path/to/pitching/index.html
 ```
-

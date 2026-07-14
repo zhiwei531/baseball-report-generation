@@ -640,7 +640,8 @@ HTML 报告可以有折叠详情、视频播放、模型动态展示和导出按
 - 图表 caption/title 要短，不要把方法说明塞进图内；方法说明放在图下“怎么看”或 module note。
 
 **Current HTML Implementation Requirements**
-- 当前 HTML 报告由 `scripts/build_benchmark_report_html.py` 生成，Vicon 2026 中间表由 `scripts/build_vicon_2026_metrics.py` 从 `../vicon_2026/*/*.c3d` 生成，C3D 重建截图和动图由 `scripts/render_vicon_reconstruction_images.py` 生成。当前主体 raw data source 必须统一为 `../vicon_2026` 下的 Vicon C3D：`bryan` 是主分析人，`green` 只作为教练模块对照，子文件夹名就是被试名。报告必须优先读取当前 Vicon 派生表、原始 C3D 和预渲染 PNG/GIF 生成真实图表：`reports/vicon_2026_metrics.csv`、`reports/vicon_2026_point_summary.csv`、`reports/assets/vicon_reconstruction/*.png`、`reports/assets/vicon_reconstruction/*.gif`、`../vicon_2026/bryan/*.c3d` 和 `../vicon_2026/green/*.c3d`。临时 coach 参考可继续读取既有 coach 3D 数据和 coach 指标表，但只能作为投球参考线或评分参考，正文必须标注临时性；旧 benchmark 视频 CV/GVHMR 身体数据不得混入当前主体指标、曲线或 C3D 来源表。
+- 当前可复用的 batting final-schema report 由 `python scripts/report_cli.py build-batting-report` 生成；路径和主体配置集中在 `configs/default_report_pipeline.json`，核心编排在 `scripts/run_batting_report_pipeline.py`。该入口会从 Vicon C3D 生成中间 CSV、3D reconstruction 资产、batting metrics、MediaPipe 2D alignment、2D metric annotations、HTML schema、researcher charts 和 XLSX。`scripts/build_benchmark_report_html.py` 仍保留为早期 Bryan/Green benchmark report 的 legacy builder，不是新球员 batting report 的推荐入口。
+- 当前主体 raw data source 必须统一为 Vicon C3D 及其派生表；旧 benchmark 视频 CV/GVHMR 身体数据不得混入当前主体指标、曲线或 C3D 来源表。默认 Julian/Coach config 使用 `../vicon_2026` 和 `reports/vicon_2026_julian_coach/`；新球员必须复制 config 并写入 `reports/vicon_2026_<player_slug>_coach/`，不要覆盖 Julian 参考目录。
 - Julian/Coach batting metrics section 是当前独立打击 dashboard 的设计样例：前端卡片只展示聚合后的前端指标和评分，后台 Vicon 几何/速度字段用于加权计算和 Excel 追溯。Ready/Contact 的 2D 几何标注图应直接放在 section title 下方，不放进右侧 GIF 卡；右侧保留 Julian 事件 GIF。Ready 标注后髋、后膝和髋肩分离，右打假设下后腿为右腿；Contact 标注骨盆旋转、躯干旋转和前膝，右打假设下前腿为左腿。角度标注必须贴合实际夹角和补角语义：如果报告值是 `180 - angle(...)` 的屈曲角，视觉上要保留夹角处虚线延长线，并用 leader line 指向该屈曲角数值，避免在明显大于 90 度的身体夹角上画一个 40-50 度的错误 arc。
 - 姿态纠正图不得再使用固定 SVG placeholder。当前实现口径：球员投球样本出手附近帧作为浅蓝虚线，教练三维序列出手侧手部速度峰值附近帧作为绿色参考，偏差最大的球员骨段用红色强调。
 - C3D 点重建图不得使用全局 trial points 或全局平均点。必须先提取关键动作位置，再从该关键帧附近小窗口重建点位：投球使用出手侧/主导手速度峰值，打击使用球棒速度峰值。重建资产必须先单独渲染为 PNG/GIF/MP4/AVI，再嵌入 report；不得在 HTML 中临时用内联 SVG 拼接 C3D 重建图。报告中 C3D 重建区块应展示关键动作窗口 GIF/视频，而不是完整 trial GIF 或只放单张关键帧图片；打击窗口默认关键帧前约 0.6 秒、后约 0.4 秒，投球窗口默认关键帧前约 1.4 秒、后约 0.4 秒以包含前腿抬起阶段，PNG 仅作为关键帧截图或动图缺失时的 fallback。动图/视频必须使用关键动作窗口内的固定坐标范围和固定相机视角，不能每帧 autoscale 导致背景网格缩放；点位可做短窗口可视化平滑以降低 marker 抖动，但不能改变用于指标计算的原始数据。报告中必须能追溯 `sample_name`、`key_event`、`key_frame_index` 和 `key_time_sec`，其中 `sample_name` 必须直接来自 `vicon_2026` 下的子文件夹名。Vicon 报告区块不得硬编码某一个样本名或只展示某一个 trial；必须按 `sample_name` 和动作类型动态遍历当前 CSV 中的所有 C3D trial。C3D 动图骨架只使用真实身体 marker 的人体连接关系，不画 Plug-in Gait/model 局部轴段或其他辅助 segments；可显示真实 marker 散点、`CentreOfMass` 和打击时的 `Bat1-Bat5`，但不得显示 `CentreOfMassFloor` 这类地面/辅助点导致画面误读。三维人体不得塞满画布，渲染时必须放大坐标边界并给骨架四周留出明显空白；Y 轴显示中心应让脚部 marker 位于视觉中心附近，不要为了脚部位置改 Z 轴范围。三维重建图使用专业报告风格：白底、浅灰网格、红色人体连接、蓝色 marker 点、绿色球棒、灰色虚线棒头轨迹；不要在人体或球棒 marker 点上标注点名，图例只保留球棒和棒头轨迹。头部 `LFHD/RFHD/LBHD/RBHD` 四点必须连接为闭合立体面，并全部连接到 `C7`；躯干 `C7/CLAV/STRN/T10/RBAK`、骨盆 `LASI/RASI/LPSI/RPSI`、左右脚踝/跟/趾和 `Bat1-Bat5` 必须分别连接为刚体结构。打击时 `Bat1-Bat5` 既按顺序连接，也要增加外轮廓/互相连接来勾勒球棒形状；灰色虚线轨迹表示棒头 `Bat1`。
@@ -727,10 +728,10 @@ HTML 报告可以有折叠详情、视频播放、模型动态展示和导出按
 - 使用五档状态体系：良好、偏离、关注、需复核、不可用；每个状态必须能追溯到规则或证据。
 - 球员模块首屏可以使用五维评分摘要：蓄力、路径、稳定、节奏、速度可信；完整报告可扩展为六维评分。
 - 训练建议要进一步落成 7 天家庭训练与复测计划，第 7 天必须安排同机位复测。
-- 当前 report 以 Vicon C3D 作为主体 raw data source；不要把 standard Vicon 动捕身体数据和 optical CV/GVHMR 身体数据混成同一个未解释的数值。
+- 当前 report 以 Vicon C3D 作为主体 raw data source，并通过 config-driven pipeline 统一路径；不要把 standard Vicon 动捕身体数据和 optical CV/GVHMR 身体数据混成同一个未解释的数值。
 - N/A、None、proxy 和不可用项必须展示清楚，研究者模块保留原始字段和限制说明。
 - 每张可视化都配一句明确解释，说明家长应该先看什么。
-- 当前对象口径固定为 bryan 主分析、green 教练模块对照、coach 临时参考；图表中必须明确对象颜色和临时参考边界。
+- 早期 benchmark report 的对象口径固定为 bryan 主分析、green 教练模块对照、coach 临时参考；当前 batting final-schema 以 config 中的 `sample_name` / report directory 为主体口径。图表中必须明确对象颜色和临时参考边界。
 - PDF 导出优先沿用 HTML 自然版式做分段截图，分页只微调断点，不重新组合 card。
 - 标准姿态纠正图必须显示孩子原始姿态浅蓝虚线、缩放教练标准姿态绿色线、偏差较大骨段红线。
 - 对速度、身体中心位移、球速估算写清可靠性边界，并建议正式复测补充雷达枪、Vicon 或力板。
