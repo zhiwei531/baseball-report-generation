@@ -10,10 +10,18 @@ This contribution fills the pitching interface previously documented in this rep
 
 The `julian` and `coach` keys are currently schema roles, not required display names. Display names come from the manifest.
 
-## Main command
+## Final deliverable command
+
+For a combined pitching + batting report, use the repository entry:
 
 ```bash
-python scripts/report_cli.py build-pitching-report \
+python scripts/report_cli.py --config configs/final_report.json
+```
+
+## Lower-level pitching builder
+
+```bash
+python scripts/pitching/build_pitch_template_metrics_report.py \
   --manifest configs/pitching/manifest.json \
   --template-dir reports/pitching_template \
   --out-dir reports/pitching
@@ -51,6 +59,8 @@ python scripts/pitching/generate_professional_pitch_charts.py \
 ```
 
 The chart utility reconstructs smooth presentation curves from event anchors and summary metrics. These are not raw frame-by-frame time series and must be labeled accordingly.
+
+To generate pitching 2D-video / Vicon-3D alignment QA assets, use the dedicated lower-level wrapper documented in `docs/pitching/PITCHING_VICON_2D_ALIGNMENT.md`. It requires reviewed slow-motion capture FPS and reviewed release frame, then writes the 2D skeleton overlay plus the side-by-side 2D-vs-3D comparison assets.
 
 ## Event and metric limitations
 

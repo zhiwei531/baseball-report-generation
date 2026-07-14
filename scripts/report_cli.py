@@ -1,354 +1,115 @@
 from __future__ import annotations
 
+"""Single production entry point for a combined pitching + batting report."""
+
 import argparse
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
-
-from pipeline_config import DEFAULT_CONFIG
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON = sys.executable
 
 
-def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
-    print("+", " ".join(str(item) for item in cmd))
-    subprocess.run([str(item) for item in cmd], cwd=ROOT, check=True, env=env)
+def run(command: list[str], *, env: dict[str, str]) -> None:
+    print("+", " ".join(str(part) for part in command))
+    subprocess.run([str(part) for part in command], cwd=ROOT, check=True, env=env)
 
 
-def plot_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
-    env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
-    return env
+def resolve_path(value: str, *, root: Path) -> Path:
+    path = Path(value).expanduser()
+    return path.resolve() if path.is_absolute() else (root / path).resolve()
 
 
-def full_vicon_report(args: argparse.Namespace) -> None:
-    pipeline = [
-        PYTHON,
-        "scripts/run_vicon_c3d_pipeline.py",
-        "--input-dir",
-        str(args.input_dir),
-        "--reports-dir",
-        str(args.reports_dir),
-        "--assets-dir",
-        str(args.assets_dir),
-    ]
-    if args.skip_render:
-        pipeline.append("--skip-render")
-    run(pipeline)
-    run([PYTHON, "scripts/build_benchmark_report_html.py"])
-    if not args.skip_export:
-        run(["npm", "run", "export:report"])
+def read_config(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"Final report config must be a JSON object: {path}")
+    return data
 
 
-def julian_coach_section(args: argparse.Namespace) -> None:
-    metrics = args.report_dir / "batting_dashboard_metrics.csv"
-    wide_metrics = args.report_dir / "batting_dashboard_metrics_wide.csv"
-
-    run(
-        [
-            PYTHON,
-            "scripts/build_batting_dashboard_metrics.py",
-            "--points",
-            str(args.points),
-            "--out",
-            str(metrics),
-            "--wide-out",
-            str(wide_metrics),
-            "--ready-valid-start-frame",
-            str(args.ready_valid_start_frame),
-        ]
-    )
-    run(
-        [
-            PYTHON,
-            "scripts/build_julian_coach_event_gifs.py",
-            "--metrics",
-            str(metrics),
-            "--out-dir",
-            str(args.report_dir / "assets" / "vicon_reconstruction_events"),
-        ],
-        env=plot_env(),
-    )
-    run(
-        [
-            PYTHON,
-            "scripts/build_julian_coach_annotated_speed_gifs.py",
-            "--metrics",
-            str(metrics),
-            "--points",
-            str(args.point_summary),
-            "--out-dir",
-            str(args.report_dir / "assets" / "vicon_reconstruction_annotated"),
-        ],
-        env=plot_env(),
-    )
-    run(
-        [
-            PYTHON,
-            "scripts/build_julian_coach_metrics_section.py",
-            "--metrics",
-            str(metrics),
-            "--out",
-            str(args.report_dir / "julian_coach_metrics_section.html"),
-            "--pitch-report",
-            str(args.pitch_report),
-        ]
-    )
-    if args.apply_final_schema:
-        run(
-            [
-                PYTHON,
-                "scripts/apply_batting_coach_values.py",
-                "--report-dir",
-                str(args.report_dir),
-                "--peers",
-                str(args.peers),
-            ]
-        )
-    if args.with_geometry_2d:
-        run([PYTHON, "scripts/render_vicon_geometry_metrics_on_2d.py"], env=plot_env())
-    if args.with_xlsx:
-        env = os.environ.copy()
-        env["METRICS_PATH"] = str(metrics)
-        env["OUT_DIR"] = str(ROOT / "outputs" / "batting_metrics_excel")
-        run(["node", "scripts/build_batting_metrics_xlsx.mjs"], env=env)
-
-
-def c3d_pipeline(args: argparse.Namespace) -> None:
-    cmd = [
-        PYTHON,
-        "scripts/run_vicon_c3d_pipeline.py",
-        "--input-dir",
-        str(args.input_dir),
-        "--reports-dir",
-        str(args.reports_dir),
-        "--assets-dir",
-        str(args.assets_dir),
-    ]
-    if args.skip_render:
-        cmd.append("--skip-render")
-    run(cmd)
-
-
-def export_html(args: argparse.Namespace) -> None:
-    cmd = ["node", "scripts/export_report_from_html.mjs"]
-    if args.only:
-        cmd.extend(["--only", args.only])
-    if args.html:
-        cmd.extend(["--html", str(args.html)])
-    if args.pdf:
-        cmd.extend(["--pdf", str(args.pdf)])
-    if args.pptx:
-        cmd.extend(["--pptx", str(args.pptx)])
-    run(cmd)
-
-
-def build_batting_report(args: argparse.Namespace) -> None:
-    cmd = [
-        PYTHON,
-        "scripts/run_batting_report_pipeline.py",
-        "--config",
-        args.config,
-    ]
-    for option, value in (
-        ("--c3d-dir", args.c3d_dir),
-        ("--report-dir", args.report_dir),
-        ("--pitch-report", args.pitch_report),
-        ("--peers", args.peers),
-        ("--sample-name", args.sample_name),
-        ("--coach-sample-name", args.coach_sample_name),
-        ("--player-slug", args.player_slug),
-        ("--player-label", args.player_label),
-        ("--ready-valid-start-frame", args.ready_valid_start_frame),
-        ("--xlsx-out-dir", args.xlsx_out_dir),
-    ):
-        if value is not None:
-            cmd.extend([option, value])
-    if args.alignment_dir:
-        cmd.extend(["--alignment-dir", args.alignment_dir])
-    if args.video:
-        cmd.extend(["--video", args.video])
-    if args.c3d_file:
-        cmd.extend(["--c3d-file", args.c3d_file])
-    if args.mediapipe_model:
-        cmd.extend(["--mediapipe-model", args.mediapipe_model])
-    if args.video_capture_fps is not None:
-        cmd.extend(["--video-capture-fps", args.video_capture_fps])
-    if args.video_event_frame is not None:
-        cmd.extend(["--video-event-frame", args.video_event_frame])
-    if args.trial_id:
-        cmd.extend(["--trial-id", args.trial_id])
-    for flag in (
-        "skip_c3d",
-        "skip_reconstruction",
-        "skip_2d",
-        "skip_illustrations",
-        "skip_final_schema",
-        "skip_xlsx",
-        "require_2d",
-        "require_static_assets",
-    ):
-        if getattr(args, flag):
-            cmd.append("--" + flag.replace("_", "-"))
-    run(cmd, env=plot_env())
-
-
-def build_pitching_report(args: argparse.Namespace) -> None:
-    cmd = [
-        PYTHON,
-        "scripts/pitching/build_pitch_template_metrics_report.py",
-        "--manifest",
-        args.manifest,
-        "--template-dir",
-        args.template_dir,
-        "--out-dir",
-        args.out_dir,
-    ]
-    if args.previous_assets:
-        cmd.extend(["--previous-assets", args.previous_assets])
-    run(cmd, env=plot_env())
-
-
-def sync_vicon_video(args: argparse.Namespace) -> None:
-    cmd = [PYTHON, "scripts/pitching/sync_vicon_video.py"]
-    for action, video, c3d in args.pair:
-        cmd.extend(["--pair", action, video, c3d])
-    cmd.extend(["--output-dir", args.output_dir])
-    run(cmd)
+def required(mapping: dict[str, Any], key: str) -> str:
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Missing required final report config field: {key}")
+    return value
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Unified entry point for baseball report generation scripts.")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    p = sub.add_parser("full-vicon-report", help="Build Vicon CSVs/assets, report.html, and PDF/PPTX exports.")
-    p.add_argument("--input-dir", type=Path, default=ROOT.parent / "vicon_2026")
-    p.add_argument("--reports-dir", type=Path, default=ROOT / "reports")
-    p.add_argument("--assets-dir", type=Path, default=ROOT / "reports" / "assets")
-    p.add_argument("--skip-render", action="store_true")
-    p.add_argument("--skip-export", action="store_true")
-    p.set_defaults(func=full_vicon_report)
-
-    p = sub.add_parser("c3d-pipeline", help="Run C3D metrics and reconstruction asset generation.")
-    p.add_argument("--input-dir", type=Path, default=ROOT.parent / "vicon_2026")
-    p.add_argument("--reports-dir", type=Path, default=ROOT / "reports")
-    p.add_argument("--assets-dir", type=Path, default=ROOT / "reports" / "assets")
-    p.add_argument("--skip-render", action="store_true")
-    p.set_defaults(func=c3d_pipeline)
-
-    p = sub.add_parser(
-        "batting-c3d-pipeline",
-        help="Run C3D extraction and 3D reconstruction into the batting final-schema report folder.",
+    parser = argparse.ArgumentParser(
+        description="Build one final deliverable: pitching assets first, then the batting report that embeds them."
     )
-    p.add_argument("--input-dir", type=Path, default=ROOT.parent / "vicon_2026")
-    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
-    p.add_argument("--skip-render", action="store_true")
-    p.set_defaults(
-        func=lambda args: c3d_pipeline(
-            argparse.Namespace(
-                input_dir=args.input_dir,
-                reports_dir=args.report_dir,
-                assets_dir=args.report_dir / "assets",
-                skip_render=args.skip_render,
-            )
-        )
-    )
-
-    p = sub.add_parser("benchmark-html", help="Build report.html from existing report CSV/assets.")
-    p.set_defaults(func=lambda _args: run([PYTHON, "scripts/build_benchmark_report_html.py"]))
-
-    p = sub.add_parser("export-html", help="Export report.html to PDF/PPTX.")
-    p.add_argument("--only", choices=["pdf", "pptx"], default=None)
-    p.add_argument("--html", type=Path, default=None)
-    p.add_argument("--pdf", type=Path, default=None)
-    p.add_argument("--pptx", type=Path, default=None)
-    p.set_defaults(func=export_html)
-
-    p = sub.add_parser("build-batting-report", help="Run the staged batting report pipeline.")
-    p.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="Pipeline config JSON with shared root/path defaults.")
-    p.add_argument("--c3d-dir", type=Path, default=None)
-    p.add_argument("--report-dir", type=Path, default=None)
-    p.add_argument("--pitch-report", type=Path, default=None)
-    p.add_argument("--peers", type=Path, default=None)
-    p.add_argument("--alignment-dir", type=Path, default=None)
-    p.add_argument("--video", type=Path, default=None)
-    p.add_argument("--c3d-file", type=Path, default=None)
-    p.add_argument("--mediapipe-model", type=Path, default=None)
-    p.add_argument("--video-capture-fps", type=float, default=None)
-    p.add_argument("--video-event-frame", type=int, default=None)
-    p.add_argument("--ready-valid-start-frame", type=int, default=None)
-    p.add_argument("--xlsx-out-dir", type=Path, default=None)
-    p.add_argument("--sample-name", default=None)
-    p.add_argument("--coach-sample-name", default=None)
-    p.add_argument("--player-slug", default=None)
-    p.add_argument("--player-label", default=None)
-    p.add_argument("--trial-id", default=None)
-    p.add_argument("--skip-c3d", action="store_true")
-    p.add_argument("--skip-reconstruction", action="store_true")
-    p.add_argument("--skip-2d", action="store_true")
-    p.add_argument("--skip-illustrations", action="store_true")
-    p.add_argument("--skip-final-schema", action="store_true")
-    p.add_argument("--skip-xlsx", action="store_true")
-    p.add_argument("--require-2d", action="store_true")
-    p.add_argument("--require-static-assets", action="store_true")
-    p.set_defaults(func=build_batting_report)
-
-    p = sub.add_parser("julian-coach-section", help="Build Julian/Coach batting metrics section and key images.")
-    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
-    p.add_argument("--points", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_points_all.csv")
-    p.add_argument("--point-summary", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_point_summary.csv")
-    p.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
-    p.add_argument("--pitch-report", type=Path, default=ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html")
-    p.add_argument("--ready-valid-start-frame", type=int, default=770)
-    p.add_argument("--with-geometry-2d", action="store_true")
-    p.add_argument("--with-xlsx", action="store_true")
-    p.add_argument("--apply-final-schema", action="store_true")
-    p.set_defaults(func=julian_coach_section)
-
-    p = sub.add_parser("apply-final-schema", help="Apply the final vicon_2026_julian_coach 4 HTML polish pass.")
-    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
-    p.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
-    p.set_defaults(
-        func=lambda args: run(
-            [
-                PYTHON,
-                "scripts/apply_batting_coach_values.py",
-                "--report-dir",
-                str(args.report_dir),
-                "--peers",
-                str(args.peers),
-            ]
-        )
-    )
-
-    p = sub.add_parser("geometry-2d", help="Render Vicon-valued metric annotations on aligned 2D skeleton frames.")
-    p.set_defaults(func=lambda _args: run([PYTHON, "scripts/render_vicon_geometry_metrics_on_2d.py"], env=plot_env()))
-
-    p = sub.add_parser("build-pitching-report", help="Build pitching metrics/assets from a C3D manifest and template.")
-    p.add_argument("--manifest", required=True, type=Path)
-    p.add_argument("--template-dir", required=True, type=Path)
-    p.add_argument("--previous-assets", type=Path, default=None)
-    p.add_argument("--out-dir", type=Path, default=ROOT / "reports" / "pitching")
-    p.set_defaults(func=build_pitching_report)
-
-    p = sub.add_parser("build-pitch-report", help="Compatibility alias for build-pitching-report.")
-    p.add_argument("--manifest", required=True, type=Path)
-    p.add_argument("--template-dir", required=True, type=Path)
-    p.add_argument("--previous-assets", type=Path, default=None)
-    p.add_argument("--out-dir", type=Path, default=ROOT / "reports" / "pitching")
-    p.set_defaults(func=build_pitching_report)
-
-    p = sub.add_parser("sync-vicon-video", help="Align 2D videos to Vicon C3D event timing.")
-    p.add_argument("--pair", action="append", nargs=3, required=True, metavar=("ACTION", "VIDEO", "C3D"))
-    p.add_argument("--output-dir", type=Path, default=ROOT / "outputs" / "vicon_video_sync")
-    p.set_defaults(func=sync_vicon_video)
-
+    parser.add_argument("--config", required=True, type=Path, help="Combined final-report JSON config.")
+    parser.add_argument("--skip-pitching", action="store_true", help="Reuse an existing pitching report named by the config.")
+    parser.add_argument("--skip-pitching-alignment", action="store_true", help="Skip the optional pitching 2D/Vicon QA stage.")
+    parser.add_argument("--skip-batting", action="store_true", help="Build only pitching deliverables for diagnosis.")
     args = parser.parse_args()
-    args.func(args)
+
+    config_path = args.config.expanduser().resolve()
+    config = read_config(config_path)
+    config_root = resolve_path(str(config.get("root_dir", ".")), root=ROOT)
+    batting_config = resolve_path(required(config, "batting_config"), root=config_root)
+    pitching = config.get("pitching")
+    if not isinstance(pitching, dict):
+        raise ValueError("Missing required final report config object: pitching")
+
+    manifest = resolve_path(required(pitching, "manifest"), root=config_root)
+    template_dir = resolve_path(required(pitching, "template_dir"), root=config_root)
+    out_dir = resolve_path(required(pitching, "out_dir"), root=config_root)
+    pitch_html = out_dir / "index.html"
+    env = os.environ.copy()
+    env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
+    env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
+
+    if not args.skip_pitching:
+        command = [
+            sys.executable,
+            "scripts/pitching/build_pitch_template_metrics_report.py",
+            "--manifest", manifest,
+            "--template-dir", template_dir,
+            "--out-dir", out_dir,
+        ]
+        previous_assets = pitching.get("previous_assets")
+        if previous_assets:
+            command.extend(["--previous-assets", resolve_path(str(previous_assets), root=config_root)])
+        run(command, env=env)
+    if not pitch_html.is_file():
+        raise RuntimeError(f"Pitching build did not produce its required HTML: {pitch_html}")
+
+    alignment = pitching.get("alignment")
+    if alignment is not None and not args.skip_pitching_alignment:
+        if not isinstance(alignment, dict):
+            raise ValueError("pitching.alignment must be an object when provided")
+        command = [
+            sys.executable,
+            "scripts/pitching/run_vicon_2d_alignment.py",
+            "--video", resolve_path(required(alignment, "video"), root=config_root),
+            "--c3d", resolve_path(required(alignment, "c3d"), root=config_root),
+            "--model", resolve_path(required(alignment, "model"), root=config_root),
+            "--out-dir", resolve_path(required(alignment, "out_dir"), root=config_root),
+            "--player-slug", required(alignment, "player_slug"),
+            "--player-label", required(alignment, "player_label"),
+            "--video-capture-fps", str(alignment["video_capture_fps"]),
+            "--video-event-frame", str(alignment["video_event_frame"]),
+        ]
+        for key in ("min_visibility", "sample_step", "max_frames"):
+            if key in alignment:
+                command.extend(["--" + key.replace("_", "-"), str(alignment[key])])
+        run(command, env=env)
+
+    if not args.skip_batting:
+        run(
+            [
+                sys.executable,
+                "scripts/run_batting_report_pipeline.py",
+                "--config", batting_config,
+                "--pitch-report", pitch_html,
+            ],
+            env=env,
+        )
 
 
 if __name__ == "__main__":

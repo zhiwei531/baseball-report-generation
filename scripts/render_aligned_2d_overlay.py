@@ -83,6 +83,7 @@ def render_overlay(
     output_path: Path,
     preview_path: Path | None,
     min_visibility: float,
+    show_alignment_metadata: bool,
 ) -> dict[str, Any]:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     poses = load_pose(pose_path, min_visibility)
@@ -138,25 +139,26 @@ def render_overlay(
             cv2.circle(frame, (x, y), radius + 2, (255, 255, 255), -1, cv2.LINE_AA)
             cv2.circle(frame, (x, y), radius, color, -1, cv2.LINE_AA)
 
-        timestamp = frame_index / fps
-        vicon_frame = vicon_event_frame + (frame_index - event_frame) * vicon_rate_hz / capture_fps
-        vicon_time = vicon_frame / vicon_rate_hz
-        draw_label(frame, f"aligned 2D skeleton | frame {frame_index} | {timestamp:.2f}s", (24, 34), (230, 245, 255))
-        draw_label(
-            frame,
-            f"capture fps {capture_fps:.2f} | slow factor {slow_factor:.2f}x | offset {offset:.3f}s",
-            (24, 70),
-            (180, 220, 255),
-        )
-        draw_label(frame, f"mapped Vicon frame {vicon_frame:.1f} | {vicon_time:.3f}s", (24, 106), (180, 255, 210))
-        if abs(frame_index - event_frame) <= 2:
-            cv2.rectangle(frame, (0, 0), (width - 1, height - 1), (0, 170, 255), 8)
+        if show_alignment_metadata:
+            timestamp = frame_index / fps
+            vicon_frame = vicon_event_frame + (frame_index - event_frame) * vicon_rate_hz / capture_fps
+            vicon_time = vicon_frame / vicon_rate_hz
+            draw_label(frame, f"aligned 2D skeleton | frame {frame_index} | {timestamp:.2f}s", (24, 34), (230, 245, 255))
             draw_label(
                 frame,
-                f"ALIGN EVENT: 2D wrist peak frame {event_frame} = Vicon bat peak frame {vicon_event_frame}",
-                (24, height - 28),
-                (0, 220, 255),
+                f"capture fps {capture_fps:.2f} | slow factor {slow_factor:.2f}x | offset {offset:.3f}s",
+                (24, 70),
+                (180, 220, 255),
             )
+            draw_label(frame, f"mapped Vicon frame {vicon_frame:.1f} | {vicon_time:.3f}s", (24, 106), (180, 255, 210))
+            if abs(frame_index - event_frame) <= 2:
+                cv2.rectangle(frame, (0, 0), (width - 1, height - 1), (0, 170, 255), 8)
+                draw_label(
+                    frame,
+                    f"ALIGN EVENT: 2D wrist peak frame {event_frame} = Vicon bat peak frame {vicon_event_frame}",
+                    (24, height - 28),
+                    (0, 220, 255),
+                )
         if preview_path is not None and not preview_written and frame_index == event_frame:
             preview_path.parent.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(preview_path), frame)
@@ -194,6 +196,11 @@ def main() -> None:
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--preview", type=Path, default=None)
     parser.add_argument("--min-visibility", type=float, default=0.2)
+    parser.add_argument(
+        "--show-alignment-metadata",
+        action="store_true",
+        help="Draw QA-only alignment labels and event border. The default is a clean skeleton-only overlay.",
+    )
     args = parser.parse_args()
     summary = json.loads(args.summary.read_text(encoding="utf-8"))
     result = render_overlay(
@@ -203,6 +210,7 @@ def main() -> None:
         output_path=args.out,
         preview_path=args.preview,
         min_visibility=args.min_visibility,
+        show_alignment_metadata=args.show_alignment_metadata,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

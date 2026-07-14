@@ -30,13 +30,14 @@ The batting report builder accepts the independently built pitching HTML through
 
 ## Unified Command
 
-Preferred batting command:
+The single final-deliverable entry builds pitching and then batting:
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/final_report.json
 ```
 
-The staged pipeline reads shared defaults from:
+Start from `configs/final_report.example.json`. It references a batting pipeline
+config and specifies the pitching manifest/template/output inputs:
 
 ```text
 configs/default_report_pipeline.json
@@ -49,43 +50,21 @@ Path rules:
 - A relative `root_dir` is resolved from the repository root.
 - CLI arguments override config values.
 
-For a new player, copy the default config and update `c3d_dir`, `report_dir`, `video`, `c3d_file`, `sample_name`, and optional `trial_id`:
+For a new player, copy both the final config and batting config, then update the
+batting C3D/video identity fields and pitching inputs:
 
 ```bash
-python scripts/report_cli.py build-batting-report \
-  --config configs/<player_slug>_report_pipeline.json
+python scripts/report_cli.py \
+  --config configs/<player_slug>_final_report.json
 ```
 
-When a prepared 2D alignment folder is not available, the MediaPipe alignment stage can be used directly:
-
-```bash
-python scripts/report_cli.py build-batting-report \
-  --video ../vicon_2026/julian/Bat_2D.mp4 \
-  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
-  --mediapipe-model ../baseball-analysis/models/pose_landmarker_heavy.task \
-  --video-capture-fps 240 \
-  --video-event-frame 184
-```
-
-The raw-video path requires the MediaPipe task model file. Its default path comes from the config field `mediapipe_model`. The `mediapipe` Python package is part of the main requirements.
+The raw-video path is mandatory. The config must provide `mediapipe_model`, plus manually reviewed `video_capture_fps` and `video_event_frame`; automatic event inference and a prepared alignment folder are not supported report inputs.
 
 For the validated Julian batting alignment, the Vicon event is `bat_speed_peak` at C3D frame `854`. The 2D event frame is manually reviewed as encoded video frame `184`. The source video metadata reports playback FPS `29.48022763100522`; with `240` capture FPS this produces slow-motion factor `8.141049757281554`.
 
-Preferred pitching command:
-
-```bash
-python scripts/report_cli.py build-pitching-report \
-  --manifest configs/pitching/manifest.json \
-  --template-dir reports/pitching_template \
-  --out-dir reports/pitching
-```
-
-Combine a built pitching report into batting by setting `pitch_report` in the batting config or by passing:
-
-```bash
-python scripts/report_cli.py build-batting-report \
-  --pitch-report reports/pitching/index.html
-```
+`report_cli.py` passes the freshly built `pitching.out_dir/index.html` to the
+batting builder, so the final report cannot accidentally embed a separately
+hard-coded pitching output.
 
 ## Stages
 
@@ -100,6 +79,7 @@ python scripts/report_cli.py build-batting-report \
 | Annotated speed GIFs | `build_julian_coach_annotated_speed_gifs.py` | metrics + point summary + source C3D | `assets/vicon_reconstruction_annotated/*.gif` |
 | 2D alignment | `align_2d_video_vicon.py` | 2D video + single C3D + MediaPipe model | `alignment_summary.json`, `pose2d_landmarks.csv` |
 | Aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4`, `aligned_2d_overlay_preview.jpg` |
+| 2D-vs-3D QA comparison | `render_vicon_3d_2d_alignment_comparison.py` | alignment summary + C3D | `assets/vicon_2d_vicon_3d_comparison/*` |
 | 2D metric annotations | `render_vicon_geometry_metrics_on_2d.py` | alignment folder + metrics | `assets/vicon_2d_geometry_annotations/*.png` |
 | Metric illustrations | `annotate_frontend_metric_illustrations.py` | static illustration sources + metrics | `assets/frontend_metric_illustrations_annotated_standalone/*.png` |
 | HTML schema | `build_julian_coach_metrics_section.py` | metrics + assets + optional pitching HTML | `julian_coach_metrics_section.html` |
@@ -114,9 +94,7 @@ python scripts/report_cli.py build-batting-report \
 | Pitching line-art annotation | `pitching/annotate_pitch_lineart_metrics.py` | pitch summary + line-art source dir | `assets/lineart_actions/*_metrics.png` |
 | Pitching chart utility | `pitching/generate_professional_pitch_charts.py` | pitch summary JSON | `assets/professional_pitch_charts/*.png` |
 | Vicon/video sync | `pitching/sync_vicon_video.py` | video/C3D pairs | `outputs/vicon_video_sync/*.json` |
-Individual builders still expose fallback defaults for local debugging. The report-generation contract is the config-driven `build-batting-report` entry; that command passes concrete paths into builders so reusable report builds do not depend on scattered script-local defaults.
-
-The old standalone single-video report package is intentionally not a report-generation entry here. It loads video-only metrics and does not align `Bat_2D.mp4` to a Vicon C3D trial.
+Individual builders are implementation details, not report entries. The report-generation contract is the config-driven `report_cli.py --config ...` command.
 
 ## Skip Flags
 

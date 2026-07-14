@@ -9,13 +9,13 @@ For the exact image-by-image checklist in final report order, see `docs/FINAL_RE
 The supported report-generation entry is:
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 It reads shared defaults from `configs/default_report_pipeline.json`. For a new player, copy that config, update the path and identity fields, then run:
 
 ```bash
-python scripts/report_cli.py build-batting-report \
+python scripts/report_cli.py \
   --config configs/<player_slug>_report_pipeline.json
 ```
 
@@ -37,14 +37,14 @@ Built separately by the pitching pipeline:
 - Pitching report sections and `pitch_assets/*`.
 - Pitching 2D overlay images, pitching metric illustrations, pitching kinetic-chain charts, and pitching Vicon event GIFs.
 
-Pitching assets are produced by `python scripts/report_cli.py build-pitching-report ...`, then passed into the batting pipeline through `--pitch-report`.
+Pitching assets are prepared outside the report CLI and referenced by `pitch_report` in the report config.
 
 ## Final HTML Builder
 
 Production wrapper:
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 Lower-level builders called by the wrapper:
@@ -61,7 +61,7 @@ Lower-level builders called by the wrapper:
 Production command:
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 Equivalent lower-level command:
@@ -143,7 +143,7 @@ node scripts/build_batting_metrics_xlsx.mjs
 Production wrapper:
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 Output:
@@ -321,17 +321,16 @@ pitch_assets/
 This repository generates those assets through the independent pitching command:
 
 ```bash
-python scripts/report_cli.py build-pitching-report \
+python scripts/pitching/build_pitch_template_metrics_report.py \
   --manifest configs/pitching/manifest.json \
   --template-dir reports/pitching_template \
   --out-dir reports/pitching
 ```
 
-The batting staged pipeline then accepts the built pitching report through the config field `pitch_report` or the CLI override:
+The batting staged pipeline accepts the built pitching report through the config field `pitch_report`:
 
 ```bash
-python scripts/report_cli.py build-batting-report \
-  --pitch-report path/to/pitching/index.html
+python scripts/report_cli.py --config configs/<player_slug>_report_pipeline.json
 ```
 
 The builder behavior is:

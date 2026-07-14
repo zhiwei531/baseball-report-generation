@@ -1,0 +1,19 @@
+{
+  "root_dir": ".",
+  "batting_config": "configs/default_report_pipeline.json",
+  "pitching": {
+    "manifest": "configs/pitching/manifest.example.json",
+    "template_dir": "reports/pitching_template",
+    "out_dir": "reports/pitching",
+    "alignment": {
+      "video": "../vicon_2026/player/Pitch_2D.mp4",
+      "c3d": "../vicon_2026/player/pitch_trial.c3d",
+      "model": "../baseball-analysis/models/pose_landmarker_heavy.task",
+      "out_dir": "reports/pitching/alignment_2d",
+      "player_slug": "player",
+      "player_label": "Player",
+      "video_capture_fps": 240,
+      "video_event_frame": 0
+    }
+  }
+}

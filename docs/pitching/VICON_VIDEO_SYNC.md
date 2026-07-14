@@ -8,7 +8,7 @@
 Example:
 
 ```bash
-python scripts/report_cli.py sync-vicon-video \
+python scripts/pitching/sync_vicon_video.py \
   --pair bat path/to/bat.mp4 path/to/bat.c3d \
   --pair pitch path/to/pitch.mp4 path/to/pitch.c3d \
   --output-dir outputs/vicon_video_sync

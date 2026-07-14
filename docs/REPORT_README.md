@@ -3,7 +3,7 @@
 这份文档保留早期 Bryan/Green benchmark report 的背景、设计规则和历史构建流程。当前可复用的 batting final-schema report 主入口已经迁移到：
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 该入口读取 `configs/default_report_pipeline.json`，并由 `scripts/run_batting_report_pipeline.py` 串联 C3D CSV、3D reconstruction、2D alignment/annotation、HTML schema、researcher charts 和 XLSX stages。新球员报告应复制 config 并输出到 `reports/vicon_2026_<player_slug>_coach/`，不要直接复用 Julian 输出目录。
@@ -153,13 +153,13 @@ reports/vicon_2026_julian_coach/vicon_2026_point_summary.csv
 当前推荐构建入口：
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 新球员复用：
 
 ```bash
-python scripts/report_cli.py build-batting-report \
+python scripts/report_cli.py \
   --config configs/<player_slug>_report_pipeline.json
 ```
 

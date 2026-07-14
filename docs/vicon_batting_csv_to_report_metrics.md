@@ -3,7 +3,7 @@
 本文整理当前 Vicon batting trial 从 CSV 提取、指标计算到 HTML report 展示的实际流程。内容以当前代码为准，主要对应：
 
 - `configs/default_report_pipeline.json`
-- `scripts/report_cli.py build-batting-report`
+- `scripts/report_cli.py --config configs/default_report_pipeline.json`
 - `scripts/run_batting_report_pipeline.py`
 - `scripts/build_batting_dashboard_metrics.py`
 - `scripts/build_julian_coach_metrics_section.py`
@@ -28,13 +28,13 @@ Vicon C3D
 标准生成命令：
 
 ```bash
-python scripts/report_cli.py build-batting-report
+python scripts/report_cli.py --config configs/default_report_pipeline.json
 ```
 
 新球员复用时：
 
 ```bash
-python scripts/report_cli.py build-batting-report \
+python scripts/report_cli.py \
   --config configs/<player_slug>_report_pipeline.json
 ```
 
