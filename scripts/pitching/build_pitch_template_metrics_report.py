@@ -50,6 +50,29 @@ PURPLE = "#7c3aed"
 INK = "#101828"
 MID = "#667085"
 
+PEER_DISPLAY_NAMES = {
+    "bryan": "Bryan陈柏谚",
+    "7zai": "席启源",
+    "xuanxuan": "姚槿宏",
+    "green": "杜子墨",
+    "julian": "Julian",
+    "youyou": "费怡然",
+    "james": "桑禹诚",
+    "branden": "缪炜昱",
+    "brandon": "缪炜昱",
+}
+PEER_COLORS = {
+    "bryan": BLUE,
+    "7zai": GREEN,
+    "xuanxuan": ORANGE,
+    "green": "#a855f7",
+    "julian": RED,
+    "youyou": "#0891b2",
+    "james": "#ca8a04",
+    "branden": "#db2777",
+    "brandon": "#db2777",
+}
+
 
 def zh_font_prop() -> FontProperties | None:
     for path in (
@@ -889,9 +912,126 @@ def write_json_summary(bundles: list[TrialBundle]) -> None:
     (OUT_DIR / "pitch_metrics_summary.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def rewrite_legacy_template_html(html_text: str) -> str:
-    if PLAYER_SLUG == "julian":
-        return html_text
+def peer_key(name: str) -> str:
+    return name.strip().casefold().replace(" ", "")
+
+
+def peer_display_name(name: str) -> str:
+    return PEER_DISPLAY_NAMES.get(peer_key(name), name)
+
+
+def peer_color_legend() -> str:
+    items = "".join(
+        f'<span class="pitch-peer-legend-item"><i style="background:{PEER_COLORS[key]}"></i>{esc(label)}</span>'
+        for key, label in PEER_DISPLAY_NAMES.items()
+        if key != "brandon"
+    )
+    return f'<div class="pitch-peer-color-legend"><b>同组球员颜色图例</b><div>{items}</div></div>'
+
+
+def reference_metric_values(metric_key: str, bundles: list[TrialBundle], coach: TrialBundle) -> tuple[float, float]:
+    reference_path = TEMPLATE_DIR / "pitch_metrics_all_players.csv" if TEMPLATE_DIR is not None else None
+    if reference_path is not None and reference_path.exists():
+        with reference_path.open(newline="", encoding="utf-8-sig") as handle:
+            rows = list(csv.DictReader(handle))
+        values = [
+            float(row["value"])
+            for row in rows
+            if row.get("metric_key") == metric_key and row.get("role") == "student" and finite(float(row["value"]))
+        ]
+        coach_row = next(
+            (row for row in rows if row.get("metric_key") == metric_key and row.get("role") == "coach"),
+            None,
+        )
+        if values and coach_row is not None:
+            return float(np.mean(values)), float(coach_row["value"])
+    return group_mean_all(bundles, metric_key), coach.values.get(metric_key, float("nan"))
+
+
+def comparison_pills(
+    metric: dict[str, object],
+    bundles: list[TrialBundle],
+    coach: TrialBundle,
+    displayed_player_value: str,
+) -> str:
+    key = str(metric["key"])
+    unit = str(metric["unit"])
+    mean, coach_value = reference_metric_values(key, bundles, coach)
+    return (
+        '<div class="pitch-compare-pills">'
+        f'<span><b>测试组均值</b>{esc(fmt(mean, unit))}</span>'
+        f'<span><b>阿楽教练参考</b>{esc(fmt(coach_value, unit))}</span>'
+        f'<span class="current"><b>球员 {esc(PLAYER_NAME)}</b>{esc(displayed_player_value)}</span>'
+        '</div>'
+    )
+
+
+def add_pitch_comparisons(html_text: str, bundles: list[TrialBundle], coach: TrialBundle) -> str:
+    by_name = {str(metric["name"]): metric for metric in METRICS}
+
+    def replace_card(match: re.Match[str]) -> str:
+        card = match.group(0)
+        name_match = re.search(r"<h4>([^<]+)</h4>", card)
+        if not name_match or "pitch-compare-pills" in card:
+            return card
+        metric = by_name.get(name_match.group(1).strip())
+        if metric is None:
+            return card
+        value_match = re.search(r'<div class="metric-value">([^<]+)</div>', card)
+        if not value_match:
+            return card
+        pills = comparison_pills(metric, bundles, coach, value_match.group(1).strip())
+        return card.replace('<div class="peer-range">', pills + '<div class="peer-range">', 1)
+
+    return re.sub(r'<article class="metric-card\b[^>]*>.*?</article>', replace_card, html_text, flags=re.DOTALL)
+
+
+def apply_peer_display_mapping(html_text: str) -> str:
+    def dot_replacement(match: re.Match[str]) -> str:
+        prefix, _old_color, between, raw_name, suffix = match.groups()
+        key = peer_key(raw_name)
+        return f"{prefix}{PEER_COLORS.get(key, _old_color)}{between}{peer_display_name(raw_name)}{suffix}"
+
+    html_text = re.sub(
+        r'(<span class="peer-dot(?![^>]*current-player)[^>]*style="[^"]*background:)(#[0-9a-fA-F]+)([^"]*"[^>]*title=")([^":]+)(:)',
+        dot_replacement,
+        html_text,
+    )
+    return re.sub(
+        r'(title=")([^":]+)(:)',
+        lambda match: f'{match.group(1)}{peer_display_name(match.group(2))}{match.group(3)}',
+        html_text,
+    )
+
+
+def inject_pitch_card_styles(html_text: str) -> str:
+    marker = "/* pitching-card-alignment */"
+    css = f"""
+    {marker}
+    .compact-metrics.two-column-metrics {{ grid-template-columns:1fr; }}
+    .two-column-metrics .metric-card {{ grid-template-columns:minmax(150px,190px) minmax(180px,220px) minmax(0,1fr); min-height:280px; gap:18px; overflow:visible; }}
+    .two-column-metrics .metric-card h4 {{ font-size:20px; line-height:26px; }}
+    .two-column-metrics .metric-value {{ font-size:38px; }}
+    .two-column-metrics .metric-detail {{ gap:12px; }}
+    .two-column-metrics .metric-detail-cn {{ font-size:15px; line-height:22px; }}
+    .two-column-metrics .peer-range {{ grid-template-columns:max-content 58px minmax(90px,1fr) 58px; gap:7px; }}
+    .pitch-compare-pills {{ display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 4px; }}
+    .pitch-compare-pills span {{ display:inline-grid; gap:2px; min-width:112px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
+    .pitch-compare-pills span b {{ color:#667085; font-size:11px; line-height:14px; }}
+    .pitch-compare-pills span.current {{ border-color:#fecaca; box-shadow:0 0 0 2px rgba(239,68,68,.12); }}
+    .peer-dot.current-player {{ z-index:2; width:16px; height:16px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 5px rgba(239,68,68,.18),0 0 0 1px rgba(16,24,40,.15); }}
+    .pitch-peer-color-legend {{ display:grid; gap:8px; margin:0 0 18px; padding:12px 14px; border:1px solid #d0d5dd; border-radius:14px; background:#fff; }}
+    .pitch-peer-color-legend > b {{ color:#667085; font-size:12px; line-height:16px; }}
+    .pitch-peer-color-legend > div {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 16px; }}
+    .pitch-peer-legend-item {{ display:flex; align-items:center; gap:7px; min-width:0; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
+    .pitch-peer-legend-item i {{ width:10px; height:10px; border-radius:999px; box-shadow:0 0 0 1px rgba(16,24,40,.14); flex:0 0 auto; }}
+    @media (max-width:640px) {{ .pitch-compare-pills span {{ min-width:0; flex:1 1 110px; }} .pitch-peer-color-legend > div {{ grid-template-columns:1fr; }} }}
+    """
+    html_text = re.sub(rf"\s*/\* {re.escape(marker[3:-3])} \*/.*?(?=\s*</style>)", "", html_text, flags=re.DOTALL)
+    return html_text.replace("</style>", css + "\n  </style>", 1)
+
+
+def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> str:
     html_text = html_text.replace("julian_", f"{PLAYER_SLUG}_")
     html_text = html_text.replace("julian:", f"{PLAYER_SLUG}:")
     html_text = html_text.replace("Julian", PLAYER_NAME)
@@ -909,7 +1049,19 @@ def rewrite_legacy_template_html(html_text: str) -> str:
             versioned_path,
             html_text,
         )
-    return html_text
+    coach = next(bundle for bundle in bundles if bundle.key == "coach")
+    html_text = re.sub(
+        r'\s*<div class="pitch-compare-pills">.*?</div>(?=\s*<div class="peer-range">)',
+        "",
+        html_text,
+        flags=re.DOTALL,
+    )
+    html_text = add_pitch_comparisons(html_text, bundles, coach)
+    html_text = apply_peer_display_mapping(html_text)
+    if '<div class="pitch-peer-color-legend">' not in html_text:
+        researcher_heading = '<div class="section-title"><span class="mark"></span><h2>研究者视角：动力链与时间曲线</h2></div>'
+        html_text = html_text.replace(researcher_heading, researcher_heading + peer_color_legend(), 1)
+    return inject_pitch_card_styles(html_text)
 
 
 def remove_legacy_julian_assets() -> None:
@@ -923,7 +1075,7 @@ def remove_legacy_julian_assets() -> None:
 def render_html(bundles: list[TrialBundle]) -> str:
     existing = OUT_DIR / "index.html"
     if existing.exists():
-        return rewrite_legacy_template_html(existing.read_text(encoding="utf-8"))
+        return rewrite_legacy_template_html(existing.read_text(encoding="utf-8"), bundles)
     raise RuntimeError("index.html is required for this template report rebuild")
 
 
