@@ -401,7 +401,7 @@ def copy_static_assets() -> None:
 
 
 def annotate_lineart_metrics() -> None:
-    script = SCRIPT_DIR / "pitching" / "annotate_pitch_lineart_metrics.py"
+    script = SCRIPTS_DIR / "pitching" / "annotate_pitch_lineart_metrics.py"
     subprocess.run(
         [
             sys.executable,
@@ -461,7 +461,14 @@ def metric_label(value: float, suffix: str) -> str:
     return f"{value:.1f}{sep}{suffix}".strip()
 
 
-def render_movement_panel(bundle: TrialBundle, frame: int, trajectory: np.ndarray, title: str, subtitle: str) -> Image.Image:
+def render_movement_panel(
+    bundle: TrialBundle,
+    frame: int,
+    trajectory: np.ndarray,
+    title: str,
+    subtitle: str,
+    axis_limits: recon.AxisLimits,
+) -> Image.Image:
     points = recon.trial_frame_points(bundle.trial, frame, smooth_radius=2)
     fig = plt.figure(figsize=(10.8, 7.2), dpi=120)
     fig.patch.set_facecolor("#ffffff")
@@ -473,7 +480,9 @@ def render_movement_panel(bundle: TrialBundle, frame: int, trajectory: np.ndarra
         title,
         frame_label=f"{subtitle} | frame {frame} / {frame / bundle.trial.rate_hz:.2f}s",
         show_labels=False,
+        axis_limits=axis_limits,
         fixed_layout_legend=True,
+        recenter_limits=False,
     )
     visible_points = np.asarray([p for p in points.values() if np.isfinite(p).all()], dtype=float)
     if len(visible_points):
@@ -528,12 +537,26 @@ def render_movement_gif(bundle: TrialBundle, out: Path, title: str, subtitle: st
     release = bundle.events["release"]
     start = max(0, release - int(0.55 * bundle.trial.rate_hz))
     frames = np.linspace(start, release, 18).astype(int)
+    # Keep the coordinate extent fixed for the complete animation.  Deriving
+    # limits from each pose makes Matplotlib rescale the grid every frame.
+    limits = recon.trial_axis_limits(bundle.trial, frame_indices=frames)
+    release_points = recon.trial_frame_points(bundle.trial, release, smooth_radius=2)
+    animation_limits = recon.recenter_display_limits(limits, release_points)
     rfin = marker(bundle.trial, bundle.clean_labels, "RFIN")
     images: list[Image.Image] = []
     for frame in frames:
         trail_start = max(0, frame - int(0.45 * bundle.trial.rate_hz))
         trail = rfin[trail_start : frame + 1]
-        images.append(render_movement_panel(bundle, int(frame), trail, title, subtitle))
+        images.append(
+            render_movement_panel(
+                bundle,
+                int(frame),
+                trail,
+                title,
+                subtitle,
+                animation_limits,
+            )
+        )
     images[-1].save(out.with_suffix(".png"))
     images[0].save(out, save_all=True, append_images=images[1:], duration=110, loop=0, optimize=False)
 
