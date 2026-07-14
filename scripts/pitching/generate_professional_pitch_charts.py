@@ -57,6 +57,10 @@ def finite(value: float | None) -> bool:
 
 def load_athlete() -> dict:
     data = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+    if ATHLETE_KEY == "":
+        for athlete in data["athletes"]:
+            if athlete.get("role") == "student" and athlete.get("key") != "coach":
+                return athlete
     for athlete in data["athletes"]:
         if athlete["key"] == ATHLETE_KEY:
             return athlete
@@ -340,7 +344,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate publication-style pitching charts from a metric summary.")
     parser.add_argument("--summary", required=True, type=Path, help="pitch_metrics_summary.json")
     parser.add_argument("--out-dir", required=True, type=Path)
-    parser.add_argument("--athlete-key", default="julian")
+    parser.add_argument("--athlete-key", default="", help="Player key. Defaults to the first student in the summary.")
     args = parser.parse_args()
     SUMMARY_PATH = args.summary.resolve()
     OUT_DIR = args.out_dir.resolve()

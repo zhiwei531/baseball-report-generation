@@ -827,10 +827,30 @@ def write_json_summary(bundles: list[TrialBundle]) -> None:
     (OUT_DIR / "pitch_metrics_summary.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def rewrite_legacy_template_html(html_text: str) -> str:
+    if PLAYER_SLUG == "julian":
+        return html_text
+    html_text = html_text.replace("julian_", f"{PLAYER_SLUG}_")
+    html_text = html_text.replace("julian:", f"{PLAYER_SLUG}:")
+    html_text = html_text.replace("Julian", PLAYER_NAME)
+    html_text = html_text.replace("优秀学员 Bryan", f"球员 {PLAYER_NAME}")
+    html_text = html_text.replace("优秀学员 julian", f"球员 {PLAYER_SLUG}")
+    html_text = html_text.replace("peer-dot julian", "peer-dot current-player")
+    return html_text
+
+
+def remove_legacy_julian_assets() -> None:
+    if PLAYER_SLUG == "julian" or not ASSET_DIR.exists():
+        return
+    for path in ASSET_DIR.rglob("*julian*"):
+        if path.is_file():
+            path.unlink()
+
+
 def render_html(bundles: list[TrialBundle]) -> str:
     existing = OUT_DIR / "index.html"
     if existing.exists():
-        return existing.read_text(encoding="utf-8")
+        return rewrite_legacy_template_html(existing.read_text(encoding="utf-8"))
     raise RuntimeError("index.html is required for this template report rebuild")
 
 
@@ -895,6 +915,7 @@ def main() -> None:
     make_kinetic_chain(bundles)
     write_metric_csv(bundles)
     write_json_summary(bundles)
+    remove_legacy_julian_assets()
     html_text = render_html(bundles)
     (OUT_DIR / "index.html").write_text(html_text, encoding="utf-8")
     prompt = ROOT / "prompts" / "pitch_report_generation.md"
