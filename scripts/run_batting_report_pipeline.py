@@ -13,6 +13,7 @@ from pipeline_config import DEFAULT_CONFIG, load_pipeline_config
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
+BUNDLED_BATTING_ILLUSTRATIONS = ROOT / "assets" / "batting" / "frontend_metric_illustrations"
 
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
@@ -244,11 +245,17 @@ def geometry_stage(args: argparse.Namespace, metrics: Path, alignment_dir: Path 
 
 def illustration_stage(args: argparse.Namespace, metrics: Path) -> None:
     src = args.report_dir / "assets" / "frontend_metric_illustrations"
-    if not src.exists():
-        if args.require_static_assets:
-            raise SystemExit(f"Missing static illustration source directory: {src}")
-        print(f"Skipping metric illustration annotation: missing {src}")
-        return
+    if not BUNDLED_BATTING_ILLUSTRATIONS.exists():
+        raise SystemExit(f"Bundled batting illustration source directory is missing: {BUNDLED_BATTING_ILLUSTRATIONS}")
+    src.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for bundled in BUNDLED_BATTING_ILLUSTRATIONS.glob("*.png"):
+        target = src / bundled.name
+        if not target.exists():
+            shutil.copy2(bundled, target)
+            copied += 1
+    if copied:
+        print(f"Copied bundled batting action illustrations to {src}")
     run(
         [
             PYTHON,

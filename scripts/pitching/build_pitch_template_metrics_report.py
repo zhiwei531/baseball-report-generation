@@ -6,6 +6,7 @@ import html
 import json
 import math
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = ROOT / "scripts"
+BUNDLED_LINEART_DIR = ROOT / "assets" / "pitching" / "lineart_actions"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 TEMPLATE_DIR: Path | None = None
@@ -368,19 +370,22 @@ def write_metric_csv(bundles: list[TrialBundle]) -> None:
 
 def copy_static_assets() -> None:
     (ASSET_DIR / "lineart_actions").mkdir(parents=True, exist_ok=True)
-    if PREV_PITCH_ASSETS is None:
-        return
-    src_lineart = PREV_PITCH_ASSETS / "lineart_actions"
     for name in (
         "pitch_peak_knee_lineart.png",
         "pitch_foot_plant_lineart.png",
         "pitch_release_lineart.png",
-        "pitch_peak_knee_lineart_metrics.png",
-        "pitch_foot_plant_lineart_metrics.png",
-        "pitch_release_lineart_metrics.png",
     ):
-        if (src_lineart / name).exists():
-            shutil.copy2(src_lineart / name, ASSET_DIR / "lineart_actions" / name)
+        target = ASSET_DIR / "lineart_actions" / name
+        bundled = BUNDLED_LINEART_DIR / name
+        previous = PREV_PITCH_ASSETS / "lineart_actions" / name if PREV_PITCH_ASSETS is not None else None
+        if bundled.exists():
+            shutil.copy2(bundled, target)
+        elif previous is not None and previous.exists():
+            shutil.copy2(previous, target)
+        else:
+            raise FileNotFoundError(f"Missing bundled pitching action illustration: {bundled}")
+    if PREV_PITCH_ASSETS is None:
+        return
     (ASSET_DIR / "vicon_reconstruction_events").mkdir(parents=True, exist_ok=True)
     prev_vicon = PREV_PITCH_ASSETS / "vicon_reconstruction_events"
     for name in (
@@ -393,6 +398,23 @@ def copy_static_assets() -> None:
     ):
         if (prev_vicon / name).exists():
             shutil.copy2(prev_vicon / name, ASSET_DIR / "vicon_reconstruction_events" / name)
+
+
+def annotate_lineart_metrics() -> None:
+    script = SCRIPT_DIR / "pitching" / "annotate_pitch_lineart_metrics.py"
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--summary",
+            str(OUT_DIR / "pitch_metrics_summary.json"),
+            "--asset-dir",
+            str(ASSET_DIR / "lineart_actions"),
+            "--athlete-key",
+            PLAYER_KEY,
+        ],
+        check=True,
+    )
 
 
 def render_trial_png(bundle: TrialBundle, frame: int, out: Path, title: str) -> None:
@@ -915,6 +937,7 @@ def main() -> None:
     make_kinetic_chain(bundles)
     write_metric_csv(bundles)
     write_json_summary(bundles)
+    annotate_lineart_metrics()
     remove_legacy_julian_assets()
     html_text = render_html(bundles)
     (OUT_DIR / "index.html").write_text(html_text, encoding="utf-8")
