@@ -88,8 +88,21 @@ def julian_coach_section(args: argparse.Namespace) -> None:
             str(metrics),
             "--out",
             str(args.report_dir / "julian_coach_metrics_section.html"),
+            "--pitch-report",
+            str(args.pitch_report),
         ]
     )
+    if args.apply_final_schema:
+        run(
+            [
+                PYTHON,
+                "scripts/apply_batting_coach_values.py",
+                "--report-dir",
+                str(args.report_dir),
+                "--peers",
+                str(args.peers),
+            ]
+        )
     if args.with_geometry_2d:
         run([PYTHON, "scripts/render_vicon_geometry_metrics_on_2d.py"], env=plot_env())
     if args.with_xlsx:
@@ -151,10 +164,29 @@ def main() -> None:
     p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
     p.add_argument("--points", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_points_all.csv")
     p.add_argument("--point-summary", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_point_summary.csv")
+    p.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
+    p.add_argument("--pitch-report", type=Path, default=ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html")
     p.add_argument("--ready-valid-start-frame", type=int, default=770)
     p.add_argument("--with-geometry-2d", action="store_true")
     p.add_argument("--with-xlsx", action="store_true")
+    p.add_argument("--apply-final-schema", action="store_true")
     p.set_defaults(func=julian_coach_section)
+
+    p = sub.add_parser("apply-final-schema", help="Apply the final vicon_2026_julian_coach 4 HTML polish pass.")
+    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
+    p.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
+    p.set_defaults(
+        func=lambda args: run(
+            [
+                PYTHON,
+                "scripts/apply_batting_coach_values.py",
+                "--report-dir",
+                str(args.report_dir),
+                "--peers",
+                str(args.peers),
+            ]
+        )
+    )
 
     p = sub.add_parser("geometry-2d", help="Render Vicon-valued metric annotations on aligned 2D skeleton frames.")
     p.set_defaults(func=lambda _args: run([PYTHON, "scripts/render_vicon_geometry_metrics_on_2d.py"], env=plot_env()))

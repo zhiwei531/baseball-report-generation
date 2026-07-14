@@ -2022,7 +2022,7 @@ def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anon
     """
 
 
-def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_dir: Path) -> str:
+def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_dir: Path, pitch_report: Path = DEFAULT_PITCH_REPORT) -> str:
     global ACTIVE_OUT_DIR
     ACTIVE_OUT_DIR = out_dir
     by_sample: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
@@ -2056,7 +2056,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
     contact_cards = "".join(grouped["Contact Position"])
     issue_cards = "".join(grouped["专项问题"])
     research_assets = make_research_assets(julian, coach, out_dir)
-    pitch_css, pitch_sections = load_pitch_report_parts(DEFAULT_PITCH_REPORT, out_dir)
+    pitch_css, pitch_sections = load_pitch_report_parts(pitch_report, out_dir)
     pitch_player_sections = wrap_pitch_sections(pitch_sections["player"])
     pitch_coach_sections = wrap_pitch_sections(pitch_sections["coach"])
     pitch_researcher_sections = wrap_pitch_sections(pitch_sections["researcher"])
@@ -2348,12 +2348,18 @@ def main() -> None:
     parser.add_argument("--metrics", type=Path, default=DEFAULT_METRICS)
     parser.add_argument("--peers", type=Path, default=DEFAULT_PEERS)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--pitch-report",
+        type=Path,
+        default=DEFAULT_PITCH_REPORT,
+        help="Existing pitching-template index.html whose sections and assets are copied into pitch_assets/.",
+    )
     args = parser.parse_args()
 
     rows = read_csv(args.metrics)
     peer_rows = read_peer_metrics(args.peers)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    html_text = "\n".join(line.rstrip() for line in render(rows, peer_rows, args.out.parent).splitlines()) + "\n"
+    html_text = "\n".join(line.rstrip() for line in render(rows, peer_rows, args.out.parent, args.pitch_report).splitlines()) + "\n"
     args.out.write_text(html_text, encoding="utf-8")
     print(args.out)
 
