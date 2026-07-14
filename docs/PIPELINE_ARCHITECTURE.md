@@ -61,10 +61,15 @@ When a prepared 2D alignment folder is not available, the MediaPipe alignment st
 ```bash
 python scripts/report_cli.py build-batting-report \
   --video ../vicon_2026/julian/Bat_2D.mp4 \
-  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d"
+  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
+  --mediapipe-model ../baseball-analysis/models/pose_landmarker_heavy.task \
+  --video-capture-fps 240 \
+  --video-event-frame 184
 ```
 
 The raw-video path requires the MediaPipe task model file. Its default path comes from the config field `mediapipe_model`. The `mediapipe` Python package is part of the main requirements.
+
+For the validated Julian batting alignment, the Vicon event is `bat_speed_peak` at C3D frame `854`. The 2D event frame is manually reviewed as encoded video frame `184`. The source video metadata reports playback FPS `29.48022763100522`; with `240` capture FPS this produces slow-motion factor `8.141049757281554`.
 
 Preferred pitching command:
 
@@ -94,7 +99,7 @@ python scripts/report_cli.py build-batting-report \
 | Batting event GIFs | `build_julian_coach_event_gifs.py` | `batting_dashboard_metrics.csv` + source C3D | `assets/vicon_reconstruction_events/*.gif` |
 | Annotated speed GIFs | `build_julian_coach_annotated_speed_gifs.py` | metrics + point summary + source C3D | `assets/vicon_reconstruction_annotated/*.gif` |
 | 2D alignment | `align_2d_video_vicon.py` | 2D video + single C3D + MediaPipe model | `alignment_summary.json`, `pose2d_landmarks.csv` |
-| Aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4` |
+| Aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4`, `aligned_2d_overlay_preview.jpg` |
 | 2D metric annotations | `render_vicon_geometry_metrics_on_2d.py` | alignment folder + metrics | `assets/vicon_2d_geometry_annotations/*.png` |
 | Metric illustrations | `annotate_frontend_metric_illustrations.py` | static illustration sources + metrics | `assets/frontend_metric_illustrations_annotated_standalone/*.png` |
 | HTML schema | `build_julian_coach_metrics_section.py` | metrics + assets + optional pitching HTML | `julian_coach_metrics_section.html` |
@@ -109,9 +114,9 @@ python scripts/report_cli.py build-batting-report \
 | Pitching line-art annotation | `pitching/annotate_pitch_lineart_metrics.py` | pitch summary + line-art source dir | `assets/lineart_actions/*_metrics.png` |
 | Pitching chart utility | `pitching/generate_professional_pitch_charts.py` | pitch summary JSON | `assets/professional_pitch_charts/*.png` |
 | Vicon/video sync | `pitching/sync_vicon_video.py` | video/C3D pairs | `outputs/vicon_video_sync/*.json` |
-| Standalone 2D video report | `video_report/run_end_to_end_report.py` | one video | standalone JSON/Markdown/HTML report |
-
 Individual builders still expose fallback defaults for local debugging. The report-generation contract is the config-driven `build-batting-report` entry; that command passes concrete paths into builders so reusable report builds do not depend on scattered script-local defaults.
+
+The old standalone single-video report package is intentionally not a report-generation entry here. It loads video-only metrics and does not align `Bat_2D.mp4` to a Vicon C3D trial.
 
 ## Skip Flags
 

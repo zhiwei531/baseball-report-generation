@@ -83,6 +83,9 @@ def batting_visual_stage(args: argparse.Namespace, metrics: Path) -> None:
             args.report_dir / "vicon_2026_point_summary.csv",
             "--out-dir",
             args.report_dir / "assets" / "vicon_reconstruction_annotated",
+            "--samples",
+            args.sample_name,
+            args.coach_sample_name,
         ],
         env=plot_env(),
     )
@@ -126,6 +129,8 @@ def alignment_stage(args: argparse.Namespace) -> Path | None:
             out_dir / "pose2d_landmarks.csv",
             "--out",
             out_dir / "aligned_2d_skeleton_overlay.mp4",
+            "--preview",
+            out_dir / "aligned_2d_overlay_preview.jpg",
         ]
     )
     return out_dir
@@ -174,6 +179,7 @@ def illustration_stage(args: argparse.Namespace, metrics: Path) -> None:
 
 
 def html_stage(args: argparse.Namespace, metrics: Path) -> None:
+    out_html = args.report_dir / f"{args.player_slug}_coach_metrics_section.html"
     run(
         [
             PYTHON,
@@ -183,9 +189,17 @@ def html_stage(args: argparse.Namespace, metrics: Path) -> None:
             "--peers",
             args.peers,
             "--out",
-            args.report_dir / "julian_coach_metrics_section.html",
+            out_html,
             "--pitch-report",
             args.pitch_report,
+            "--player-sample-name",
+            args.sample_name,
+            "--coach-sample-name",
+            args.coach_sample_name,
+            "--player-slug",
+            args.player_slug,
+            "--player-label",
+            args.player_label,
         ]
     )
     if not args.skip_final_schema:
@@ -195,6 +209,16 @@ def html_stage(args: argparse.Namespace, metrics: Path) -> None:
                 "scripts/apply_batting_coach_values.py",
                 "--report-dir",
                 args.report_dir,
+                "--html",
+                out_html,
+                "--player-sample-name",
+                args.sample_name,
+                "--coach-sample-name",
+                args.coach_sample_name,
+                "--player-slug",
+                args.player_slug,
+                "--player-label",
+                args.player_label,
                 "--peers",
                 args.peers,
             ]
@@ -228,6 +252,9 @@ def apply_config_defaults(args: argparse.Namespace) -> None:
         "ready_valid_start_frame",
         "xlsx_out_dir",
         "sample_name",
+        "coach_sample_name",
+        "player_slug",
+        "player_label",
         "trial_id",
     )
     for name in configurable:
@@ -253,6 +280,9 @@ def main() -> None:
     parser.add_argument("--ready-valid-start-frame", type=int, default=None)
     parser.add_argument("--xlsx-out-dir", type=Path, default=None)
     parser.add_argument("--sample-name", default=None)
+    parser.add_argument("--coach-sample-name", default=None)
+    parser.add_argument("--player-slug", default=None)
+    parser.add_argument("--player-label", default=None)
     parser.add_argument("--trial-id", default=None)
 
     parser.add_argument("--skip-c3d", action="store_true")
@@ -281,7 +311,7 @@ def main() -> None:
         xlsx_stage(args, metrics)
 
     print("Batting report pipeline outputs:")
-    print(args.report_dir / "julian_coach_metrics_section.html")
+    print(args.report_dir / f"{args.player_slug}_coach_metrics_section.html")
     print(metrics)
     print(args.report_dir / "assets")
 

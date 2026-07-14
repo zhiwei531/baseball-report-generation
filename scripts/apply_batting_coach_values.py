@@ -15,6 +15,10 @@ METRICS_PATH = REPORT_DIR / "batting_dashboard_metrics.csv"
 POSE3D_PATH = REPORT_DIR / "vicon_2026_pose3d.csv"
 PEERS_DIR = PROJECT_DIR / "outputs" / "batting_metrics_excel" / "all_players"
 BUILDER_PATH = PROJECT_DIR / "scripts" / "build_julian_coach_metrics_section.py"
+PLAYER_SAMPLE_NAME = "julian"
+COACH_SAMPLE_NAME = "coach"
+PLAYER_SLUG = "julian"
+PLAYER_LABEL = "Julian"
 
 PLAYER_CARD_METRIC_KEYS = [
     "ready_com_height_ratio",
@@ -185,7 +189,7 @@ def player_metric_values() -> dict[str, float]:
     values: dict[str, float] = {}
     with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            if row.get("sample_name") != "julian":
+            if row.get("sample_name") != PLAYER_SAMPLE_NAME:
                 continue
             key = row.get("metric_key") or ""
             if key not in PLAYER_CARD_METRIC_KEYS:
@@ -224,7 +228,7 @@ def coach_values() -> dict[str, str]:
     values: dict[str, str] = {}
     with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            if row.get("sample_name") != "coach":
+            if row.get("sample_name") != COACH_SAMPLE_NAME:
                 continue
             key = row.get("metric_key") or ""
             if key in PLAYER_CARD_METRIC_KEYS:
@@ -252,8 +256,8 @@ def sample_metric_rows(sample_name: str) -> dict[str, dict[str, str]]:
 
 def update_player_batting_statuses(html: str) -> str:
     builder = load_builder_module()
-    player_rows = sample_metric_rows("julian")
-    coach_rows = sample_metric_rows("coach")
+    player_rows = sample_metric_rows(PLAYER_SAMPLE_NAME)
+    coach_rows = sample_metric_rows(COACH_SAMPLE_NAME)
     pitch_start = html.index('<div class="section-title"><span class="mark"></span><h3>投球</h3></div>')
     before_pitch = html[:pitch_start]
     after_pitch = html[pitch_start:]
@@ -419,7 +423,7 @@ def update_coach_batting_main_player_markers(html: str) -> str:
         style = re.sub(r";{2,}", ";", style).strip(" ;")
         if style:
             style = f' style="{style}"'
-        return f'<span class="peer-dot julian"{style} title="黄炜宸:'
+        return f'<span class="peer-dot current-player"{style} title="黄炜宸:'
 
     return re.sub(
         r'<span class="peer-dot" style="([^"]*background:#ef4444[^"]*)" title="黄炜宸:',
@@ -603,6 +607,17 @@ def update_between(html: str, start: str, end: str, update: callable[[str], str]
     return html[:start_idx] + update(html[start_idx:end_idx]) + html[end_idx:]
 
 
+def find_first_section_title(html: str, titles: tuple[str, ...]) -> int:
+    candidates = [
+        html.find(f'<div class="section-title"><span class="mark"></span><h2>{title}</h2></div>')
+        for title in titles
+    ]
+    candidates = [idx for idx in candidates if idx != -1]
+    if not candidates:
+        raise ValueError(f"None of the section titles were found: {', '.join(titles)}")
+    return min(candidates)
+
+
 def update_batting_units(html: str) -> str:
     html = update_between(
         html,
@@ -610,7 +625,7 @@ def update_batting_units(html: str) -> str:
         '<div class="section-title"><span class="mark"></span><h3>投球</h3></div>',
         normalize_units_fragment,
     )
-    coach_start = html.index('<div class="section-title"><span class="mark"></span><h2>阿楽教练视角</h2></div>')
+    coach_start = find_first_section_title(html, ("阿楽教练视角", "教练视角"))
     batting_start = html.index('<div class="section-title"><span class="mark"></span><h3>打击</h3></div>', coach_start)
     pitching_start = html.index('<div class="section-title"><span class="mark"></span><h3>投球</h3></div>', batting_start)
     html = html[:batting_start] + normalize_units_fragment(html[batting_start:pitching_start]) + html[pitching_start:]
@@ -631,11 +646,15 @@ def load_builder_module():
 def regenerate_research_assets() -> None:
     builder = load_builder_module()
     builder.DEFAULT_POSE3D = POSE3D_PATH
+    builder.ACTIVE_PLAYER_SAMPLE = PLAYER_SAMPLE_NAME
+    builder.ACTIVE_COACH_SAMPLE = COACH_SAMPLE_NAME
+    builder.ACTIVE_PLAYER_SLUG = PLAYER_SLUG
+    builder.ACTIVE_PLAYER_LABEL = PLAYER_LABEL
     rows = builder.read_csv(METRICS_PATH)
     by_sample: dict[str, dict[str, dict[str, str]]] = {}
     for row in rows:
         by_sample.setdefault(row["sample_name"], {})[row["metric_key"]] = row
-    builder.make_research_assets(by_sample["julian"], by_sample["coach"], REPORT_DIR)
+    builder.make_research_assets(by_sample[PLAYER_SAMPLE_NAME], by_sample[COACH_SAMPLE_NAME], REPORT_DIR)
 
 
 def versioned_asset(path: str) -> str:
@@ -669,12 +688,13 @@ def update_research_section(html: str) -> str:
         '<p class="analyst-chart-copy">How to read it: the angle chart now labels each peak with its time and value. Around contact, the useful signal is bat-direction stability rather than simply producing a larger angle peak.</p>',
     )
     for path in (
-        "assets/kinetic_chain/julian_batting_kinetic_chain_flow.png",
-        "assets/kinetic_chain/julian_batting_kinetic_speed_time_curve.png",
-        "assets/analyst_charts/julian_batting_bat1_speed_time_curve.png",
-        "assets/analyst_charts/julian_batting_bat_axis_angle_time_curve.png",
+        f"assets/kinetic_chain/{PLAYER_SLUG}_batting_kinetic_chain_flow.png",
+        f"assets/kinetic_chain/{PLAYER_SLUG}_batting_kinetic_speed_time_curve.png",
+        f"assets/analyst_charts/{PLAYER_SLUG}_batting_bat1_speed_time_curve.png",
+        f"assets/analyst_charts/{PLAYER_SLUG}_batting_bat_axis_angle_time_curve.png",
     ):
-        html = re.sub(rf'{re.escape(path)}\?v=\d+', versioned_asset(path), html)
+        if (REPORT_DIR / path).exists():
+            html = re.sub(rf'{re.escape(path)}\?v=\d+', versioned_asset(path), html)
     return html
 
 
@@ -692,6 +712,7 @@ def update_bat_speed_copy(html: str) -> str:
 
 def main() -> None:
     global REPORT_DIR, HTML_PATH, METRICS_PATH, POSE3D_PATH, PEERS_DIR, BUILDER_PATH
+    global PLAYER_SAMPLE_NAME, COACH_SAMPLE_NAME, PLAYER_SLUG, PLAYER_LABEL
 
     parser = argparse.ArgumentParser(
         description="Apply the final vicon_2026_julian_coach 4 schema polish to a generated metrics section."
@@ -702,6 +723,10 @@ def main() -> None:
     parser.add_argument("--pose3d", type=Path, default=None)
     parser.add_argument("--peers", type=Path, default=PEERS_DIR)
     parser.add_argument("--builder", type=Path, default=BUILDER_PATH)
+    parser.add_argument("--player-sample-name", default=PLAYER_SAMPLE_NAME)
+    parser.add_argument("--coach-sample-name", default=COACH_SAMPLE_NAME)
+    parser.add_argument("--player-slug", default=PLAYER_SLUG)
+    parser.add_argument("--player-label", default=PLAYER_LABEL)
     args = parser.parse_args()
 
     REPORT_DIR = args.report_dir
@@ -710,6 +735,10 @@ def main() -> None:
     POSE3D_PATH = args.pose3d or REPORT_DIR / "vicon_2026_pose3d.csv"
     PEERS_DIR = args.peers
     BUILDER_PATH = args.builder
+    PLAYER_SAMPLE_NAME = args.player_sample_name
+    COACH_SAMPLE_NAME = args.coach_sample_name
+    PLAYER_SLUG = args.player_slug
+    PLAYER_LABEL = args.player_label
 
     regenerate_research_assets()
     html = HTML_PATH.read_text(encoding="utf-8")

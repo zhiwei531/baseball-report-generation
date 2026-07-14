@@ -160,6 +160,9 @@ def build_batting_report(args: argparse.Namespace) -> None:
         ("--pitch-report", args.pitch_report),
         ("--peers", args.peers),
         ("--sample-name", args.sample_name),
+        ("--coach-sample-name", args.coach_sample_name),
+        ("--player-slug", args.player_slug),
+        ("--player-label", args.player_label),
         ("--ready-valid-start-frame", args.ready_valid_start_frame),
         ("--xlsx-out-dir", args.xlsx_out_dir),
     ):
@@ -208,26 +211,6 @@ def build_pitching_report(args: argparse.Namespace) -> None:
     if args.previous_assets:
         cmd.extend(["--previous-assets", args.previous_assets])
     run(cmd, env=plot_env())
-
-
-def build_video_report(args: argparse.Namespace) -> None:
-    cmd = [
-        PYTHON,
-        "scripts/video_report/run_end_to_end_report.py",
-        "--input",
-        args.input,
-        "--kind",
-        args.kind,
-        "--side",
-        args.side,
-        "--athlete-name",
-        args.athlete_name,
-        "--age-group",
-        args.age_group,
-    ]
-    if args.out:
-        cmd.extend(["--out", args.out])
-    run(cmd)
 
 
 def sync_vicon_video(args: argparse.Namespace) -> None:
@@ -300,6 +283,9 @@ def main() -> None:
     p.add_argument("--ready-valid-start-frame", type=int, default=None)
     p.add_argument("--xlsx-out-dir", type=Path, default=None)
     p.add_argument("--sample-name", default=None)
+    p.add_argument("--coach-sample-name", default=None)
+    p.add_argument("--player-slug", default=None)
+    p.add_argument("--player-label", default=None)
     p.add_argument("--trial-id", default=None)
     p.add_argument("--skip-c3d", action="store_true")
     p.add_argument("--skip-reconstruction", action="store_true")
@@ -355,15 +341,6 @@ def main() -> None:
     p.add_argument("--previous-assets", type=Path, default=None)
     p.add_argument("--out-dir", type=Path, default=ROOT / "reports" / "pitching")
     p.set_defaults(func=build_pitching_report)
-
-    p = sub.add_parser("build-video-report", help="Build a standalone 2D video report.")
-    p.add_argument("--input", required=True, type=Path)
-    p.add_argument("--kind", choices=["auto", "hit", "pitch"], default="auto")
-    p.add_argument("--side", choices=["right", "left"], default="right")
-    p.add_argument("--athlete-name", default="Example Player")
-    p.add_argument("--age-group", default="U12")
-    p.add_argument("--out", type=Path, default=None)
-    p.set_defaults(func=build_video_report)
 
     p = sub.add_parser("sync-vicon-video", help="Align 2D videos to Vicon C3D event timing.")
     p.add_argument("--pair", action="append", nargs=3, required=True, metavar=("ACTION", "VIDEO", "C3D"))

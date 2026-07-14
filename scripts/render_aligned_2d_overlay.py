@@ -81,6 +81,7 @@ def render_overlay(
     pose_path: Path,
     summary_path: Path,
     output_path: Path,
+    preview_path: Path | None,
     min_visibility: float,
 ) -> dict[str, Any]:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -119,6 +120,7 @@ def render_overlay(
     written = 0
     detected_frames = 0
     frame_index = 0
+    preview_written = False
     while True:
         ok, frame = cap.read()
         if not ok:
@@ -155,19 +157,33 @@ def render_overlay(
                 (24, height - 28),
                 (0, 220, 255),
             )
+        if preview_path is not None and not preview_written and frame_index == event_frame:
+            preview_path.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(preview_path), frame)
+            preview_written = True
         writer.write(frame)
         written += 1
         frame_index += 1
 
     cap.release()
     writer.release()
+    if preview_path is not None and not preview_written:
+        cap = cv2.VideoCapture(str(output_path))
+        ok, frame = cap.read()
+        if ok:
+            preview_path.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(preview_path), frame)
+            preview_written = True
+        cap.release()
     return {
         "output": str(output_path),
+        "preview": str(preview_path) if preview_path is not None else None,
         "frames_written": written,
         "video_frames_meta": frame_count,
         "fps": fps,
         "pose_frames_with_landmarks": detected_frames,
         "event_frame": event_frame,
+        "preview_written": preview_written,
     }
 
 
@@ -176,6 +192,7 @@ def main() -> None:
     parser.add_argument("--summary", required=True, type=Path)
     parser.add_argument("--pose", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--preview", type=Path, default=None)
     parser.add_argument("--min-visibility", type=float, default=0.2)
     args = parser.parse_args()
     summary = json.loads(args.summary.read_text(encoding="utf-8"))
@@ -184,6 +201,7 @@ def main() -> None:
         pose_path=args.pose,
         summary_path=args.summary,
         output_path=args.out,
+        preview_path=args.preview,
         min_visibility=args.min_visibility,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))

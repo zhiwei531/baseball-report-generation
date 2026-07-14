@@ -26,6 +26,9 @@ class PipelineConfig:
     ready_valid_start_frame: int
     xlsx_out_dir: Path
     sample_name: str
+    coach_sample_name: str
+    player_slug: str
+    player_label: str
     trial_id: str
 
 
@@ -76,6 +79,9 @@ def load_pipeline_config(path: Path | str | None = None) -> PipelineConfig:
         ready_valid_start_frame=_required_int(data.get("ready_valid_start_frame"), "ready_valid_start_frame"),
         xlsx_out_dir=_required_path(data, "xlsx_out_dir", root_dir),
         sample_name=str(data.get("sample_name") or "sample"),
+        coach_sample_name=str(data.get("coach_sample_name") or "coach"),
+        player_slug=str(data.get("player_slug") or data.get("sample_name") or "sample"),
+        player_label=str(data.get("player_label") or str(data.get("player_slug") or data.get("sample_name") or "sample").title()),
         trial_id=str(data.get("trial_id") or ""),
     )
 

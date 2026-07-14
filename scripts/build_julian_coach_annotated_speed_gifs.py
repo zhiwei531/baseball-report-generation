@@ -232,14 +232,23 @@ def main() -> None:
     parser.add_argument("--max-frames", type=int, default=140)
     parser.add_argument("--before-sec", type=float, default=DEFAULT_GIF_BEFORE_SEC)
     parser.add_argument("--after-sec", type=float, default=DEFAULT_GIF_AFTER_SEC)
+    parser.add_argument("--samples", nargs="+", default=["julian", "coach"])
     args = parser.parse_args()
 
     metric_rows = read_csv(args.metrics)
     point_rows = read_csv(args.points)
-    for sample in ("julian", "coach"):
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    for sample in args.samples:
         contact = next(
-            row for row in metric_rows if row["sample_name"] == sample and row["metric_key"] == "contact_bat_speed_kmh"
+            (
+                row
+                for row in metric_rows
+                if row["sample_name"] == sample and row["metric_key"] == "contact_bat_speed_kmh"
+            ),
+            None,
         )
+        if contact is None:
+            raise SystemExit(f"Missing contact_bat_speed_kmh row for sample_name={sample}")
         c3d_path = ROOT.parent / contact["source_file"]
         trial = read_c3d(c3d_path)
         trial_rows = rows_for_trial(point_rows, contact["trial_id"])

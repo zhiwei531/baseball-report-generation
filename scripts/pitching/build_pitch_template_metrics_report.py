@@ -29,6 +29,9 @@ TEMPLATE_DIR: Path | None = None
 PREV_PITCH_ASSETS: Path | None = None
 OUT_DIR = ROOT / "reports" / "pitching"
 ASSET_DIR = OUT_DIR / "assets"
+PLAYER_KEY = "julian"
+PLAYER_NAME = "Julian"
+PLAYER_SLUG = "julian"
 
 C3D_FILES: list[tuple[str, str, str, Path]] = []
 
@@ -380,7 +383,14 @@ def copy_static_assets() -> None:
             shutil.copy2(src_lineart / name, ASSET_DIR / "lineart_actions" / name)
     (ASSET_DIR / "vicon_reconstruction_events").mkdir(parents=True, exist_ok=True)
     prev_vicon = PREV_PITCH_ASSETS / "vicon_reconstruction_events"
-    for name in ("julian_peak_knee.gif", "julian_foot_plant.gif", "julian_release.gif", "julian_peak_knee.png", "julian_foot_plant.png", "julian_release.png"):
+    for name in (
+        f"{PLAYER_SLUG}_peak_knee.gif",
+        f"{PLAYER_SLUG}_foot_plant.gif",
+        f"{PLAYER_SLUG}_release.gif",
+        f"{PLAYER_SLUG}_peak_knee.png",
+        f"{PLAYER_SLUG}_foot_plant.png",
+        f"{PLAYER_SLUG}_release.png",
+    ):
         if (prev_vicon / name).exists():
             shutil.copy2(prev_vicon / name, ASSET_DIR / "vicon_reconstruction_events" / name)
 
@@ -407,8 +417,19 @@ def render_trial_png(bundle: TrialBundle, frame: int, out: Path, title: str) -> 
 
 def render_reference_images(bundles: list[TrialBundle]) -> None:
     lookup = {b.key: b for b in bundles}
-    render_trial_png(lookup["julian"], lookup["julian"].events["release"], ASSET_DIR / "vicon_reconstruction_events" / "julian_release_reference.png", "Julian pitching release reference")
+    player = lookup[PLAYER_KEY]
+    render_trial_png(player, player.events["release"], ASSET_DIR / "vicon_reconstruction_events" / f"{PLAYER_SLUG}_release_reference.png", f"{PLAYER_NAME} pitching release reference")
     render_trial_png(lookup["coach"], lookup["coach"].events["release"], ASSET_DIR / "vicon_reconstruction_events" / "coach_release_reference.png", "Coach pitching release reference")
+    event_titles = {
+        "peak_knee": "抬腿最高点 Peak knee",
+        "foot_plant": "前脚落地 Foot plant",
+        "release": "出手点 Release",
+    }
+    for event_key, title in event_titles.items():
+        png_out = ASSET_DIR / "vicon_reconstruction_events" / f"{PLAYER_SLUG}_{event_key}.png"
+        gif_out = ASSET_DIR / "vicon_reconstruction_events" / f"{PLAYER_SLUG}_{event_key}.gif"
+        render_trial_png(player, player.events[event_key], png_out, f"{PLAYER_NAME} {title}")
+        Image.open(png_out).save(gif_out, save_all=True, duration=400, loop=0)
 
 
 def metric_label(value: float, suffix: str) -> str:
@@ -497,7 +518,7 @@ def render_movement_gif(bundle: TrialBundle, out: Path, title: str, subtitle: st
 
 def render_movement_gifs(bundles: list[TrialBundle]) -> None:
     lookup = {b.key: b for b in bundles}
-    render_movement_gif(lookup["julian"], ASSET_DIR / "vicon_reconstruction_events" / "julian_player_movement.gif", "球员动作 Player Movement", "Julian / 投球 / C3D骨架动画")
+    render_movement_gif(lookup[PLAYER_KEY], ASSET_DIR / "vicon_reconstruction_events" / f"{PLAYER_SLUG}_player_movement.gif", "球员动作 Player Movement", f"{PLAYER_NAME} / 投球 / C3D骨架动画")
     render_movement_gif(lookup["coach"], ASSET_DIR / "vicon_reconstruction_events" / "coach_player_movement.gif", "教练动作 Coach Movement", "Coach / 投球 / C3D骨架动画")
 
 
@@ -515,7 +536,7 @@ def make_metric_illustrations(bundles: list[TrialBundle]) -> None:
         for path in missing:
             print(" -", path)
         return
-    julian = next(b for b in bundles if b.key == "julian")
+    julian = next(b for b in bundles if b.key == PLAYER_KEY)
     title_font = pil_font(32, bold=True)
     value_font = pil_font(28, bold=True)
     small_font = pil_font(22)
@@ -537,15 +558,15 @@ def make_metric_illustrations(bundles: list[TrialBundle]) -> None:
 
 
 def make_kinetic_chain(bundles: list[TrialBundle]) -> None:
-    julian = next(b for b in bundles if b.key == "julian")
-    out = ASSET_DIR / "kinetic_chain" / "julian_pitch_kinetic_chain_flow.png"
+    julian = next(b for b in bundles if b.key == PLAYER_KEY)
+    out = ASSET_DIR / "kinetic_chain" / f"{PLAYER_SLUG}_pitch_kinetic_chain_flow.png"
     out.parent.mkdir(parents=True, exist_ok=True)
     img = Image.new("RGB", (1600, 760), "#ffffff")
     draw = ImageDraw.Draw(img)
     title_font = pil_font(48, bold=True)
     node_font = pil_font(30, bold=True)
     small_font = pil_font(24)
-    draw.text((70, 58), "Julian 投球动力链", font=title_font, fill=INK)
+    draw.text((70, 58), f"{PLAYER_NAME} 投球动力链", font=title_font, fill=INK)
     draw.text((72, 124), "后腿支撑 -> 骨盆/髋部 -> 躯干 -> 手臂 -> 手部速度。重点看顺序是否完整，以及髋肩分离是否形成后被释放。", font=small_font, fill=MID)
     nodes = [
         ("后腿", "抬腿蓄力", julian.values["rear_knee_peak_deg"], "deg", GREEN),
@@ -600,14 +621,14 @@ def group_mean_all(bundles: list[TrialBundle], metric_key: str) -> float:
 def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: bool = False) -> str:
     key = str(metric["key"])
     unit = str(metric["unit"])
-    julian = next(b for b in bundles if b.key == "julian")
+    julian = next(b for b in bundles if b.key == PLAYER_KEY)
     stats = peer_stats(bundles, key)
     mn, mx, jv = stats["min"], stats["max"], julian.values.get(key, float("nan"))
     if not (finite(mn) and finite(mx) and finite(jv)):
         return '<div class="peer-empty">同组区间暂不可用</div>'
     span = max(mx - mn, 1e-6)
     left = max(0, min(100, (jv - mn) / span * 100))
-    dots = [f'<span class="peer-dot julian" style="left:{left:.2f}%" title="Julian: {esc(fmt(jv, unit))}"></span>']
+    dots = [f'<span class="peer-dot current-player" style="left:{left:.2f}%" title="{esc(PLAYER_NAME)}: {esc(fmt(jv, unit))}"></span>']
     if show_all:
         colors = [BLUE, GREEN, ORANGE, PURPLE, RED, "#0891b2", "#ca8a04"]
         for idx, b in enumerate(bundles):
@@ -627,7 +648,7 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
 
 
 def metric_card(metric: dict[str, object], bundles: list[TrialBundle], coach: TrialBundle, coach_mode: bool = False) -> str:
-    julian = next(b for b in bundles if b.key == "julian")
+    julian = next(b for b in bundles if b.key == PLAYER_KEY)
     key = str(metric["key"])
     unit = str(metric["unit"])
     value = julian.values.get(key, float("nan"))
@@ -637,7 +658,7 @@ def metric_card(metric: dict[str, object], bundles: list[TrialBundle], coach: Tr
     mean = group_mean_all(bundles, key)
     img = f"assets/frontend_metric_illustrations_pitch/{key}.png"
     compare = (
-        f'<p class="metric-detail-en">测试组均值 {esc(fmt(mean, unit))} · Coach {esc(fmt(coach_value, unit))} · 优秀学员 Julian {esc(fmt(value, unit))}</p>'
+        f'<p class="metric-detail-en">测试组均值 {esc(fmt(mean, unit))} · Coach {esc(fmt(coach_value, unit))} · 球员 {esc(PLAYER_NAME)} {esc(fmt(value, unit))}</p>'
         if coach_mode
         else ""
     )
@@ -677,12 +698,12 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
       <div class="section-title"><span class="mark"></span><h2>投球动作与教练对照</h2></div>
       <div class="grid-2">
         <article class="visual-card">
-          <h4>Julian 出手点 Vicon 标注</h4>
+          <h4>{esc(PLAYER_NAME)} 出手点 Vicon 标注</h4>
           <figure class="reconstruction-annotated">
-            <img src="assets/vicon_reconstruction_events/julian_player_movement.gif" alt="Julian 投球出手点 Vicon 动画重建" loading="lazy">
+            <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_player_movement.gif" alt="{esc(PLAYER_NAME)} 投球出手点 Vicon 动画重建" loading="lazy">
             <figcaption>
-              <b>Julian 投球动作出手点</b>
-              <span class="caption-cn">当前出手点主要看前腿支撑、肩外展、肘屈曲、手臂槽位和手速。Julian 的动作链已经具备基础，重点是让前脚落地后的身体传力更清楚。</span>
+              <b>{esc(PLAYER_NAME)} 投球动作出手点</b>
+              <span class="caption-cn">当前出手点主要看前腿支撑、肩外展、肘屈曲、手臂槽位和手速。球员动作链已经具备基础，重点是让前脚落地后的身体传力更清楚。</span>
             </figcaption>
           </figure>
         </article>
@@ -705,42 +726,42 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
         <article class="motion-stage-card">
           <figure class="motion-3d-panel">
             <h4>动作姿态<span>Posture</span></h4>
-            <img src="assets/vicon_reconstruction_events/julian_peak_knee.gif" alt="Julian 抬腿最高点 3D 动图" loading="lazy">
+            <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_peak_knee.gif" alt="{esc(PLAYER_NAME)} 抬腿最高点 3D 动图" loading="lazy">
           </figure>
           <figure class="motion-2d-panel">
-            <img src="assets/video_2d_alignment/julian_pitch_peak_knee_2d_overlay.png" alt="Julian 抬腿最高点 2D 几何标注" loading="lazy">
+            <img src="assets/video_2d_alignment/{esc(PLAYER_SLUG)}_pitch_peak_knee_2d_overlay.png" alt="{esc(PLAYER_NAME)} 抬腿最高点 2D 几何标注" loading="lazy">
           </figure>
         </article>
         <article class="motion-stage-card">
           <figure class="motion-3d-panel">
             <h4>动作姿态<span>Posture</span></h4>
-            <img src="assets/vicon_reconstruction_events/julian_foot_plant.gif" alt="Julian 前脚落地 3D 动图" loading="lazy">
+            <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_foot_plant.gif" alt="{esc(PLAYER_NAME)} 前脚落地 3D 动图" loading="lazy">
           </figure>
           <figure class="motion-2d-panel">
-            <img src="assets/video_2d_alignment/julian_pitch_foot_plant_2d_overlay.png" alt="Julian 前脚落地 2D 几何标注" loading="lazy">
+            <img src="assets/video_2d_alignment/{esc(PLAYER_SLUG)}_pitch_foot_plant_2d_overlay.png" alt="{esc(PLAYER_NAME)} 前脚落地 2D 几何标注" loading="lazy">
           </figure>
         </article>
         <article class="motion-stage-card">
           <figure class="motion-3d-panel">
             <h4>动作姿态<span>Posture</span></h4>
-            <img src="assets/vicon_reconstruction_events/julian_release.gif" alt="Julian 出手点 3D 动图" loading="lazy">
+            <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_release.gif" alt="{esc(PLAYER_NAME)} 出手点 3D 动图" loading="lazy">
           </figure>
           <figure class="motion-2d-panel">
-            <img src="assets/video_2d_alignment/julian_pitch_release_2d_overlay.png" alt="Julian 出手点 2D 几何标注" loading="lazy">
+            <img src="assets/video_2d_alignment/{esc(PLAYER_SLUG)}_pitch_release_2d_overlay.png" alt="{esc(PLAYER_NAME)} 出手点 2D 几何标注" loading="lazy">
           </figure>
         </article>
       </div>
     </section>
 
     <section class="section">
-      <div class="section-title"><span class="mark"></span><h2>Julian 投球动力链</h2></div>
+      <div class="section-title"><span class="mark"></span><h2>{esc(PLAYER_NAME)} 投球动力链</h2></div>
       <article class="visual-card kinetic-chain-card">
         <h4>后腿 -> 骨盆 -> 躯干 -> 手臂 -> 手</h4>
         <figure class="kinetic-chain-figure">
-          <img src="assets/kinetic_chain/julian_pitch_kinetic_chain_flow.png" alt="Julian 投球动力链图" loading="lazy">
+          <img src="assets/kinetic_chain/{esc(PLAYER_SLUG)}_pitch_kinetic_chain_flow.png" alt="{esc(PLAYER_NAME)} 投球动力链图" loading="lazy">
         </figure>
-        <p class="copy-cn">动力链解读：Julian 的抬腿高度和出手高度都比较清楚，说明动作有完整的准备和释放阶段。需要继续关注的是前脚落地后，髋肩分离能否更稳定地形成并释放，避免动作变成手臂先抢出手。</p>
-        <p class="copy-en">Kinetic-chain read: Julian shows clear preparation and release positions. The next coaching focus is whether hip-shoulder separation forms and releases after foot plant instead of the arm rushing ahead.</p>
+        <p class="copy-cn">动力链解读：球员的抬腿高度和出手高度都比较清楚，说明动作有完整的准备和释放阶段。需要继续关注的是前脚落地后，髋肩分离能否更稳定地形成并释放，避免动作变成手臂先抢出手。</p>
+        <p class="copy-en">Kinetic-chain read: the player shows clear preparation and release positions. The next coaching focus is whether hip-shoulder separation forms and releases after foot plant instead of the arm rushing ahead.</p>
       </article>
     </section>
 
@@ -751,8 +772,8 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
     <section class="section">
       <div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>
       <div class="module-note">
-        <p class="module-note-cn">专项问题放在教练视角里：这里不再堆所有球员在球员视角的节点，而是把测试组均值、Coach 值、优秀学员 Julian 值和所有人节点集中展示，方便教练判断是否触发提醒。</p>
-        <p class="module-note-en">Coach view keeps the detailed comparison nodes, group mean, Coach value, and Julian reference for issue diagnosis.</p>
+        <p class="module-note-cn">专项问题放在教练视角里：这里不再堆所有球员在球员视角的节点，而是把测试组均值、Coach 值、当前球员值和所有人节点集中展示，方便教练判断是否触发提醒。</p>
+        <p class="module-note-en">Coach view keeps the detailed comparison nodes, group mean, Coach value, and current-player reference for issue diagnosis.</p>
       </div>
       <div class="grid issue-metrics">{coach_issue_cards(bundles, coach)}</div>
     </section>
@@ -760,10 +781,10 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
     <section class="section">
       <div class="section-title"><span class="mark"></span><h2>分析员视角：完整指标表</h2></div>
       <article class="visual-card">
-        <h4>Julian、测试组均值与 Coach 对照</h4>
+        <h4>{esc(PLAYER_NAME)}、测试组均值与 Coach 对照</h4>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>事件</th><th>前端指标</th><th>Julian</th><th>测试组均值</th><th>Coach</th><th>解释</th></tr></thead>
+            <thead><tr><th>事件</th><th>前端指标</th><th>{esc(PLAYER_NAME)}</th><th>测试组均值</th><th>Coach</th><th>解释</th></tr></thead>
             <tbody>{metric_rows_table(bundles)}</tbody>
           </table>
         </div>
@@ -778,13 +799,13 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
 
 def write_json_summary(bundles: list[TrialBundle]) -> None:
     data = {
-        "created_for": "Julian pitching report, template-matched coach metrics section",
+        "created_for": f"{PLAYER_NAME} pitching report, template-matched coach metrics section",
         "assumptions": {
             "lead_leg": "L",
             "drive_leg": "R",
             "throwing_arm": "R",
             "coach_reference": "008-coach Cal 03 Pitch 07.c3d",
-            "excellent_student_reference": "Julian",
+            "player_reference": PLAYER_NAME,
             "events": "Peak knee height, foot contact/plant, release approximated from Vicon markers",
         },
         "athletes": [
@@ -832,8 +853,10 @@ def load_manifest(path: Path) -> list[tuple[str, str, str, Path]]:
             raise FileNotFoundError(f"C3D input not found: {c3d}")
         result.append((str(row["key"]), str(row["name"]), str(row["role"]), c3d))
     keys = {row[0] for row in result}
-    if not {"julian", "coach"}.issubset(keys):
-        raise ValueError("The current report schema requires athlete keys 'julian' and 'coach'.")
+    if "coach" not in keys:
+        raise ValueError("The pitching manifest must include a coach entry with key 'coach'.")
+    if not any(role == "student" and key != "coach" for key, _name, role, _c3d in result):
+        raise ValueError("The pitching manifest must include at least one student/player entry.")
     return result
 
 
@@ -849,13 +872,16 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    global TEMPLATE_DIR, PREV_PITCH_ASSETS, OUT_DIR, ASSET_DIR, C3D_FILES
+    global TEMPLATE_DIR, PREV_PITCH_ASSETS, OUT_DIR, ASSET_DIR, C3D_FILES, PLAYER_KEY, PLAYER_NAME, PLAYER_SLUG
     args = parse_args()
     TEMPLATE_DIR = args.template_dir.resolve()
     PREV_PITCH_ASSETS = args.previous_assets.resolve() if args.previous_assets else None
     OUT_DIR = args.out_dir.resolve()
     ASSET_DIR = OUT_DIR / "assets"
     C3D_FILES = load_manifest(args.manifest.resolve())
+    player_rows = [row for row in C3D_FILES if row[2] == "student" and row[0] != "coach"]
+    PLAYER_KEY, PLAYER_NAME, _role, _path = player_rows[0]
+    PLAYER_SLUG = PLAYER_KEY.lower().replace(" ", "_")
     if not (TEMPLATE_DIR / "index.html").exists():
         raise FileNotFoundError(f"Template index.html not found under {TEMPLATE_DIR}")
     OUT_DIR.mkdir(parents=True, exist_ok=True)

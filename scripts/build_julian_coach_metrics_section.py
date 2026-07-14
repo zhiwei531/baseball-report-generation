@@ -24,6 +24,10 @@ DEFAULT_POSE3D = ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_pose
 DEFAULT_PITCH_REPORT = ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html"
 PITCH_ASSET_PREFIX = "pitch_assets"
 ACTIVE_OUT_DIR = DEFAULT_OUT.parent
+ACTIVE_PLAYER_SAMPLE = "julian"
+ACTIVE_COACH_SAMPLE = "coach"
+ACTIVE_PLAYER_SLUG = "julian"
+ACTIVE_PLAYER_LABEL = "Julian"
 
 
 UNIT_CN = {
@@ -1661,19 +1665,29 @@ def draw_batting_kinetic_chain(rows_by_key: dict[str, dict[str, str]], series: d
     img.save(output)
 
 
+def sample_trial_id(rows_by_key: dict[str, dict[str, str]]) -> str:
+    for row in rows_by_key.values():
+        trial = row.get("trial_id")
+        if trial:
+            return trial
+    raise ValueError("No trial_id found for sample metrics.")
+
+
 def make_research_assets(rows_by_key: dict[str, dict[str, str]], coach_rows: dict[str, dict[str, str]], out_dir: Path) -> dict[str, str]:
-    series = batting_time_series(rows_by_key, "julian_007-julian_cal_04_bat_05")
-    coach_series = batting_time_series(coach_rows, "coach_008-coach_cal_03_bat_02")
-    kinetic_speed_series_data = kinetic_speed_series(rows_by_key, "julian_007-julian_cal_04_bat_05")
-    kinetic = "assets/kinetic_chain/julian_batting_kinetic_chain_flow.png"
-    kinetic_speed = "assets/kinetic_chain/julian_batting_kinetic_speed_time_curve.png"
-    speed = "assets/analyst_charts/julian_batting_bat1_speed_time_curve.png"
-    angle = "assets/analyst_charts/julian_batting_bat_axis_angle_time_curve.png"
+    player_trial_id = sample_trial_id(rows_by_key)
+    coach_trial_id = sample_trial_id(coach_rows)
+    series = batting_time_series(rows_by_key, player_trial_id)
+    coach_series = batting_time_series(coach_rows, coach_trial_id)
+    kinetic_speed_series_data = kinetic_speed_series(rows_by_key, player_trial_id)
+    kinetic = f"assets/kinetic_chain/{ACTIVE_PLAYER_SLUG}_batting_kinetic_chain_flow.png"
+    kinetic_speed = f"assets/kinetic_chain/{ACTIVE_PLAYER_SLUG}_batting_kinetic_speed_time_curve.png"
+    speed = f"assets/analyst_charts/{ACTIVE_PLAYER_SLUG}_batting_bat1_speed_time_curve.png"
+    angle = f"assets/analyst_charts/{ACTIVE_PLAYER_SLUG}_batting_bat_axis_angle_time_curve.png"
     draw_batting_kinetic_chain(rows_by_key, series, out_dir / kinetic)
     draw_kinetic_speed_chart(kinetic_speed_series_data, out_dir / kinetic_speed)
     draw_line_chart(
         [
-            {"label": "Julian", "color": ORANGE, "points": series.get("speed", [])},
+            {"label": ACTIVE_PLAYER_LABEL, "color": ORANGE, "points": series.get("speed", [])},
             {"label": "阿楽教练", "color": BLUE, "points": coach_series.get("speed", [])},
         ],
         "挥棒速度时间曲线",
@@ -1682,7 +1696,7 @@ def make_research_assets(rows_by_key: dict[str, dict[str, str]], coach_rows: dic
     )
     draw_line_chart(
         [
-            {"label": "Julian", "color": ORANGE, "points": series.get("angle", [])},
+            {"label": ACTIVE_PLAYER_LABEL, "color": ORANGE, "points": series.get("angle", [])},
             {"label": "阿楽教练", "color": BLUE, "points": coach_series.get("angle", [])},
         ],
         "挥棒角度时间曲线",
@@ -1936,7 +1950,7 @@ def metric_illustration(name: str) -> str:
 
 def speed_annotation_panel(rows: dict[str, dict[str, str]], sample: str) -> str:
     media_path = versioned_asset(f"assets/vicon_reconstruction_annotated/{sample}_speed_annotated.gif")
-    display_name = "球员" if sample == "julian" else "教练示范"
+    display_name = "球员" if sample == ACTIVE_PLAYER_SAMPLE else "教练示范"
     return f"""
     <figure class="reconstruction-annotated">
       {reconstruction_media(media_path, f"{display_name}打击动作观察")}
@@ -1971,7 +1985,7 @@ def event_gif_panel(
     peer_rows: list[dict[str, object]] | None = None,
 ) -> str:
     julian_metric = julian_rows[metric_key]
-    gif_src = versioned_asset(f"assets/vicon_reconstruction_events/julian_{event_slug}.gif")
+    gif_src = versioned_asset(f"assets/vicon_reconstruction_events/{ACTIVE_PLAYER_SAMPLE}_{event_slug}.gif")
     legend = peer_legend(peer_rows or [], embedded=True)
     notes = {
         "ready": (
@@ -2022,14 +2036,31 @@ def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anon
     """
 
 
-def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_dir: Path, pitch_report: Path = DEFAULT_PITCH_REPORT) -> str:
-    global ACTIVE_OUT_DIR
+def render(
+    rows: list[dict[str, str]],
+    peer_rows: list[dict[str, object]],
+    out_dir: Path,
+    pitch_report: Path = DEFAULT_PITCH_REPORT,
+    player_sample_name: str = "julian",
+    coach_sample_name: str = "coach",
+    player_slug: str | None = None,
+    player_label: str | None = None,
+) -> str:
+    global ACTIVE_OUT_DIR, ACTIVE_PLAYER_SAMPLE, ACTIVE_COACH_SAMPLE, ACTIVE_PLAYER_SLUG, ACTIVE_PLAYER_LABEL
     ACTIVE_OUT_DIR = out_dir
+    ACTIVE_PLAYER_SAMPLE = player_sample_name
+    ACTIVE_COACH_SAMPLE = coach_sample_name
+    ACTIVE_PLAYER_SLUG = player_slug or player_sample_name
+    ACTIVE_PLAYER_LABEL = player_label or player_sample_name.title()
     by_sample: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
     for row in rows:
         by_sample[row["sample_name"]][row["metric_key"]] = row
-    julian = by_sample["julian"]
-    coach = by_sample["coach"]
+    if player_sample_name not in by_sample:
+        raise ValueError(f"Metrics CSV is missing player sample_name={player_sample_name!r}. Found: {', '.join(sorted(by_sample))}")
+    if coach_sample_name not in by_sample:
+        raise ValueError(f"Metrics CSV is missing coach sample_name={coach_sample_name!r}. Found: {', '.join(sorted(by_sample))}")
+    julian = by_sample[player_sample_name]
+    coach = by_sample[coach_sample_name]
 
     grouped: dict[str, list[str]] = defaultdict(list)
     for metric_key in BACKEND_ORDER:
@@ -2222,7 +2253,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
       <div class="grid-2">
         <article class="visual-card">
           <h4>球员速度与挥棒方向</h4>
-          {speed_annotation_panel(julian, "julian")}
+          {speed_annotation_panel(julian, ACTIVE_PLAYER_SAMPLE)}
         </article>
         <article class="visual-card">
           <h4>教练示范动作对照</h4>
@@ -2299,7 +2330,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
         <article class="visual-card kinetic-chain-card">
           <h4>下肢 -> 髋部 -> 躯干 -> 手腕 -> 球棒</h4>
           <figure class="kinetic-chain-figure">
-            <img src="{esc(versioned_asset(research_assets["kinetic"]))}" alt="Julian 打击动力链图" loading="lazy">
+            <img src="{esc(versioned_asset(research_assets["kinetic"]))}" alt="{esc(ACTIVE_PLAYER_LABEL)} 打击动力链图" loading="lazy">
           </figure>
           <figure class="kinetic-speed-figure">
             <img src="{esc(versioned_asset(research_assets["kinetic_speed"]))}" alt="动力链速度时间曲线" loading="lazy">
@@ -2354,12 +2385,28 @@ def main() -> None:
         default=DEFAULT_PITCH_REPORT,
         help="Existing pitching-template index.html whose sections and assets are copied into pitch_assets/.",
     )
+    parser.add_argument("--player-sample-name", default="julian")
+    parser.add_argument("--coach-sample-name", default="coach")
+    parser.add_argument("--player-slug", default=None)
+    parser.add_argument("--player-label", default=None)
     args = parser.parse_args()
 
     rows = read_csv(args.metrics)
     peer_rows = read_peer_metrics(args.peers)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    html_text = "\n".join(line.rstrip() for line in render(rows, peer_rows, args.out.parent, args.pitch_report).splitlines()) + "\n"
+    html_text = "\n".join(
+        line.rstrip()
+        for line in render(
+            rows,
+            peer_rows,
+            args.out.parent,
+            args.pitch_report,
+            args.player_sample_name,
+            args.coach_sample_name,
+            args.player_slug,
+            args.player_label,
+        ).splitlines()
+    ) + "\n"
     args.out.write_text(html_text, encoding="utf-8")
     print(args.out)
 

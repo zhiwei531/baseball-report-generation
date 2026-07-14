@@ -28,7 +28,6 @@ scripts/
   annotate_frontend_metric_illustrations.py  metric illustration annotation
   build_batting_metrics_xlsx.mjs             batting metrics Excel export
   pitching/                                  pitching C3D report builders
-  video_report/                              standalone 2D video report workflow
 configs/
   default_report_pipeline.json               batting pipeline path config
   pitching/manifest.example.json             pitching C3D manifest template
@@ -43,8 +42,6 @@ docs/
 prompts/
   pitch_report_generation.md
   pitch_chart_redraw.md
-  video_report_interpretation.md
-  video_report_recommendation.md
 ```
 
 ## Current Architecture
@@ -132,13 +129,38 @@ python scripts/report_cli.py build-batting-report \
   --config configs/<player_slug>_report_pipeline.json
 ```
 
-Raw 2D video alignment path:
+Raw 2D/Vicon alignment is part of the same batting entry. The default Julian config uses:
+
+```text
+video: ../vicon_2026/julian/Bat_2D.mp4
+c3d_file: ../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d
+mediapipe_model: ../baseball-analysis/models/pose_landmarker_heavy.task
+video_capture_fps: 240
+video_event_frame: 184
+```
+
+Run it through the staged report command:
 
 ```bash
 python scripts/report_cli.py build-batting-report \
   --video ../vicon_2026/julian/Bat_2D.mp4 \
-  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d"
+  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
+  --mediapipe-model ../baseball-analysis/models/pose_landmarker_heavy.task \
+  --video-capture-fps 240 \
+  --video-event-frame 184
 ```
+
+This runs `align_2d_video_vicon.py` and `render_aligned_2d_overlay.py`, producing:
+
+```text
+reports/vicon_2026_julian_coach/alignment_2d/alignment_summary.json
+reports/vicon_2026_julian_coach/alignment_2d/pose2d_landmarks.csv
+reports/vicon_2026_julian_coach/alignment_2d/vicon_points_aligned_to_video.csv
+reports/vicon_2026_julian_coach/alignment_2d/aligned_2d_skeleton_overlay.mp4
+reports/vicon_2026_julian_coach/alignment_2d/aligned_2d_overlay_preview.jpg
+```
+
+The Vicon event is read from `build_vicon_2026_metrics.py` via `key_action_frame()`; for the Julian batting trial it resolves to `bat_speed_peak`, frame `854`. The encoded playback FPS is read from the video metadata; for the validated Julian file it was `29.48022763100522`, giving a slow factor of `8.141049757281554` when paired with `240` capture FPS.
 
 Legacy full-report builder, kept for the older Bryan/Green benchmark report:
 
@@ -212,17 +234,6 @@ python scripts/report_cli.py build-batting-report \
 
 `build-pitching-report` does not write into the batting report directory. In the batting staged pipeline, `pitch_report` should normally be set in the batting config. `--pitch-report` remains available as a CLI override. It expects an already-built pitching `index.html`; `build_julian_coach_metrics_section.py` copies that HTML's sibling `assets/` folder into the final batting report as `pitch_assets/` and embeds its sections.
 
-Standalone 2D video report:
-
-```bash
-python scripts/report_cli.py build-video-report \
-  --input path/to/pitch.mp4 \
-  --kind pitch \
-  --side right \
-  --athlete-name "Example Player" \
-  --age-group U12
-```
-
 Vicon/video synchronization:
 
 ```bash
@@ -233,11 +244,12 @@ python scripts/report_cli.py sync-vicon-video \
 
 ## Source Selection
 
-Included scripts are limited to the batting, pitching, standalone 2D report, and Vicon/video synchronization paths documented in `docs/PIPELINE_ARCHITECTURE.md`, `docs/ASSET_PROVENANCE.md`, and `docs/pitching/`.
+Included scripts are limited to the batting, pitching, and Vicon/video synchronization paths documented in `docs/PIPELINE_ARCHITECTURE.md`, `docs/ASSET_PROVENANCE.md`, and `docs/pitching/`.
 
 Excluded on purpose:
 
 - RTMPose/GVHMR pose model implementation and model folders. MediaPipe video alignment code is included; the `.task` model file is an input artifact and is not committed.
+- Standalone single-video report package scripts. Those scripts do not align a 2D video to a C3D trial and are not part of the current final report pipeline.
 - Old 2D ablation scripts and Suzhou experiment runners.
 - `external/`, `models/`, `src/baseball_pose/`, tests, raw data, C3D files, videos, `node_modules`.
 - Generated report outputs, binary previews, zips, OBJ models, MP4/AVI files, and macOS `._*` metadata files.
