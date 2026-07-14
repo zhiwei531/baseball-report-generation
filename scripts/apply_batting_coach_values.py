@@ -323,7 +323,7 @@ def apply_css(html: str) -> str:
     )
     html = html.replace(
         "    .peer-dot.current-player { width:12px; height:12px; background:#101828; box-shadow:0 0 0 2px rgba(37,99,235,.28),0 0 0 1px rgba(16,24,40,.18); }\n",
-        "    .peer-dot.current-player { width:16px; height:16px; background:#ef4444; box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(239,68,68,.2); }\n",
+        "    .peer-dot.current-player { z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }\n",
     )
     html = re.sub(
         r"\n\s*\.two-column-metrics \.peer-range \{[^\n]*\}"
@@ -342,13 +342,13 @@ def apply_css(html: str) -> str:
                 "    .two-column-metrics .peer-track { min-width:52px; max-width:76px; width:100%; }\n"
             ),
         )
-    html = re.sub(r"\n\s*\.issue-metrics \.peer-dot(?:\[style\*=\"background:#ef4444\"\]|\.julian) \{[^\n]*\}", "", html)
-    if "    .issue-metrics .peer-dot.julian {" not in html:
+    html = re.sub(r"\n\s*\.issue-metrics \.peer-dot(?:\[style\*=\"background:#ef4444\"\]|\.julian|\.current-player) \{[^\n]*\}", "", html)
+    if "    .issue-metrics .peer-dot.current-player {" not in html:
         html = html.replace(
             "    .issue-metrics .compare-pill b { color:#667085; font-size:11px; line-height:14px; }\n",
             (
                 "    .issue-metrics .compare-pill b { color:#667085; font-size:11px; line-height:14px; }\n"
-                "    .issue-metrics .peer-dot.julian { width:12px; height:12px; background:#ef4444; box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(239,68,68,.2); }\n"
+                "    .issue-metrics .peer-dot.current-player { z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }\n"
             ),
         )
     html = re.sub(r"\n\s*\.batting-coach-reference[^\n]*", "", html)

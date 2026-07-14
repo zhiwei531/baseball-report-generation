@@ -873,7 +873,8 @@ def peer_range_bar(
         pos = clamp(pos + x_offsets[offset_idx], 2.0, 98.0)
         top = 50 + y_offsets[offset_idx]
         color = peer_color(item.get("name"), int(item.get("color_index", 0)))
-        klass = "peer-dot missing" if missing else "peer-dot"
+        is_current_player = not missing and peer_key(item.get("name")) == peer_key(ACTIVE_PLAYER_SAMPLE)
+        klass = "peer-dot missing" if missing else "peer-dot current-player" if is_current_player else "peer-dot"
         return (
             f'<span class="{klass}" style="left:{pos:.2f}%; top:{top:.1f}%; background:{esc(color)}" '
             f'title="{esc(title)}"></span>'
@@ -1012,7 +1013,8 @@ def peer_metric_range_bar(
         offset_idx = min(lane, len(x_offsets) - 1)
         pos = clamp(pos + x_offsets[offset_idx], 2.0, 98.0)
         color = peer_color(item.get("name"), int(item.get("color_index", 0)))
-        klass = "peer-dot missing" if missing else "peer-dot"
+        is_current_player = not missing and peer_key(item.get("name")) == peer_key(ACTIVE_PLAYER_SAMPLE)
+        klass = "peer-dot missing" if missing else "peer-dot current-player" if is_current_player else "peer-dot"
         return (
             f'<span class="{klass}" style="left:{pos:.2f}%; top:50.0%; background:{esc(color)}" '
             f'title="{esc(title)}"></span>'
@@ -2203,7 +2205,7 @@ def render(
     .peer-track {{ position:relative; height:28px; border-radius:999px; background:linear-gradient(180deg,transparent 0 11px,#eef2f7 11px 17px,transparent 17px); }}
     .peer-span {{ position:absolute; top:11px; height:6px; border-radius:999px; background:linear-gradient(90deg,#dcfce7,#bae6fd); }}
     .peer-dot {{ position:absolute; top:50%; width:10px; height:10px; border:2px solid #fff; border-radius:999px; transform:translate(-50%,-50%); box-shadow:0 0 0 1px rgba(16,24,40,.12); }}
-    .peer-dot.current-player {{ width:12px; height:12px; background:#101828; box-shadow:0 0 0 2px rgba(37,99,235,.28),0 0 0 1px rgba(16,24,40,.18); }}
+    .peer-dot.current-player {{ z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }}
     .peer-range.no-markers .peer-track {{ height:18px; background:linear-gradient(180deg,transparent 0 6px,#eef2f7 6px 12px,transparent 12px); }}
     .peer-range.no-markers .peer-span {{ top:6px; }}
     .peer-dot.missing {{ opacity:.45; box-shadow:0 0 0 1px rgba(16,24,40,.22),0 0 0 4px rgba(16,24,40,.04); }}

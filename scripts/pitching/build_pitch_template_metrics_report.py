@@ -959,9 +959,7 @@ def comparison_pills(
     mean, coach_value = reference_metric_values(key, bundles, coach)
     return (
         '<div class="pitch-compare-pills">'
-        f'<span><b>测试组均值</b>{esc(fmt(mean, unit))}</span>'
         f'<span><b>阿楽教练参考</b>{esc(fmt(coach_value, unit))}</span>'
-        f'<span class="current"><b>球员 {esc(PLAYER_NAME)}</b>{esc(displayed_player_value)}</span>'
         '</div>'
     )
 
@@ -1008,18 +1006,18 @@ def inject_pitch_card_styles(html_text: str) -> str:
     marker = "/* pitching-card-alignment */"
     css = f"""
     {marker}
-    .compact-metrics.two-column-metrics {{ grid-template-columns:1fr; }}
-    .two-column-metrics .metric-card {{ grid-template-columns:minmax(150px,190px) minmax(180px,220px) minmax(0,1fr); min-height:280px; gap:18px; overflow:visible; }}
-    .two-column-metrics .metric-card h4 {{ font-size:20px; line-height:26px; }}
-    .two-column-metrics .metric-value {{ font-size:38px; }}
-    .two-column-metrics .metric-detail {{ gap:12px; }}
-    .two-column-metrics .metric-detail-cn {{ font-size:15px; line-height:22px; }}
-    .two-column-metrics .peer-range {{ grid-template-columns:max-content 58px minmax(90px,1fr) 58px; gap:7px; }}
+    .compact-metrics.two-column-metrics {{ grid-template-columns:repeat(2,minmax(0,1fr)); }}
+    .two-column-metrics .metric-card {{ grid-template-columns:minmax(100px,126px) minmax(104px,132px) minmax(0,1fr); min-height:304px; padding:20px; gap:12px; overflow:hidden; }}
+    .two-column-metrics .metric-card h4 {{ font-size:17px; line-height:22px; }}
+    .two-column-metrics .metric-value {{ font-size:34px; }}
+    .two-column-metrics .metric-detail {{ gap:8px; }}
+    .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:20px; }}
+    .two-column-metrics .peer-range {{ grid-template-columns:max-content 34px minmax(52px,76px) 34px; gap:6px; max-width:100%; justify-self:start; }}
     .pitch-compare-pills {{ display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 4px; }}
     .pitch-compare-pills span {{ display:inline-grid; gap:2px; min-width:112px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
     .pitch-compare-pills span b {{ color:#667085; font-size:11px; line-height:14px; }}
-    .pitch-compare-pills span.current {{ border-color:#fecaca; box-shadow:0 0 0 2px rgba(239,68,68,.12); }}
-    .peer-dot.current-player {{ z-index:2; width:16px; height:16px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 5px rgba(239,68,68,.18),0 0 0 1px rgba(16,24,40,.15); }}
+    .peer-dot.current-player {{ z-index:4; width:20px; height:20px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15); }}
+    .coach-issue-card .peer-dot.current-player {{ z-index:4 !important; width:20px !important; height:20px !important; background:#ef4444 !important; border:3px solid #fff !important; box-shadow:0 0 0 2px #fff,0 0 0 7px rgba(239,68,68,.20),0 0 0 1px rgba(16,24,40,.15) !important; }}
     .pitch-peer-color-legend {{ display:grid; gap:8px; margin:0 0 18px; padding:12px 14px; border:1px solid #d0d5dd; border-radius:14px; background:#fff; }}
     .pitch-peer-color-legend > b {{ color:#667085; font-size:12px; line-height:16px; }}
     .pitch-peer-color-legend > div {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 16px; }}
