@@ -340,20 +340,13 @@ ratio = abs(player_value - coach_value) / max(abs(coach_value), 1.0)
 
 ## 9. 建议后续标准化
 
-当前已经把主入口路径、球员输出目录、2D 视频、C3D、MediaPipe model、XLSX 输出目录等集中到 `configs/default_report_pipeline.json`。为了让其他球员报告更彻底复用，后续建议把 HTML builder 也改成显式角色参数：
+当前已经把主入口路径、球员输出目录、2D 视频、C3D、MediaPipe model、XLSX 输出目录等集中到 `configs/default_report_pipeline.json`。
 
-```bash
-.venv312/bin/python scripts/build_vicon_coach_metrics_section.py \
-  --metrics reports/vicon_2026_<player_slug>_coach/batting_dashboard_metrics.csv \
-  --pose3d reports/vicon_2026_<player_slug>_coach/vicon_2026_pose3d.csv \
-  --peers outputs/batting_metrics_excel/all_players \
-  --player-slug <player_slug> \
-  --player-sample-name <player_sample_name> \
-  --coach-sample-name coach \
-  --out reports/vicon_2026_<player_slug>_coach/<player_slug>_coach_metrics_section.html
-```
+HTML final-schema builder 目前只保留 `scripts/build_julian_coach_metrics_section.py`。它必须以
+`baseball-analysis/reports/vicon_2026_julian_coach 4/julian_coach_metrics_section.html`
+为标准模板对齐后再复用；不要保留或推荐未通过该模板校验的泛化 builder，否则容易造成颜色 schema、卡片内部结构和资源位置漂移。
 
-并将下面内容配置化：
+后续如果要支持任意球员，应在现有标准 builder 内做参数化，并继续校验以下内容：
 
 - player / coach sample name
 - batting handedness

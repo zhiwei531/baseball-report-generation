@@ -1078,7 +1078,7 @@ def metric_card(
     coach_reference = ""
     if key not in ISSUE_BACKEND_KEYS:
         coach_reference = (
-            f'<div class="batting-coach-reference"><b>阿楽教练</b>'
+            f'<div class="pitch-coach-reference"><b>阿楽教练</b>'
             f'<span>{esc(coach_value)}</span></div>'
         )
     return f"""
@@ -2095,20 +2095,20 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
     .card.review,.metric-card.review,
     .card.risk,.metric-card.risk {{ background:#fffefa; }}
     .metric-card {{ display:grid; grid-template-columns:minmax(110px,145px) minmax(130px,165px) minmax(0,1fr); gap:18px; align-items:center; min-height:236px; border-color:#d2d2d2; border-radius:26px; background:#fffefa; }}
-    .metric-summary {{ min-width:0; display:grid; align-content:center; gap:12px; }}
+    .metric-summary {{ min-width:0; display:grid; align-content:center; gap:14px; }}
     .metric-en {{ color:#667085; font-size:13px; line-height:17px; font-weight:700; margin-top:0; }}
     .metric-detail {{ min-width:0; display:grid; gap:12px; }}
     .metric-detail-cn,.copy-cn,.module-note-cn,.caption-cn {{ color:#344054; font-size:15px; line-height:22px; font-weight:700; }}
     .metric-detail-en,.copy-en,.module-note-en,.caption-en {{ color:#7a8494; font-size:12px; line-height:18px; font-weight:600; }}
     .card-head {{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }}
     .badge {{ display:inline-flex; align-items:center; justify-content:center; width:max-content; min-width:70px; border-radius:999px; padding:4px 12px; font-size:14px; line-height:20px; font-weight:700; white-space:nowrap; }}
-    .badge.good {{ background:#dbeafe; color:#166534; }}
+    .badge.good {{ background:#dcfce7; color:#166534; }}
     .badge.review {{ background:#fff7ed; color:#9a3412; }}
     .badge.risk {{ background:#fef2f2; color:#b91c1c; }}
     .metric-value {{ font-size:38px; line-height:1; font-weight:800; margin:0; color:#000; overflow-wrap:anywhere; }}
-    .batting-coach-reference {{ display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
-    .batting-coach-reference b {{ color:#101828; font-size:12px; line-height:16px; font-weight:800; }}
-    .batting-coach-reference span {{ color:#667085; font-size:12px; line-height:15px; font-weight:800; }}
+    .pitch-coach-reference {{ display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
+    .pitch-coach-reference b {{ color:#101828; font-size:12px; line-height:16px; font-weight:800; }}
+    .pitch-coach-reference span {{ color:#667085; font-size:12px; line-height:15px; font-weight:800; }}
     .compact-metrics {{ grid-template-columns:1fr; gap:18px; }}
     .compact-metrics .metric-card {{ padding:22px 26px; }}
     .compact-metrics .metric-card h4 {{ font-size:18px; line-height:23px; font-weight:800; }}

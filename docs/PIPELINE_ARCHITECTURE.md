@@ -156,4 +156,5 @@ Built separately:
 
 Current schema role constraint:
 
-- The final HTML builder still treats `julian` as the primary batting role and `coach` as the reference role in several filenames and copy blocks. For a new athlete, the immediate compatible path is to generate the metrics CSV with the primary athlete mapped to `sample_name=julian`, or to refactor `build_julian_coach_metrics_section.py` to accept role aliases.
+- The final HTML builder still treats `julian` as the primary batting role and `coach` as the reference role in several filenames and copy blocks. For a new athlete, the immediate compatible path is to generate the metrics CSV with the primary athlete mapped to `sample_name=julian`.
+- If this is later refactored to accept role aliases, keep the implementation inside the standard final-schema builder and validate the output against `baseball-analysis/reports/vicon_2026_julian_coach 4/julian_coach_metrics_section.html`. Do not keep alternate HTML builders in the repo until they match that standard template.
