@@ -858,10 +858,6 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
 
     <section class="section">
       <div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>
-      <div class="module-note">
-        <p class="module-note-cn">专项问题放在教练视角里：这里不再堆所有球员在球员视角的节点，而是把测试组均值、Coach 值、当前球员值和所有人节点集中展示，方便教练判断是否触发提醒。</p>
-        <p class="module-note-en">Coach view keeps the detailed comparison nodes, group mean, Coach value, and current-player reference for issue diagnosis.</p>
-      </div>
       <div class="grid issue-metrics">{coach_issue_cards(bundles, coach)}</div>
     </section>
 
@@ -1025,6 +1021,13 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     html_text = html_text.replace("优秀学员 Bryan", f"球员 {PLAYER_NAME}")
     html_text = html_text.replace("优秀学员 julian", f"球员 {PLAYER_SLUG}")
     html_text = html_text.replace("peer-dot julian", "peer-dot current-player")
+    html_text = re.sub(
+        r'(<div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>)\s*<div class="module-note">.*?</div>',
+        r'\1',
+        html_text,
+        count=1,
+        flags=re.DOTALL,
+    )
 
     player_color = PEER_COLORS.get(peer_key(PLAYER_KEY), BLUE)
 
