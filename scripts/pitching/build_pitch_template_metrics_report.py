@@ -5,6 +5,7 @@ import csv
 import html
 import json
 import math
+import re
 import shutil
 import subprocess
 import sys
@@ -881,6 +882,17 @@ def rewrite_legacy_template_html(html_text: str) -> str:
     html_text = html_text.replace("优秀学员 Bryan", f"球员 {PLAYER_NAME}")
     html_text = html_text.replace("优秀学员 julian", f"球员 {PLAYER_SLUG}")
     html_text = html_text.replace("peer-dot julian", "peer-dot current-player")
+    for filename in (f"{PLAYER_SLUG}_player_movement.gif", "coach_player_movement.gif"):
+        asset = ASSET_DIR / "vicon_reconstruction_events" / filename
+        if not asset.exists():
+            continue
+        relative_path = f"assets/vicon_reconstruction_events/{filename}"
+        versioned_path = f"{relative_path}?v={asset.stat().st_mtime_ns}"
+        html_text = re.sub(
+            rf"{re.escape(relative_path)}(?:\?v=[^\"']*)?",
+            versioned_path,
+            html_text,
+        )
     return html_text
 
 
