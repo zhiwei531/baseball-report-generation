@@ -9,14 +9,14 @@ For the exact image-by-image checklist in final report order, see `docs/FINAL_RE
 The supported report-generation entry is:
 
 ```bash
-python scripts/report_cli.py --config configs/default_report_pipeline.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
-It reads shared defaults from `configs/default_report_pipeline.json`. For a new player, copy that config, update the path and identity fields, then run:
+It reads the combined final config, which references the batting config and pitching inputs. For a new player, copy both configs, update the path and identity fields, then run:
 
 ```bash
-python scripts/report_cli.py \
-  --config configs/<player_slug>_report_pipeline.json
+python scripts/report_cli.py final \
+  --config configs/<player_slug>_final_report.json
 ```
 
 Individual builder commands below document provenance and are useful for debugging, but the config-driven wrapper is the production path.
@@ -37,14 +37,14 @@ Built separately by the pitching pipeline:
 - Pitching report sections and `pitch_assets/*`.
 - Pitching 2D overlay images, pitching metric illustrations, pitching kinetic-chain charts, and pitching Vicon event GIFs.
 
-Pitching assets are prepared outside the report CLI and referenced by `pitch_report` in the report config.
+Pitching is an independent client execution (`report_cli.py pitching`) and its current output is passed to the batting execution by `report_cli.py final`.
 
 ## Final HTML Builder
 
 Production wrapper:
 
 ```bash
-python scripts/report_cli.py --config configs/default_report_pipeline.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
 Lower-level builders called by the wrapper:
@@ -61,7 +61,7 @@ Lower-level builders called by the wrapper:
 Production command:
 
 ```bash
-python scripts/report_cli.py --config configs/default_report_pipeline.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
 Equivalent lower-level command:
@@ -143,7 +143,7 @@ node scripts/build_batting_metrics_xlsx.mjs
 Production wrapper:
 
 ```bash
-python scripts/report_cli.py --config configs/default_report_pipeline.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
 Output:
@@ -327,10 +327,10 @@ python scripts/pitching/build_pitch_template_metrics_report.py \
   --out-dir reports/pitching
 ```
 
-The batting staged pipeline accepts the built pitching report through the config field `pitch_report`:
+The `batting` execution consumes the freshly built pitching report from the final config:
 
 ```bash
-python scripts/report_cli.py --config configs/<player_slug>_report_pipeline.json
+python scripts/report_cli.py batting --config configs/<player_slug>_final_report.json
 ```
 
 The builder behavior is:

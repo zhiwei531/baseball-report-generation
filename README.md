@@ -7,7 +7,7 @@ assets into the batting report build.
 ## Standard entry
 
 ```bash
-python scripts/report_cli.py --config configs/final_report.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
 Start from `configs/final_report.example.json`, copy it to
@@ -19,6 +19,19 @@ from manually reviewed capture FPS and release frame.
 The referenced batting config must provide reviewed `video_capture_fps` and
 `video_event_frame`. Automatic event inference and prebuilt alignment folders
 are intentionally rejected: they are not part of the validated report path.
+
+## Client executions
+
+Clients may run the two report disciplines independently, then retry only the
+failed stage:
+
+```bash
+python scripts/report_cli.py pitching --config configs/final_report.json
+python scripts/report_cli.py batting --config configs/final_report.json
+```
+
+`batting` requires the `pitching` execution's `out_dir/index.html`. `final`
+is the convenience execution that runs those two stages in that order.
 
 ## Required 2D/Vicon sequence
 

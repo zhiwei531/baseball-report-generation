@@ -6,26 +6,28 @@
 
 | 目标 | 推荐命令 | 说明 |
 | --- | --- | --- |
-| 生成完整 batting / Vicon 报告 | `python scripts/report_cli.py --config configs/default_report_pipeline.json` | **当前正式入口**；按配置串联全部验证过的 batting stages。 |
-| 重新跑 batting 流程（调试编排） | `python scripts/run_batting_report_pipeline.py --config <config.json>` | 正式入口实际调用的编排脚本。通常应使用 `report_cli.py`。 |
+| 生成合并的 pitching + batting 交付 | `python scripts/report_cli.py final --config configs/final_report.json` | **当前正式入口**；顺序执行 pitching，再执行嵌入其产物的 batting。 |
+| 仅生成 pitching | `python scripts/report_cli.py pitching --config configs/final_report.json` | client 可独立触发或重试。 |
+| 仅生成 batting | `python scripts/report_cli.py batting --config configs/final_report.json` | 要求本次 pitching 产物已存在。 |
+| 重新跑 batting 流程（调试编排） | `python scripts/run_batting_report_pipeline.py --config <config.json>` | `batting` execution 实际调用的编排脚本。 |
 | 仅从 Vicon C3D 重建中间表和 3D 资产 | `python scripts/run_vicon_c3d_pipeline.py --input-dir ../vicon_2026` | 不会生成完整 HTML 报告。 |
 | 生成 pitching 模板报告 | `python scripts/pitching/build_pitch_template_metrics_report.py ...` | 与 batting pipeline 独立；参数与数据契约见 [`../docs/pitching/PITCHING_PIPELINE.md`](../docs/pitching/PITCHING_PIPELINE.md)。 |
 
-新球员报告应先复制并修改 `configs/default_report_pipeline.json`，使输出指向新的 `reports/vicon_2026_<player>_coach/` 目录。不要直接覆盖 Julian 的报告目录。
+新球员报告应先复制 `configs/final_report.example.json` 与其引用的 batting config，使输出指向新的 `reports/vicon_2026_<player>_coach/` 目录。不要直接覆盖 Julian 的报告目录。
 
 ## Batting / Vicon 正式流程
 
-`report_cli.py` → `run_batting_report_pipeline.py` 的主要顺序是：
+`report_cli.py final` 的主要顺序是：
 
 ```text
-C3D → Vicon CSV / 3D assets → batting event metrics → 3D event GIFs
+pitching HTML/assets → C3D → Vicon CSV / 3D assets → batting event metrics → 3D event GIFs
     → 2D-Vicon alignment → 2D skeleton overlay / 2D-vs-3D QA
     → Vicon-valued 2D metric annotations → HTML / charts → XLSX
 ```
 
 | 脚本 | 作用 | 主要输出 / 何时单独运行 |
 | --- | --- | --- |
-| `report_cli.py` | 完整 batting 报告的唯一支持入口；验证配置后启动 pipeline。 | 完整 report build。 |
+| `report_cli.py` | 公共 `pitching`、`batting` 与 `final` executions；`final` 负责顺序编排。 | 独立重试或完整 report build。 |
 | `run_batting_report_pipeline.py` | 按依赖顺序调用下列 builder，并传递 config 中的路径与样本名。 | 用于查看、调试或扩展完整流程。 |
 | `pipeline_config.py` | 读取、校验、标准化 pipeline JSON config 的共享库。 | **库文件，不直接运行**。 |
 | `run_vicon_c3d_pipeline.py` | C3D 子流程编排：抽取 Vicon 表并渲染 3D reconstruction assets。 | CSV、3D PNG/GIF；适合只重建 C3D 产物。 |
@@ -45,7 +47,7 @@ C3D → Vicon CSV / 3D assets → batting event metrics → 3D event GIFs
 
 ## Pitching 工具
 
-Pitching 目前不经 `report_cli.py` 自动执行；它是一条独立的模板报告和 2D 对齐路径。
+Pitching 通过 `report_cli.py pitching` 公开为独立 execution；`final` 会先调用同一执行路径，再启动 batting。
 
 | 脚本 | 作用 |
 | --- | --- |

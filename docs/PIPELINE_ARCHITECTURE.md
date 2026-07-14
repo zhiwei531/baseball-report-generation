@@ -33,7 +33,7 @@ The batting report builder accepts the independently built pitching HTML through
 The single final-deliverable entry builds pitching and then batting:
 
 ```bash
-python scripts/report_cli.py --config configs/final_report.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
 Start from `configs/final_report.example.json`. It references a batting pipeline
@@ -54,7 +54,7 @@ For a new player, copy both the final config and batting config, then update the
 batting C3D/video identity fields and pitching inputs:
 
 ```bash
-python scripts/report_cli.py \
+python scripts/report_cli.py final \
   --config configs/<player_slug>_final_report.json
 ```
 
@@ -94,7 +94,7 @@ hard-coded pitching output.
 | Pitching line-art annotation | `pitching/annotate_pitch_lineart_metrics.py` | pitch summary + line-art source dir | `assets/lineart_actions/*_metrics.png` |
 | Pitching chart utility | `pitching/generate_professional_pitch_charts.py` | pitch summary JSON | `assets/professional_pitch_charts/*.png` |
 | Vicon/video sync | `pitching/sync_vicon_video.py` | video/C3D pairs | `outputs/vicon_video_sync/*.json` |
-Individual builders are implementation details, not report entries. The report-generation contract is the config-driven `report_cli.py --config ...` command.
+Individual builders are implementation details, not report entries. The public report contract is the config-driven `report_cli.py pitching|batting|final --config ...` executions.
 
 ## Skip Flags
 

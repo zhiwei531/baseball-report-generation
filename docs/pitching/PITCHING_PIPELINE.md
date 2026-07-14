@@ -15,7 +15,7 @@ The `julian` and `coach` keys are currently schema roles, not required display n
 For a combined pitching + batting report, use the repository entry:
 
 ```bash
-python scripts/report_cli.py --config configs/final_report.json
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
 ## Lower-level pitching builder
