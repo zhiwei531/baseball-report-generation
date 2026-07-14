@@ -1,0 +1,17 @@
+{
+  "root_dir": ".",
+  "c3d_dir": "../vicon_2026",
+  "report_dir": "reports/vicon_2026_julian_coach",
+  "pitch_report": "../julian_pitch_template_report_2026-07-06/index.html",
+  "peers": "outputs/batting_metrics_excel/all_players",
+  "alignment_dir": null,
+  "video": null,
+  "c3d_file": null,
+  "mediapipe_model": "models/pose_landmarker_heavy.task",
+  "video_capture_fps": null,
+  "video_event_frame": null,
+  "ready_valid_start_frame": 770,
+  "xlsx_out_dir": "outputs/batting_metrics_excel",
+  "sample_name": "julian",
+  "trial_id": ""
+}

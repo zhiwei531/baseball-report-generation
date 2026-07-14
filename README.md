@@ -10,6 +10,7 @@ This repository intentionally contains only the scripts used by the current batt
 scripts/
   report_cli.py                              unified entry point
   run_batting_report_pipeline.py             staged batting report pipeline
+  pipeline_config.py                         shared config/path loader
   align_2d_video_vicon.py                    raw 2D video -> Vicon alignment
   render_aligned_2d_overlay.py               aligned 2D skeleton preview
   build_vicon_2026_metrics.py                C3D -> metrics/points/pose3d CSV
@@ -33,6 +34,31 @@ docs/
   REPORT_README.md
   vicon_batting_csv_to_report_metrics.md
 ```
+
+## Path Config
+
+Reusable pipeline paths are centralized in:
+
+```text
+configs/default_report_pipeline.json
+```
+
+`root_dir` is the shared base folder. Relative paths in the config are resolved from `root_dir`; if `root_dir` itself is relative, it is resolved from this repository root.
+
+For a new athlete/report, copy the default config and change only the paths/identity fields there:
+
+```json
+{
+  "root_dir": ".",
+  "c3d_dir": "../vicon_2026",
+  "report_dir": "reports/vicon_2026_<player_slug>_coach",
+  "video": "../vicon_2026/<player_slug>/Bat_2D.mp4",
+  "c3d_file": "../vicon_2026/<player_slug>/<batting_trial>.c3d",
+  "sample_name": "<player_slug>"
+}
+```
+
+CLI arguments always override config values, so one-off rebuilds can still pass `--report-dir`, `--video`, or other paths directly.
 
 ## Setup
 
@@ -71,19 +97,22 @@ These folders are ignored by Git except optional placeholder files.
 Preferred staged batting pipeline:
 
 ```bash
+python scripts/report_cli.py build-batting-report
+```
+
+Using a copied config:
+
+```bash
 python scripts/report_cli.py build-batting-report \
-  --c3d-dir ../vicon_2026 \
-  --alignment-dir outputs/julian_bat_2d_vicon_alignment
+  --config configs/<player_slug>_report_pipeline.json
 ```
 
 Raw 2D video alignment path:
 
 ```bash
 python scripts/report_cli.py build-batting-report \
-  --c3d-dir ../vicon_2026 \
   --video ../vicon_2026/julian/Bat_2D.mp4 \
-  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
-  --mediapipe-model models/pose_landmarker_heavy.task
+  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d"
 ```
 
 Build the full Vicon report:

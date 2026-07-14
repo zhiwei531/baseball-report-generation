@@ -6,14 +6,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pipeline_config import DEFAULT_CONFIG
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
-    print("+", " ".join(cmd))
-    subprocess.run(cmd, cwd=ROOT, check=True, env=env)
+    print("+", " ".join(str(item) for item in cmd))
+    subprocess.run([str(item) for item in cmd], cwd=ROOT, check=True, env=env)
 
 
 def plot_env() -> dict[str, str]:
@@ -149,21 +151,20 @@ def build_batting_report(args: argparse.Namespace) -> None:
     cmd = [
         PYTHON,
         "scripts/run_batting_report_pipeline.py",
-        "--c3d-dir",
-        args.c3d_dir,
-        "--report-dir",
-        args.report_dir,
-        "--pitch-report",
-        args.pitch_report,
-        "--peers",
-        args.peers,
-        "--sample-name",
-        args.sample_name,
-        "--ready-valid-start-frame",
-        args.ready_valid_start_frame,
-        "--xlsx-out-dir",
-        args.xlsx_out_dir,
+        "--config",
+        args.config,
     ]
+    for option, value in (
+        ("--c3d-dir", args.c3d_dir),
+        ("--report-dir", args.report_dir),
+        ("--pitch-report", args.pitch_report),
+        ("--peers", args.peers),
+        ("--sample-name", args.sample_name),
+        ("--ready-valid-start-frame", args.ready_valid_start_frame),
+        ("--xlsx-out-dir", args.xlsx_out_dir),
+    ):
+        if value is not None:
+            cmd.extend([option, value])
     if args.alignment_dir:
         cmd.extend(["--alignment-dir", args.alignment_dir])
     if args.video:
@@ -241,20 +242,21 @@ def main() -> None:
     p.set_defaults(func=export_html)
 
     p = sub.add_parser("build-batting-report", help="Run the staged batting report pipeline.")
-    p.add_argument("--c3d-dir", type=Path, default=ROOT.parent / "vicon_2026")
-    p.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
-    p.add_argument("--pitch-report", type=Path, default=ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html")
-    p.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
+    p.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="Pipeline config JSON with shared root/path defaults.")
+    p.add_argument("--c3d-dir", type=Path, default=None)
+    p.add_argument("--report-dir", type=Path, default=None)
+    p.add_argument("--pitch-report", type=Path, default=None)
+    p.add_argument("--peers", type=Path, default=None)
     p.add_argument("--alignment-dir", type=Path, default=None)
     p.add_argument("--video", type=Path, default=None)
     p.add_argument("--c3d-file", type=Path, default=None)
     p.add_argument("--mediapipe-model", type=Path, default=None)
     p.add_argument("--video-capture-fps", type=float, default=None)
     p.add_argument("--video-event-frame", type=int, default=None)
-    p.add_argument("--ready-valid-start-frame", type=int, default=770)
-    p.add_argument("--xlsx-out-dir", type=Path, default=ROOT / "outputs" / "batting_metrics_excel")
-    p.add_argument("--sample-name", default="julian")
-    p.add_argument("--trial-id", default="")
+    p.add_argument("--ready-valid-start-frame", type=int, default=None)
+    p.add_argument("--xlsx-out-dir", type=Path, default=None)
+    p.add_argument("--sample-name", default=None)
+    p.add_argument("--trial-id", default=None)
     p.add_argument("--skip-c3d", action="store_true")
     p.add_argument("--skip-reconstruction", action="store_true")
     p.add_argument("--skip-2d", action="store_true")

@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pipeline_config import DEFAULT_CONFIG, load_pipeline_config
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
@@ -210,24 +212,48 @@ def xlsx_stage(args: argparse.Namespace, metrics: Path) -> None:
     run(["node", "scripts/build_batting_metrics_xlsx.mjs"], env=env)
 
 
+def apply_config_defaults(args: argparse.Namespace) -> None:
+    config = load_pipeline_config(args.config)
+    configurable = (
+        "c3d_dir",
+        "report_dir",
+        "pitch_report",
+        "peers",
+        "alignment_dir",
+        "video",
+        "c3d_file",
+        "mediapipe_model",
+        "video_capture_fps",
+        "video_event_frame",
+        "ready_valid_start_frame",
+        "xlsx_out_dir",
+        "sample_name",
+        "trial_id",
+    )
+    for name in configurable:
+        if getattr(args, name) is None:
+            setattr(args, name, getattr(config, name))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build the batting report from Vicon C3D plus aligned 2D video inputs."
     )
-    parser.add_argument("--c3d-dir", type=Path, default=ROOT.parent / "vicon_2026")
-    parser.add_argument("--report-dir", type=Path, default=ROOT / "reports" / "vicon_2026_julian_coach")
-    parser.add_argument("--pitch-report", type=Path, default=ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html")
-    parser.add_argument("--peers", type=Path, default=ROOT / "outputs" / "batting_metrics_excel" / "all_players")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="Pipeline config JSON with shared root/path defaults.")
+    parser.add_argument("--c3d-dir", type=Path, default=None)
+    parser.add_argument("--report-dir", type=Path, default=None)
+    parser.add_argument("--pitch-report", type=Path, default=None)
+    parser.add_argument("--peers", type=Path, default=None)
     parser.add_argument("--alignment-dir", type=Path, default=None)
     parser.add_argument("--video", type=Path, default=None)
     parser.add_argument("--c3d-file", type=Path, default=None, help="Single batting C3D used for 2D/Vicon alignment.")
     parser.add_argument("--mediapipe-model", type=Path, default=None)
     parser.add_argument("--video-capture-fps", type=float, default=None)
     parser.add_argument("--video-event-frame", type=int, default=None)
-    parser.add_argument("--ready-valid-start-frame", type=int, default=770)
-    parser.add_argument("--xlsx-out-dir", type=Path, default=ROOT / "outputs" / "batting_metrics_excel")
-    parser.add_argument("--sample-name", default="julian")
-    parser.add_argument("--trial-id", default="")
+    parser.add_argument("--ready-valid-start-frame", type=int, default=None)
+    parser.add_argument("--xlsx-out-dir", type=Path, default=None)
+    parser.add_argument("--sample-name", default=None)
+    parser.add_argument("--trial-id", default=None)
 
     parser.add_argument("--skip-c3d", action="store_true")
     parser.add_argument("--skip-reconstruction", action="store_true")
@@ -238,6 +264,7 @@ def main() -> None:
     parser.add_argument("--require-2d", action="store_true")
     parser.add_argument("--require-static-assets", action="store_true")
     args = parser.parse_args()
+    apply_config_defaults(args)
 
     args.report_dir.mkdir(parents=True, exist_ok=True)
     if not args.skip_c3d:

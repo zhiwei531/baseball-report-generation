@@ -14,11 +14,14 @@ import mediapipe as mp
 from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python import vision
 
+from pipeline_config import load_pipeline_config
+
 
 ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = ROOT.parents[0]
-DEFAULT_MODEL = PROJECT_ROOT / "models" / "pose_landmarker_heavy.task"
-DEFAULT_OUT = PROJECT_ROOT / "outputs" / "aligned_2d_vicon"
+PIPELINE_DEFAULTS = load_pipeline_config()
+DEFAULT_MODEL = PIPELINE_DEFAULTS.mediapipe_model or PROJECT_ROOT / "models" / "pose_landmarker_heavy.task"
+DEFAULT_OUT = PIPELINE_DEFAULTS.report_dir / "alignment_2d"
 
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:

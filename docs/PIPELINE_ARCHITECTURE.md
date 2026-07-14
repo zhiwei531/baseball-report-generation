@@ -20,23 +20,38 @@ Pitching remains an external interface. The batting report builder accepts a tea
 Preferred command:
 
 ```bash
-python scripts/run_batting_report_pipeline.py \
-  --c3d-dir ../vicon_2026 \
-  --alignment-dir outputs/julian_bat_2d_vicon_alignment \
-  --pitch-report ../julian_pitch_template_report_2026-07-06/index.html
+python scripts/report_cli.py build-batting-report
+```
+
+The staged pipeline reads shared defaults from:
+
+```text
+configs/default_report_pipeline.json
+```
+
+Path rules:
+
+- `root_dir` is the shared base folder for the pipeline.
+- Relative path fields are resolved from `root_dir`.
+- A relative `root_dir` is resolved from the repository root.
+- CLI arguments override config values.
+
+For a new player, copy the default config and update `c3d_dir`, `report_dir`, `video`, `c3d_file`, `sample_name`, and optional `trial_id`:
+
+```bash
+python scripts/report_cli.py build-batting-report \
+  --config configs/<player_slug>_report_pipeline.json
 ```
 
 When a prepared 2D alignment folder is not available, the MediaPipe alignment stage can be used directly:
 
 ```bash
-python scripts/run_batting_report_pipeline.py \
-  --c3d-dir ../vicon_2026 \
+python scripts/report_cli.py build-batting-report \
   --video ../vicon_2026/julian/Bat_2D.mp4 \
-  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
-  --mediapipe-model models/pose_landmarker_heavy.task
+  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d"
 ```
 
-The raw-video path requires the MediaPipe task model file. The `mediapipe` Python package is part of the main requirements.
+The raw-video path requires the MediaPipe task model file. Its default path comes from the config field `mediapipe_model`. The `mediapipe` Python package is part of the main requirements.
 
 ## Stages
 
@@ -54,6 +69,8 @@ The raw-video path requires the MediaPipe task model file. The `mediapipe` Pytho
 | HTML schema | `build_julian_coach_metrics_section.py` | metrics + assets + optional pitching HTML | `julian_coach_metrics_section.html` |
 | Final polish | `apply_batting_coach_values.py` | HTML + metrics + peer XLSX folder | final schema HTML and refreshed researcher charts |
 | XLSX | `build_batting_metrics_xlsx.mjs` | metrics CSV | `*_batting_report_metrics.xlsx` |
+
+Individual builders still expose fallback defaults for local debugging. The report-generation contract is the config-driven `build-batting-report` entry; that command passes concrete paths into builders so reusable report builds do not depend on scattered script-local defaults.
 
 ## Skip Flags
 
