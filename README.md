@@ -1,56 +1,70 @@
 # baseball-report-generation
 
-This repository produces a combined pitching + batting final deliverable. The
-single supported entry builds pitching first, then passes its generated HTML and
-assets into the batting report build.
+Generate one Vicon baseball deliverable containing pitching and batting. The
+only supported report entry is `scripts/report_cli.py`; it always builds
+pitching before embedding its assets in the batting report.
 
-## Standard entry
+## Run a report
 
-```bash
-python scripts/report_cli.py final --config configs/final_report.json
-```
-
-Start from `configs/final_report.example.json`, copy it to
-`configs/final_report.json`, and update both the batting config reference and
-the pitching manifest/template/alignment inputs. The optional
-`pitching.alignment` block generates the pitching 2D-video/Vicon-3D QA assets
-from manually reviewed capture FPS and release frame.
-
-The referenced batting config must provide reviewed `video_capture_fps` and
-`video_event_frame`. Automatic event inference and prebuilt alignment folders
-are intentionally rejected: they are not part of the validated report path.
-
-## Client executions
-
-Clients may run the two report disciplines independently, then retry only the
-failed stage:
+From this repository, use the project virtual environment and a player-specific
+final config:
 
 ```bash
-python scripts/report_cli.py pitching --config configs/final_report.json
-python scripts/report_cli.py batting --config configs/final_report.json
+MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
+XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
+../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+  --config configs/<player_slug>_final_report.json
 ```
 
-`batting` requires the `pitching` execution's `out_dir/index.html`. `final`
-is the convenience execution that runs those two stages in that order.
-
-## Required 2D/Vicon sequence
+Copy `configs/final_report.example.json` and its referenced batting config to
+player-specific files. Set distinct output directories:
 
 ```text
-C3D -> metrics -> MediaPipe landmarks -> reviewed event alignment
-    -> clean MediaPipe skeleton overlay -> 2D-vs-Vicon-3D QA comparison
-    -> Vicon-valued Ready/Contact geometry annotations -> HTML -> XLSX
+reports/pitching_<player_slug>_coach/
+reports/vicon_2026_<player_slug>_coach/
 ```
 
-The standard overlay is an actual MediaPipe skeleton rendered on the source
-video. It contains no title, timestamp, caption, alignment label, or event
-border, so event-frame exports are exactly matched pairs: one raw 2D frame and
-one clean 2D+skeleton-overlay frame. QA metadata is opt-in with
-`render_aligned_2d_overlay.py --show-alignment-metadata`.
+The checked-in Bryan trio is a working config example:
 
-Before rebuilding 2D assets, the pipeline removes its prior generated alignment, geometry-annotation, and QA-comparison folders. A failed rebuild cannot leave the report pointing at a prior player's screenshots.
+```text
+configs/generated/bryan_final_report.json
+configs/generated/bryan_coach_batting_pipeline.json
+configs/generated/bryan_coach_pitching_manifest.json
+```
 
-For the Julian reference trial, Vicon `bat_speed_peak` frame 854 is manually mapped to video frame 184. The video is 240 fps at capture and approximately 29.48 fps at playback.
+The batting config requires reviewed `video_capture_fps` and
+`video_event_frame`. Configure `pitching.alignment` in the final config when
+matching pitching video, C3D, model, and reviewed release frame are available.
+Do not infer these timing inputs during report generation.
 
-The report entry owns cross-discipline orchestration. Individual batting and
-pitching scripts remain implementation details, preventing a stale hard-coded
-pitching report from being embedded in a newly generated batting deliverable.
+## Retry scopes
+
+Use only the public CLI executions below. `batting` requires the current
+`pitching.out_dir/index.html`; use `final` whenever a change affects both
+disciplines, timing, assets, or the merged deliverable.
+
+```bash
+../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py pitching \
+  --config configs/<player_slug>_final_report.json
+
+../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py batting \
+  --config configs/<player_slug>_final_report.json
+```
+
+The lower-level builders in `scripts/` are implementation details for focused
+debugging only; they are not report-generation entries and must not be used to
+hand off a combined report.
+
+## Report guarantees
+
+- Displayed biomechanics metrics come from Vicon C3D-derived data; 2D pose is
+  used for alignment and visual overlays only.
+- Pitching hand speed is a hand-marker proxy reported in `km/h`, not ball
+  speed.
+- Pitching flow and researcher assets are generated per player and rebound to
+  the active player when an existing template is reused.
+- Validate the generated combined HTML, pitching HTML, researcher PNGs,
+  alignment assets (when configured), and XLSX before handoff.
+
+See [scripts/README.md](scripts/README.md) for the public command contract and
+the packaged `skills/vicon-coach-report/` for the operational workflow.

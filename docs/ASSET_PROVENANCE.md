@@ -318,18 +318,12 @@ pitch_assets/
   lineart_actions/
 ```
 
-This repository generates those assets through the independent pitching command:
+This repository generates those assets through the public pitching execution.
+Run the final execution for a complete deliverable, or run pitching then batting
+only to retry a known isolated stage:
 
 ```bash
-python scripts/pitching/build_pitch_template_metrics_report.py \
-  --manifest configs/pitching/manifest.json \
-  --template-dir reports/pitching_template \
-  --out-dir reports/pitching
-```
-
-The `batting` execution consumes the freshly built pitching report from the final config:
-
-```bash
+python scripts/report_cli.py pitching --config configs/<player_slug>_final_report.json
 python scripts/report_cli.py batting --config configs/<player_slug>_final_report.json
 ```
 
@@ -340,4 +334,7 @@ The builder behavior is:
 3. Rewrite pitching section asset paths from `assets/...` to `pitch_assets/...`.
 4. Embed the pitching sections into the final combined schema.
 
-The pitching build should guarantee that `index.html` and sibling `assets/` contain the directories listed above. Keep `--out-dir` separate from the batting `report_dir`; the batting builder copies pitching assets into its own `pitch_assets/` folder during integration.
+The pitching execution guarantees that `index.html` and sibling `assets/`
+contain the directories listed above. Keep `pitching.out_dir` separate from the
+batting `report_dir`; the batting execution copies pitching assets into its own
+`pitch_assets/` folder during integration.

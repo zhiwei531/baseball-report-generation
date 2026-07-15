@@ -5,7 +5,9 @@ description: Build, repair, standardize, or regenerate the config-driven Vicon b
 
 # Vicon Coach Report
 
-Use the repository’s public report entry, not individual HTML builders, for a complete deliverable. Read `references/report-format.md` before changing a report contract, report inputs, researcher assets, or validation rules.
+Use `scripts/report_cli.py` as the only report-generation entry. Read
+`references/report-format.md` before changing a report contract, report inputs,
+researcher assets, or validation rules.
 
 ## Scope and safety
 
@@ -17,11 +19,11 @@ Use the repository’s public report entry, not individual HTML builders, for a 
 
 ## Configure a new athlete
 
-1. Copy `configs/final_report.example.json` and `configs/default_report_pipeline.json` to player-specific JSON files.
-2. In the batting config, set `report_dir`, `pitch_report`, player/coach sample names, the batting C3D/video/model paths, reviewed video timing, and `xlsx_out_dir`.
-3. Create a pitching manifest containing one `role: student` and one `key: coach`; C3D paths are resolved relative to that manifest.
-4. In the final config, reference the batting config and set pitching `manifest`, `template_dir`, and a separate `out_dir`. Add `pitching.alignment` only when its raw pitch video and reviewed event frame are available.
-5. Confirm all paths resolve before a full run.
+1. Copy `configs/final_report.example.json` and its referenced batting config to player-specific JSON files.
+2. In the batting config, set `report_dir`, player/coach sample names, batting C3D/video/model paths, reviewed video timing, and `xlsx_out_dir`.
+3. Create a pitching manifest containing one `role: student` and one `key: coach`; C3D paths resolve relative to that manifest.
+4. In the final config, reference the batting config and set pitching `manifest`, `template_dir`, and a separate `out_dir`. Add `pitching.alignment` only with matching raw pitch video/C3D/model plus reviewed FPS and release frame.
+5. Confirm all paths resolve and that the two output directories are distinct before a full run.
 
 The Bryan trio is a working example:
 
@@ -42,7 +44,10 @@ XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
   --config configs/<player_slug>_final_report.json
 ```
 
-Use `pitching` to rebuild only `reports/pitching_<player_slug>_coach/`; use `batting` only after a current pitching `index.html` exists. Add `--skip-pitching-alignment` only when no validated pitching 2D input is configured. Do not use low-level builders as a substitute for a complete report run.
+Use `pitching` to rebuild only `reports/pitching_<player_slug>_coach/`; use
+`batting` only after a current pitching `index.html` exists. Add
+`--skip-pitching-alignment` only when no validated pitching 2D input is
+configured. Do not invoke low-level builders as a report entry.
 
 The final execution is ordered as:
 
@@ -57,14 +62,19 @@ pitching HTML/assets + researcher charts
 
 Use these only after the relevant upstream artifacts exist:
 
-- Change a pitching metric/card/researcher chart: run `report_cli.py pitching`, then `report_cli.py batting` (or the final entry) to refresh the embedded `pitch_assets/`.
-- Change batting HTML/card copy or legend order: run `scripts/run_batting_report_pipeline.py --config <batting-config> --pitch-report <pitch-index>`; retain the normal HTML-polish and XLSX stages.
-- Change 2D geometry or a reviewed event frame: run the final entry so alignment, overlay, geometry annotations, HTML, and XLSX remain consistent.
+- Change a pitching metric/card/researcher chart: run `report_cli.py pitching`, then `report_cli.py batting` (or `final`) to refresh embedded `pitch_assets/`.
+- Change batting HTML/card copy or legend order: run `report_cli.py batting` after a current pitching build; use `final` if any shared assets or inputs changed.
+- Change 2D geometry or a reviewed event frame: run `final` so alignment, overlay, geometry annotations, HTML, and XLSX remain consistent.
 - Use `--skip-c3d`, `--skip-reconstruction`, `--skip-2d`, or `--skip-illustrations` only for a deliberate partial rebuild with known-good retained inputs. Never use partial flags to conceal a missing required artifact.
 
 ## Validate before handoff
 
-Verify the combined HTML, pitching HTML, batting metrics CSV, alignment summary/2D geometry outputs when configured, all researcher PNGs, and the XLSX are non-empty. Confirm relative `pitch_assets/` links resolve in the combined report. Inspect researcher charts visually when labels, fonts, axes, or layout change.
+Verify the combined HTML, pitching HTML, batting metrics CSV, alignment
+summary/2D geometry outputs when configured, all researcher PNGs, and XLSX are
+non-empty. Confirm relative `pitch_assets/` links resolve in the combined
+report. Inspect researcher charts visually when labels, fonts, axes, or layout
+change. Confirm every pitching researcher asset uses the active player slug;
+never retain a prior athlete's flow, timing, angle, or speed curve.
 
 For player and coach cards, require Chinese metric names, matching English metric subtitles, `乐风U9同组表现` group labels, and the shared peer legend order/colors. Search generated pitching HTML for stale labels (`m/s`, `hand_speed_mps`, `手臂槽位`, `右腿蹬地伸展线索`, `同组区间`) before delivery.
 

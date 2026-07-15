@@ -1,71 +1,56 @@
 # Pitching Vicon Report Pipeline
 
-This contribution fills the pitching interface previously documented in this repository. It uploads scripts only; raw C3D files, athlete videos, generated images, and report outputs remain ignored.
+Pitching is a public execution of the config-driven report CLI, not a separate
+hand-off entry. It consumes a pitching manifest, a reusable template directory,
+and an isolated pitching output directory from the final-report config.
 
-## Inputs
-
-- A report template directory containing `index.html` and `assets/`.
-- A JSON manifest containing one primary athlete (`key: julian`), one coach reference (`key: coach`), and optional peer athletes.
-- C3D paths referenced by the manifest. Relative paths resolve from the manifest file.
-
-The `julian` and `coach` keys are currently schema roles, not required display names. Display names come from the manifest.
-
-## Final deliverable command
-
-For a combined pitching + batting report, use the repository entry:
+## Supported commands
 
 ```bash
-python scripts/report_cli.py final --config configs/final_report.json
+python scripts/report_cli.py pitching \
+  --config configs/<player_slug>_final_report.json
+
+python scripts/report_cli.py final \
+  --config configs/<player_slug>_final_report.json
 ```
 
-## Lower-level pitching builder
+Use `pitching` to rebuild or retry pitching alone. Use `final` to produce a
+complete report or when the rebuilt pitching assets must be merged into batting.
+Do not invoke `build_pitch_template_metrics_report.py` or chart utilities as a
+deliverable entry; the CLI invokes them in the required order and validates the
+researcher outputs.
 
-```bash
-python scripts/pitching/build_pitch_template_metrics_report.py \
-  --manifest configs/pitching/manifest.json \
-  --template-dir reports/pitching_template \
-  --out-dir reports/pitching
-```
+## Config contract
 
-Keep `--out-dir` separate from the batting report directory. To combine pitching into batting, build pitching first, then pass `reports/pitching/index.html` to the batting pipeline through `pitch_report` or `--pitch-report`.
-
-The builder uses the repository's existing `build_vicon_2026_metrics.py` C3D reader and `render_vicon_reconstruction_images.py` renderer. It writes:
+The final config requires:
 
 ```text
-reports/pitching/index.html
-reports/pitching/pitch_metrics_all_players.csv
-reports/pitching/pitch_metrics_summary.json
-reports/pitching/assets/frontend_metric_illustrations_pitch/
-reports/pitching/assets/kinetic_chain/
-reports/pitching/assets/vicon_reconstruction_events/
+pitching.manifest       # one role: student, one key: coach; relative C3D paths resolve from this file
+pitching.template_dir   # existing HTML/assets template to personalize
+pitching.out_dir        # reports/pitching_<player_slug>_coach/
 ```
 
-To annotate three prepared line-art images with computed values:
+Optionally provide `pitching.alignment` only with a matching raw video, C3D,
+MediaPipe model, reviewed capture FPS, and reviewed release frame. Its output
+must be separate from the combined batting report directory.
 
-```bash
-python scripts/pitching/annotate_pitch_lineart_metrics.py \
-  --summary reports/pitching/pitch_metrics_summary.json \
-  --asset-dir reports/pitching/assets/lineart_actions \
-  --athlete-key julian
+## Outputs
+
+```text
+reports/pitching_<player_slug>_coach/
+  index.html
+  pitch_metrics_all_players.csv
+  pitch_metrics_summary.json
+  assets/kinetic_chain/<player_slug>_pitch_kinetic_chain_flow.png
+  assets/kinetic_chain/<player_slug>_kinetic_chain_time_curves.png
+  assets/analyst_charts/<player_slug>_pitch_angle_time_curve.png
+  assets/analyst_charts/<player_slug>_pitch_speed_time_curve.png
 ```
 
-To generate publication-style presentation charts:
+When alignment is configured, the CLI also creates three Vicon-valued event
+overlay cards under `assets/video_2d_alignment/`. Hand speed is displayed in
+`km/h` as a hand-marker proxy, not ball speed. The metric flow is rear leg →
+pelvis → trunk → throwing arm → hand.
 
-```bash
-python scripts/pitching/generate_professional_pitch_charts.py \
-  --summary reports/pitching/pitch_metrics_summary.json \
-  --out-dir reports/pitching/assets/professional_pitch_charts \
-  --athlete-key julian
-```
-
-The chart utility reconstructs smooth presentation curves from event anchors and summary metrics. These are not raw frame-by-frame time series and must be labeled accordingly.
-
-The public `report_cli.py pitching` execution fails closed after generating the two researcher curves, the kinetic-chain timing curve, and—when pitching alignment is configured—three report-ready 2D/Vicon event overlays. The lower-level alignment wrapper is documented in `docs/pitching/PITCHING_VICON_2D_ALIGNMENT.md`.
-
-## Event and metric limitations
-
-- Front-foot plant is approximated from foot marker height and speed.
-- Release is approximated from throwing-hand marker speed after foot plant.
-- Hand speed is not ball speed.
-- Coach values are technical references, not universal youth targets.
-- Medical or injury-risk conclusions are outside this pipeline.
+See [PITCHING_VICON_2D_ALIGNMENT.md](PITCHING_VICON_2D_ALIGNMENT.md) for the
+isolated alignment QA helper; use the public CLI for report builds.
