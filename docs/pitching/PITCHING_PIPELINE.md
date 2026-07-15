@@ -60,7 +60,7 @@ python scripts/pitching/generate_professional_pitch_charts.py \
 
 The chart utility reconstructs smooth presentation curves from event anchors and summary metrics. These are not raw frame-by-frame time series and must be labeled accordingly.
 
-To generate pitching 2D-video / Vicon-3D alignment QA assets, use the dedicated lower-level wrapper documented in `docs/pitching/PITCHING_VICON_2D_ALIGNMENT.md`. It requires reviewed slow-motion capture FPS and reviewed release frame, then writes the 2D skeleton overlay plus the side-by-side 2D-vs-3D comparison assets.
+The public `report_cli.py pitching` execution fails closed after generating the two researcher curves, the kinetic-chain timing curve, and—when pitching alignment is configured—three report-ready 2D/Vicon event overlays. The lower-level alignment wrapper is documented in `docs/pitching/PITCHING_VICON_2D_ALIGNMENT.md`.
 
 ## Event and metric limitations
 

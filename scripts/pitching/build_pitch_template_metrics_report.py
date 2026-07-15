@@ -1021,6 +1021,11 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     html_text = html_text.replace("优秀学员 Bryan", f"球员 {PLAYER_NAME}")
     html_text = html_text.replace("优秀学员 julian", f"球员 {PLAYER_SLUG}")
     html_text = html_text.replace("peer-dot julian", "peer-dot current-player")
+    for event_key in ("peak_knee", "foot_plant", "release"):
+        html_text = html_text.replace(
+            f"assets/vicon_2d_geometry_annotations/{event_key}_position_vicon_geometry_on_2d.png",
+            f"assets/video_2d_alignment/{PLAYER_SLUG}_pitch_{event_key}_2d_overlay.png",
+        )
     html_text = re.sub(
         r'(<div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>)\s*<div class="module-note">.*?</div>',
         r'\1',

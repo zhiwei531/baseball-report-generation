@@ -78,8 +78,28 @@ def execution_env() -> dict[str, str]:
     return env
 
 
+def pitching_player_key(manifest_path: Path) -> str:
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    rows = data.get("athletes") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        raise ValueError(f"Pitching manifest does not contain an athletes list: {manifest_path}")
+    for row in rows:
+        if isinstance(row, dict) and row.get("role") == "student":
+            key = str(row.get("key") or "").strip()
+            if key and key != "coach":
+                return key
+    raise ValueError(f"Pitching manifest does not contain a student athlete: {manifest_path}")
+
+
+def require_outputs(paths: list[Path], stage: str) -> None:
+    missing = [str(path) for path in paths if not path.is_file()]
+    if missing:
+        raise RuntimeError(f"{stage} did not produce required outputs: {', '.join(missing)}")
+
+
 def execute_pitching(config: FinalReportConfig, *, skip_alignment: bool) -> None:
     env = execution_env()
+    player_key = pitching_player_key(config.pitching_manifest)
     command = [
         sys.executable,
         "scripts/pitching/build_pitch_template_metrics_report.py",
@@ -93,16 +113,39 @@ def execute_pitching(config: FinalReportConfig, *, skip_alignment: bool) -> None
     if not config.pitch_html.is_file():
         raise RuntimeError(f"Pitching execution did not produce its required HTML: {config.pitch_html}")
 
+    analyst_dir = config.pitching_out_dir / "assets" / "analyst_charts"
+    kinetic_dir = config.pitching_out_dir / "assets" / "kinetic_chain"
+    run(
+        [
+            sys.executable,
+            "scripts/pitching/generate_professional_pitch_charts.py",
+            "--summary", config.pitching_out_dir / "pitch_metrics_summary.json",
+            "--out-dir", analyst_dir,
+            "--kinetic-out-dir", kinetic_dir,
+            "--athlete-key", player_key,
+        ],
+        env=env,
+    )
+    require_outputs(
+        [
+            analyst_dir / f"{player_key}_pitch_angle_time_curve.png",
+            analyst_dir / f"{player_key}_pitch_speed_time_curve.png",
+            kinetic_dir / f"{player_key}_kinetic_chain_time_curves.png",
+        ],
+        "pitching researcher charts",
+    )
+
     alignment = config.pitching_alignment
     if alignment is None or skip_alignment:
         return
+    alignment_out_dir = resolve_path(required(alignment, "out_dir"), root=config.root)
     command = [
         sys.executable,
         "scripts/pitching/run_vicon_2d_alignment.py",
         "--video", resolve_path(required(alignment, "video"), root=config.root),
         "--c3d", resolve_path(required(alignment, "c3d"), root=config.root),
         "--model", resolve_path(required(alignment, "model"), root=config.root),
-        "--out-dir", resolve_path(required(alignment, "out_dir"), root=config.root),
+        "--out-dir", alignment_out_dir,
         "--player-slug", required(alignment, "player_slug"),
         "--player-label", required(alignment, "player_label"),
         "--video-capture-fps", str(alignment["video_capture_fps"]),
@@ -112,6 +155,27 @@ def execute_pitching(config: FinalReportConfig, *, skip_alignment: bool) -> None
         if key in alignment:
             command.extend(["--" + key.replace("_", "-"), str(alignment[key])])
     run(command, env=env)
+    geometry_dir = config.pitching_out_dir / "assets" / "video_2d_alignment"
+    run(
+        [
+            sys.executable,
+            "scripts/pitching/render_pitch_event_overlays.py",
+            "--alignment-dir", alignment_out_dir / "alignment",
+            "--pitch-summary", config.pitching_out_dir / "pitch_metrics_summary.json",
+            "--athlete-key", player_key,
+            "--out-dir", geometry_dir,
+        ],
+        env=env,
+    )
+    require_outputs(
+        [
+            geometry_dir / f"{player_key}_pitch_peak_knee_2d_overlay.png",
+            geometry_dir / f"{player_key}_pitch_foot_plant_2d_overlay.png",
+            geometry_dir / f"{player_key}_pitch_release_2d_overlay.png",
+            geometry_dir / "pitch_event_overlay_provenance.json",
+        ],
+        "pitching event geometry overlays",
+    )
 
 
 def execute_batting(config: FinalReportConfig) -> None:
