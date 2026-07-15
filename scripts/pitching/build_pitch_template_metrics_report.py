@@ -1089,7 +1089,10 @@ def inject_pitch_card_styles(html_text: str) -> str:
     css = f"""
     {marker}
     .compact-metrics.two-column-metrics {{ grid-template-columns:repeat(2,minmax(0,1fr)); }}
-    .two-column-metrics .metric-card {{ grid-template-columns:minmax(100px,126px) minmax(104px,132px) minmax(0,1fr); min-height:304px; padding:20px; gap:12px; overflow:hidden; }}
+    /* Height-ratio endpoints need extra room.  Tighten the summary/illustration
+       columns and side padding so the visual and explanatory copy sit left of
+       the card edge instead of being clipped on narrower report canvases. */
+    .two-column-metrics .metric-card {{ grid-template-columns:minmax(94px,110px) minmax(94px,116px) minmax(0,1fr); min-height:304px; padding:18px 16px; gap:8px; overflow:hidden; }}
     .two-column-metrics .metric-card h4 {{ font-size:17px; line-height:22px; }}
     .two-column-metrics .metric-value {{ font-size:34px; }}
     .two-column-metrics .metric-detail {{ gap:8px; }}
@@ -1099,6 +1102,7 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .peer-range.height-ratio-range .peer-min,.peer-range.height-ratio-range .peer-max,.peer-range:has(.unit-stack) .peer-min,.peer-range:has(.unit-stack) .peer-max {{ min-width:48px; white-space:normal; }}
     .peer-range.height-ratio-range .unit-stack,.peer-range:has(.unit-stack) .unit-stack {{ display:inline-grid; gap:2px; line-height:1.05; justify-items:center; text-align:center; }}
     .peer-range.height-ratio-range .unit-number,.peer-range.height-ratio-range .unit-label,.peer-range:has(.unit-stack) .unit-number,.peer-range:has(.unit-stack) .unit-label {{ display:block; white-space:nowrap; }}
+    .coach-issue-card {{ grid-template-columns:minmax(148px,.62fr) minmax(176px,270px) minmax(0,1.2fr); gap:16px; padding:20px 16px; }}
     .analyst-chart-grid {{ grid-template-columns:1fr; }}
     /* The pitching flow now shares batting's compact five-node layout. */
     .kinetic-chain-figure img {{ aspect-ratio:1600/360; }}
