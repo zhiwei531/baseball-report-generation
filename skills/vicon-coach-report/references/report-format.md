@@ -44,6 +44,8 @@ player/coach card, comparison pill, range endpoint, issue summary, and event
 overlay: render `79.4%身高比`, never a bare `79.4%`. The four 3D
 reconstruction captions must likewise identify `球员<实际球员名>` or `阿楽教练`;
 do not show generic labels or template-editing instructions.
+For progress-range endpoints, put the numeric percentage on the first line
+and `身高比` on the second line, so the labels never overlap the slider.
 
 Researcher chart captions and nearby explanatory copy must use coaching
 language. Do not expose `C3D`, `marker`, or other implementation provenance in

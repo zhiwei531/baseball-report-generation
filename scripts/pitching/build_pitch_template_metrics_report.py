@@ -721,12 +721,19 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
             pos = max(0, min(100, (val - mn) / span * 100))
             color = PEER_COLORS.get(peer_key(b.key), MID)
             dots.append(f'<span class="peer-dot" style="left:{pos:.2f}%; background:{color}" title="{esc(b.name)}: {esc(fmt(val, unit))}"></span>')
+    range_class = "peer-range height-ratio-range" if unit == "pct" else "peer-range"
+    endpoint = lambda value: (
+        f'<span class="unit-stack"><span class="unit-number">{value:.1f}%</span>'
+        '<span class="unit-label">身高比</span></span>'
+        if unit == "pct"
+        else esc(fmt(value, unit))
+    )
     return f"""
-      <div class="peer-range">
+      <div class="{range_class}">
         <div class="peer-label">乐风U9同组表现</div>
-        <div class="peer-min">{esc(fmt(mn, unit))}</div>
+        <div class="peer-min">{endpoint(mn)}</div>
         <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span>{''.join(dots)}</div>
-        <div class="peer-max">{esc(fmt(mx, unit))}</div>
+        <div class="peer-max">{endpoint(mx)}</div>
       </div>
     """
 
@@ -1088,6 +1095,10 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .two-column-metrics .metric-detail {{ gap:8px; }}
     .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:20px; }}
     .two-column-metrics .peer-range {{ grid-template-columns:max-content 34px minmax(52px,76px) 34px; gap:6px; max-width:100%; justify-self:start; }}
+    .peer-range.height-ratio-range,.peer-range:has(.unit-stack) {{ grid-template-columns:max-content minmax(48px,max-content) minmax(72px,1fr) minmax(48px,max-content); align-items:center; }}
+    .peer-range.height-ratio-range .peer-min,.peer-range.height-ratio-range .peer-max,.peer-range:has(.unit-stack) .peer-min,.peer-range:has(.unit-stack) .peer-max {{ min-width:48px; white-space:normal; }}
+    .peer-range.height-ratio-range .unit-stack,.peer-range:has(.unit-stack) .unit-stack {{ display:inline-grid; gap:2px; line-height:1.05; justify-items:center; text-align:center; }}
+    .peer-range.height-ratio-range .unit-number,.peer-range.height-ratio-range .unit-label,.peer-range:has(.unit-stack) .unit-number,.peer-range:has(.unit-stack) .unit-label {{ display:block; white-space:nowrap; }}
     .analyst-chart-grid {{ grid-template-columns:1fr; }}
     /* The pitching flow now shares batting's compact five-node layout. */
     .kinetic-chain-figure img {{ aspect-ratio:1600/360; }}
@@ -1150,9 +1161,21 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     # Existing report templates already contain rendered card values.  Upgrade
     # visible percentage text nodes during migration as well as new values
     # emitted through fmt(), while leaving CSS percentages untouched.
+    # Normalize an earlier rebuild's stacked endpoint back to one canonical
+    # text value before applying the current migration below.
     html_text = re.sub(
-        r'>(-?\d+(?:\.\d+)?)%(?=<)',
+        r'<span class="unit-stack"><span class="unit-number">(-?\d+(?:\.\d+)?)%(?:身高比)?</span><span class="unit-label">身高比</span></span>',
+        r'\1%身高比',
+        html_text,
+    )
+    html_text = re.sub(
+        r'(?<!class="unit-number")>(-?\d+(?:\.\d+)?)%(?=<)',
         r'>\1%身高比',
+        html_text,
+    )
+    html_text = re.sub(
+        r'(<div class="peer-(?:min|max)">)(-?\d+(?:\.\d+)?)%身高比(</div>)',
+        r'\1<span class="unit-stack"><span class="unit-number">\2%</span><span class="unit-label">身高比</span></span>\3',
         html_text,
     )
     # Legacy templates contain user-visible provenance jargon in captions and
