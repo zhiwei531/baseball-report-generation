@@ -76,6 +76,8 @@ PEER_COLORS = {
 
 def zh_font_prop() -> FontProperties | None:
     for path in (
+        Path("/System/Library/Fonts/STHeiti Medium.ttc"),
+        Path("/System/Library/Fonts/PingFang.ttc"),
         Path(r"C:\Windows\Fonts\msyh.ttc"),
         Path(r"C:\Windows\Fonts\simhei.ttf"),
         Path(r"C:\Windows\Fonts\simsun.ttc"),
@@ -89,6 +91,8 @@ def zh_font_prop() -> FontProperties | None:
 
 def pil_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     for path in (
+        Path("/System/Library/Fonts/STHeiti Medium.ttc"),
+        Path("/System/Library/Fonts/PingFang.ttc"),
         Path(r"C:\Windows\Fonts\msyhbd.ttc") if bold else Path(r"C:\Windows\Fonts\msyh.ttc"),
         Path(r"C:\Windows\Fonts\simhei.ttf"),
         Path(r"C:\Windows\Fonts\simsun.ttc"),
@@ -277,7 +281,9 @@ def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor
         "release_lateral_mm": float(rfin[rel, 1]),
         "release_forward_mm": float(rfin[rel, 0]),
         "hss_release_deg": hss_rel,
-        "hand_speed_mps": frame_value(hand_speed, rel),
+        # Store the report-facing release hand speed in km/h.  The source
+        # derivative is mm/s, so speed_mps returns m/s and requires 3.6 here.
+        "hand_speed_kmh": frame_value(hand_speed, rel) * 3.6,
         "max_hss_deg": hss_max,
         "max_hss_time_s": hss_max_idx / trial.rate_hz,
         "hss_release_amount_deg": hss_max - hss_rel,
@@ -308,8 +314,8 @@ def fmt(value: float, unit: str) -> str:
         return f"{value:.0f} mm"
     if unit == "cm":
         return f"{value:.1f} cm"
-    if unit == "mps":
-        return f"{value:.2f} m/s"
+    if unit == "kmh":
+        return f"{value:.1f} km/h"
     if unit == "s":
         return f"{value:.2f}s"
     return f"{value:.1f}"
@@ -348,24 +354,24 @@ def status_from_score(score: float) -> tuple[str, str]:
 
 
 METRICS = [
-    {"key": "knee_height_pct", "event": "准备阶段", "section": "抬腿最高点", "name": "抬腿高度", "unit": "pct", "image": "peak_knee", "ideal": 50, "spread": 18, "copy": "抬腿高度接近身高一半，说明准备阶段有足够的节奏和空间。"},
-    {"key": "front_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "前腿收紧", "unit": "deg", "image": "peak_knee", "lo": 115, "hi": 155, "copy": "前膝角用来判断抬腿时前腿是否真正收住，而不是松散地向前摆。"},
-    {"key": "rear_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "后腿蓄力", "unit": "deg", "image": "peak_knee", "lo": -10, "hi": 25, "copy": "后腿在抬腿最高点承担支撑任务，角度越稳定，后续跨步越容易受控。"},
-    {"key": "stride_distance_pct", "event": "前脚落地", "section": "落脚质量", "name": "跨步距离", "unit": "pct", "image": "foot_plant", "ideal": 55, "spread": 22, "copy": "跨步距离用身高归一化，帮助判断身体推进是否足够。"},
-    {"key": "stride_direction_deg", "event": "前脚落地", "section": "落脚质量", "name": "跨步方向", "unit": "deg", "image": "foot_plant", "ideal": 0, "spread": 35, "copy": "跨步方向越接近目标线，身体越容易把力量送向投球方向。"},
-    {"key": "front_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "前膝屈曲", "unit": "deg", "image": "foot_plant", "lo": 40, "hi": 70, "copy": "前脚落地后的前膝角代表前腿支撑质量，过软或过硬都会影响传力。"},
-    {"key": "rear_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "后膝屈曲", "unit": "deg", "image": "foot_plant", "lo": 35, "hi": 75, "copy": "后膝角反映后腿是否还在参与推进，而不是提前失去下肢连接。"},
-    {"key": "elbow_vs_shoulder_cm", "event": "前脚落地", "section": "手臂到位", "name": "投球肘相对肩线", "unit": "cm", "image": "foot_plant", "ideal": 0, "spread": 18, "copy": "负值表示肘低于肩线，前脚落地时肘的位置会影响后续出手路径。"},
-    {"key": "shoulder_abduction_plant_deg", "event": "前脚落地", "section": "手臂到位", "name": "肩外展", "unit": "deg", "image": "foot_plant", "lo": 70, "hi": 100, "copy": "肩外展帮助判断投球手臂是否在落地时及时进入准备位置。"},
-    {"key": "front_knee_release_deg", "event": "出手点", "section": "前腿制动", "name": "出手前膝角", "unit": "deg", "image": "release", "lo": 40, "hi": 75, "copy": "出手时前腿能否稳住，是身体传力到手臂的重要前提。"},
-    {"key": "front_knee_change_plant_to_release_deg", "event": "出手点", "section": "前腿制动", "name": "落地到出手前膝变化", "unit": "deg", "image": "release", "ideal": 0, "spread": 18, "copy": "这个变化量越小，说明前腿在落地后越能保持支撑。"},
-    {"key": "shoulder_abduction_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肩外展", "unit": "deg", "image": "release", "lo": 80, "hi": 105, "copy": "出手时上臂抬起角度决定手臂路径和出手槽位。"},
-    {"key": "elbow_flex_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肘屈曲", "unit": "deg", "image": "release", "lo": 60, "hi": 95, "copy": "肘屈曲角用于观察出手时手臂是否有足够延展和控制。"},
-    {"key": "arm_slot_deg", "event": "出手点", "section": "出手角度", "name": "Arm slot", "unit": "deg", "image": "release", "lo": 55, "hi": 85, "copy": "Arm slot 描述前臂抬升方向，是观察投球手臂槽位的核心指标。"},
-    {"key": "release_height_pct", "event": "出手点", "section": "出手点", "name": "出手高度", "unit": "pct", "image": "release", "lo": 85, "hi": 105, "copy": "用右手手指 marker 近似出手点高度，后续有球 marker 时可再校准。"},
-    {"key": "hand_speed_mps", "event": "出手点", "section": "出手点", "name": "手速", "unit": "mps", "image": "release", "direction": "higher", "copy": "手速不是球速，但能作为同一套 Vicon 数据中的出手强度参考。"},
-    {"key": "max_hss_deg", "event": "专项问题", "section": "身体带动程度", "name": "最大髋肩分离", "unit": "deg", "image": "release", "lo": 15, "hi": 35, "copy": "最大髋肩分离越清楚，说明身体有更明显的先后顺序。"},
-    {"key": "hss_release_amount_deg", "event": "专项问题", "section": "身体带动程度", "name": "髋肩分离释放量", "unit": "deg", "image": "release", "lo": 8, "hi": 24, "copy": "释放量表示从最大分离到出手时释放了多少躯干旋转空间。"},
+    {"key": "knee_height_pct", "event": "准备阶段", "section": "抬腿最高点", "name": "抬腿高度", "en": "Knee Lift Height", "unit": "pct", "image": "peak_knee", "ideal": 50, "spread": 18, "copy": "抬腿高度接近身高一半，说明准备阶段有足够的节奏和空间。"},
+    {"key": "front_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "前腿收紧", "en": "Lead-Knee Tuck", "unit": "deg", "image": "peak_knee", "lo": 115, "hi": 155, "copy": "前膝角用来判断抬腿时前腿是否真正收住，而不是松散地向前摆。"},
+    {"key": "rear_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "后腿蓄力", "en": "Rear-Leg Load", "unit": "deg", "image": "peak_knee", "lo": -10, "hi": 25, "copy": "后腿在抬腿最高点承担支撑任务，角度越稳定，后续跨步越容易受控。"},
+    {"key": "stride_distance_pct", "event": "前脚落地", "section": "落脚质量", "name": "跨步距离", "en": "Stride Distance", "unit": "pct", "image": "foot_plant", "ideal": 55, "spread": 22, "copy": "跨步距离用身高归一化，帮助判断身体推进是否足够。"},
+    {"key": "stride_direction_deg", "event": "前脚落地", "section": "落脚质量", "name": "跨步方向", "en": "Stride Direction", "unit": "deg", "image": "foot_plant", "ideal": 0, "spread": 35, "copy": "跨步方向越接近目标线，身体越容易把力量送向投球方向。"},
+    {"key": "front_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "前膝屈曲", "en": "Lead-Knee Flexion", "unit": "deg", "image": "foot_plant", "lo": 40, "hi": 70, "copy": "前脚落地后的前膝角代表前腿支撑质量，过软或过硬都会影响传力。"},
+    {"key": "rear_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "后膝屈曲", "en": "Rear-Knee Flexion", "unit": "deg", "image": "foot_plant", "lo": 35, "hi": 75, "copy": "后膝角反映后腿是否还在参与推进，而不是提前失去下肢连接。"},
+    {"key": "elbow_vs_shoulder_cm", "event": "前脚落地", "section": "手臂到位", "name": "投球肘相对肩线", "en": "Throwing-Elbow Height", "unit": "cm", "image": "foot_plant", "ideal": 0, "spread": 18, "copy": "负值表示肘低于肩线，前脚落地时肘的位置会影响后续出手路径。"},
+    {"key": "shoulder_abduction_plant_deg", "event": "前脚落地", "section": "手臂到位", "name": "肩外展", "en": "Shoulder Abduction", "unit": "deg", "image": "foot_plant", "lo": 70, "hi": 100, "copy": "肩外展帮助判断投球手臂是否在落地时及时进入准备位置。"},
+    {"key": "front_knee_release_deg", "event": "出手点", "section": "前腿制动", "name": "出手前膝角", "en": "Release Lead-Knee Angle", "unit": "deg", "image": "release", "lo": 40, "hi": 75, "copy": "出手时前腿能否稳住，是身体传力到手臂的重要前提。"},
+    {"key": "front_knee_change_plant_to_release_deg", "event": "出手点", "section": "前腿制动", "name": "落地到出手前膝变化", "en": "Lead-Knee Change: Plant to Release", "unit": "deg", "image": "release", "ideal": 0, "spread": 18, "copy": "这个变化量越小，说明前腿在落地后越能保持支撑。"},
+    {"key": "shoulder_abduction_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肩外展", "en": "Release Shoulder Abduction", "unit": "deg", "image": "release", "lo": 80, "hi": 105, "copy": "出手时上臂抬起角度决定手臂路径和出手槽位。"},
+    {"key": "elbow_flex_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肘屈曲", "en": "Release Elbow Flexion", "unit": "deg", "image": "release", "lo": 60, "hi": 95, "copy": "肘屈曲角用于观察出手时手臂是否有足够延展和控制。"},
+    {"key": "arm_slot_deg", "event": "出手点", "section": "出手角度", "name": "出手手臂角度", "en": "Release Arm Angle", "unit": "deg", "image": "release", "lo": 55, "hi": 85, "copy": "出手手臂角度描述前臂抬升方向，是观察投球手臂出手路径的核心指标。"},
+    {"key": "release_height_pct", "event": "出手点", "section": "出手点", "name": "出手高度", "en": "Release Height", "unit": "pct", "image": "release", "lo": 85, "hi": 105, "copy": "用右手手指 marker 近似出手点高度，后续有球 marker 时可再校准。"},
+    {"key": "hand_speed_kmh", "event": "出手点", "section": "出手点", "name": "出手手速", "en": "Release Hand Speed", "unit": "kmh", "image": "release", "direction": "higher", "copy": "出手手速不是球速，但能作为同一套 Vicon 数据中的出手强度参考。"},
+    {"key": "max_hss_deg", "event": "专项问题", "section": "身体带动程度", "name": "最大髋肩分离", "en": "Maximum Hip-Shoulder Separation", "unit": "deg", "image": "release", "lo": 15, "hi": 35, "copy": "最大髋肩分离越清楚，说明身体有更明显的先后顺序。"},
+    {"key": "hss_release_amount_deg", "event": "专项问题", "section": "身体带动程度", "name": "髋肩分离释放量", "en": "Hip-Shoulder Separation Release", "unit": "deg", "image": "release", "lo": 8, "hi": 24, "copy": "释放量表示从最大分离到出手时释放了多少躯干旋转空间。"},
 ]
 
 
@@ -557,7 +563,7 @@ def render_movement_panel(
     value_font = pil_font(28)
     small_font = pil_font(17)
     cards = (
-        ("Hand speed", metric_label(bundle.values.get("hand_speed_mps", float("nan")) * 3.6, "km/h")),
+        ("Hand speed", metric_label(bundle.values.get("hand_speed_kmh", float("nan")), "km/h")),
         ("Rotation angle", metric_label(bundle.values.get("hss_release_deg", float("nan")), "deg")),
         ("Release height", metric_label(bundle.values.get("release_height_pct", float("nan")), "%")),
     )
@@ -646,43 +652,30 @@ def make_kinetic_chain(bundles: list[TrialBundle]) -> None:
     julian = next(b for b in bundles if b.key == PLAYER_KEY)
     out = ASSET_DIR / "kinetic_chain" / f"{PLAYER_SLUG}_pitch_kinetic_chain_flow.png"
     out.parent.mkdir(parents=True, exist_ok=True)
-    img = Image.new("RGB", (1600, 760), "#ffffff")
+    # Keep the pitching researcher flow visually aligned with the compact
+    # batting flow: five equal transfer nodes on a single line.
+    img = Image.new("RGB", (1600, 360), "#ffffff")
     draw = ImageDraw.Draw(img)
-    title_font = pil_font(48, bold=True)
     node_font = pil_font(30, bold=True)
     small_font = pil_font(24)
-    draw.text((70, 58), f"{PLAYER_NAME} 投球动力链", font=title_font, fill=INK)
-    draw.text((72, 124), "后腿支撑 -> 骨盆/髋部 -> 躯干 -> 手臂 -> 手部速度。重点看顺序是否完整，以及髋肩分离是否形成后被释放。", font=small_font, fill=MID)
     nodes = [
         ("后腿", "抬腿蓄力", julian.values["rear_knee_peak_deg"], "deg", GREEN),
-        ("骨盆", "跨步推进", julian.values["stride_distance_pct"], "pct", BLUE),
+        ("骨盆", "右腿蹬伸推进", julian.values["stride_distance_pct"], "pct", BLUE),
         ("躯干", "最大髋肩分离", julian.values["max_hss_deg"], "deg", PURPLE),
-        ("手臂", "Arm slot", julian.values["arm_slot_deg"], "deg", ORANGE),
-        ("手部", "手速", julian.values["hand_speed_mps"], "mps", RED),
+        ("手臂", "出手手臂角度", julian.values["arm_slot_deg"], "deg", ORANGE),
+        ("手部", "出手手速", julian.values["hand_speed_kmh"], "kmh", RED),
     ]
     xs = [150, 460, 770, 1080, 1390]
-    y = 330
+    y = 180
     for i, (label, sub, val, unit, color) in enumerate(nodes):
         x = xs[i]
         draw.ellipse((x - 95, y - 95, x + 95, y + 95), fill="#f8fafc", outline=color, width=7)
-        draw.text((x - 42, y - 42), label, font=node_font, fill=INK)
-        draw.text((x - 66, y + 2), sub, font=small_font, fill=MID)
-        draw.text((x - 54, y + 42), fmt(val, unit), font=small_font, fill=color)
+        draw.text((x, y - 42), label, font=node_font, fill=INK, anchor="ma")
+        draw.text((x, y + 2), sub, font=small_font, fill=MID, anchor="ma")
+        draw.text((x, y + 42), fmt(val, unit), font=small_font, fill=color, anchor="ma")
         if i < len(xs) - 1:
             draw.line((x + 108, y, xs[i + 1] - 108, y), fill="#98a2b3", width=7)
             draw.polygon([(xs[i + 1] - 118, y - 16), (xs[i + 1] - 92, y), (xs[i + 1] - 118, y + 16)], fill="#98a2b3")
-    callouts = [
-        f"抬腿最高点 {fmt(julian.values['peak_knee_time_s'], 's')}",
-        f"前脚落地 {fmt(julian.values['foot_plant_time_s'], 's')}",
-        f"出手点 {fmt(julian.values['release_time_s'], 's')}",
-        f"髋肩分离释放量 {fmt(julian.values['hss_release_amount_deg'], 'deg')}",
-    ]
-    cx = 88
-    for item in callouts:
-        w = draw.textlength(item, font=small_font) + 42
-        draw.rounded_rectangle((cx, 610, cx + w, 662), radius=999, fill="#eef6ff", outline="#bfdbfe", width=2)
-        draw.text((cx + 20, 624), item, font=small_font, fill="#1d4ed8")
-        cx += int(w + 18)
     img.save(out)
 
 
@@ -710,7 +703,7 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
     stats = peer_stats(bundles, key)
     mn, mx, jv = stats["min"], stats["max"], julian.values.get(key, float("nan"))
     if not (finite(mn) and finite(mx) and finite(jv)):
-        return '<div class="peer-empty">同组区间暂不可用</div>'
+        return '<div class="peer-empty">乐风U9同组表现暂不可用</div>'
     span = max(mx - mn, 1e-6)
     left = max(0, min(100, (jv - mn) / span * 100))
     player_color = PEER_COLORS.get(peer_key(PLAYER_KEY), BLUE)
@@ -726,7 +719,7 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
             dots.append(f'<span class="peer-dot" style="left:{pos:.2f}%; background:{colors[idx % len(colors)]}" title="{esc(b.name)}: {esc(fmt(val, unit))}"></span>')
     return f"""
       <div class="peer-range">
-        <div class="peer-label">同组区间</div>
+        <div class="peer-label">乐风U9同组表现</div>
         <div class="peer-min">{esc(fmt(mn, unit))}</div>
         <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span>{''.join(dots)}</div>
         <div class="peer-max">{esc(fmt(mx, unit))}</div>
@@ -753,7 +746,7 @@ def metric_card(metric: dict[str, object], bundles: list[TrialBundle], coach: Tr
     <article class="metric-card {klass}">
       <div class="metric-summary">
         <span class="badge {klass}">{esc(label)}</span>
-        <div><h4>{esc(metric["name"])}</h4><p class="metric-en">{esc(metric["event"])} / {esc(metric["section"])}</p></div>
+        <div><h4>{esc(metric["name"])}</h4><p class="metric-en">{esc(metric["en"])}</p></div>
         <div class="metric-value">{esc(fmt(value, unit))}</div>
       </div>
       <figure class="metric-illustration"><img src="{esc(img)}" alt="{esc(metric['name'])} 指标示意图" loading="lazy"></figure>
@@ -973,6 +966,85 @@ def add_pitch_comparisons(html_text: str, bundles: list[TrialBundle], coach: Tri
     return re.sub(r'<article class="metric-card\b[^>]*>.*?</article>', replace_card, html_text, flags=re.DOTALL)
 
 
+def refresh_metric_card_summaries(html_text: str, bundles: list[TrialBundle]) -> str:
+    """Bring legacy player and coach cards onto the batting-style metric header contract."""
+    player = next(bundle for bundle in bundles if bundle.key == PLAYER_KEY)
+    aliases = {
+        "Arm slot": "arm_slot_deg",
+        "手臂槽位": "arm_slot_deg",
+        "手臂链条槽位": "arm_slot_deg",
+        "手速": "hand_speed_kmh",
+        "出手手速": "hand_speed_kmh",
+        "右腿蹬地伸展线索": "rear_knee_drive_extension_deg",
+    }
+    coach_card_english = {
+        "抬腿平稳过渡": "Knee-Lift Transition",
+        "跨步距离与稳定": "Stride Distance and Stability",
+        "拉弓式髋肩分离": "Hip-Shoulder Separation",
+        "右腿蹬地伸展线索": "Rear-Leg Drive",
+    }
+    by_name = {str(metric["name"]): metric for metric in METRICS}
+    by_key = {str(metric["key"]): metric for metric in METRICS}
+
+    def replace_card(match: re.Match[str]) -> str:
+        card = match.group(0)
+        name_match = re.search(r"<h4>([^<]+)</h4>", card)
+        if not name_match:
+            return card
+        old_name = name_match.group(1).strip()
+        metric = by_name.get(old_name)
+        if metric is None:
+            metric = by_key.get(aliases.get(old_name, ""))
+        if metric is None:
+            english = coach_card_english.get(old_name)
+            if english is not None:
+                title = "右腿蹬伸推进" if old_name == "右腿蹬地伸展线索" else old_name
+                card = card[: name_match.start()] + f"<h4>{esc(title)}</h4>" + card[name_match.end() :]
+                return re.sub(
+                    r'(<p class="metric-en">)[^<]*(</p>)',
+                    rf'\g<1>{esc(english)}\g<2>',
+                    card,
+                    count=1,
+                )
+            return card
+        key = str(metric["key"])
+        display_value = esc(fmt(player.values.get(key, float("nan")), str(metric["unit"])))
+        card = card[: name_match.start()] + f"<h4>{esc(metric['name'])}</h4>" + card[name_match.end() :]
+        card = re.sub(
+            r'(<p class="metric-en">)[^<]*(</p>)',
+            rf'\g<1>{esc(str(metric["en"]))}\g<2>',
+            card,
+            count=1,
+        )
+        card = re.sub(
+            r'(<div class="metric-value">)[^<]*(</div>)',
+            rf'\g<1>{display_value}\g<2>',
+            card,
+            count=1,
+        )
+        return card
+
+    html_text = re.sub(
+        r'<article class="(?:metric-card|coach-issue-card)\b[^>]*>.*?</article>',
+        replace_card,
+        html_text,
+        flags=re.DOTALL,
+    )
+    html_text = html_text.replace("右腿蹬地伸展线索", "右腿蹬伸推进")
+    html_text = html_text.replace("手臂链条槽位", "出手手臂角度")
+    html_text = html_text.replace("手臂槽位", "出手手臂角度")
+    html_text = re.sub(r"(?<!出手)手速", "出手手速", html_text)
+    html_text = html_text.replace("hand_speed_mps.png", "hand_speed_kmh.png")
+
+    def convert_mps(match: re.Match[str]) -> str:
+        return f"{float(match.group(1)) * 3.6:.1f} km/h"
+
+    # Legacy templates carry hand-speed notes and comparison ranges as m/s.
+    # Convert every displayed value while the report is being rewritten so all
+    # player, coach, and researcher views share the report's km/h contract.
+    return re.sub(r"(?<![\w.])(\d+(?:\.\d+)?)\s*m/s\b", convert_mps, html_text)
+
+
 def apply_peer_display_mapping(html_text: str) -> str:
     def dot_replacement(match: re.Match[str]) -> str:
         prefix, _old_color, between, raw_name, suffix = match.groups()
@@ -1003,6 +1075,8 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:20px; }}
     .two-column-metrics .peer-range {{ grid-template-columns:max-content 34px minmax(52px,76px) 34px; gap:6px; max-width:100%; justify-self:start; }}
     .analyst-chart-grid {{ grid-template-columns:1fr; }}
+    /* The pitching flow now shares batting's compact five-node layout. */
+    .kinetic-chain-figure img {{ aspect-ratio:1600/360; }}
     .pitch-compare-pills {{ display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 4px; }}
     .pitch-compare-pills span {{ display:inline-grid; gap:2px; min-width:112px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
     .pitch-compare-pills span b {{ color:#667085; font-size:11px; line-height:14px; }}
@@ -1079,6 +1153,13 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
             html_text,
         )
     coach = next(bundle for bundle in bundles if bundle.key == "coach")
+    html_text = refresh_metric_card_summaries(html_text, bundles)
+    # Legacy player and coach cards come from the existing pitching template,
+    # so normalize their group-range label here as well as in range_html().
+    html_text = html_text.replace(
+        '<div class="peer-label">同组区间</div>',
+        '<div class="peer-label">乐风U9同组表现</div>',
+    )
     html_text = re.sub(
         r'\s*<div class="pitch-compare-pills">.*?</div>(?=\s*<div class="peer-range">)',
         "",

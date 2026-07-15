@@ -194,12 +194,12 @@ def annotate_release() -> None:
     # Arm slot.
     draw.line((shoulder, release), fill=PURPLE, width=6)
     arc(draw, (shoulder[0] - 110, shoulder[1] - 110, shoulder[0] + 110, shoulder[1] + 110), 300, 350, PURPLE, 8)
-    text_box(draw, (int(w * 0.34), int(h * 0.20)), f"出手角度\n肩外展 {value('shoulder_abduction_release_deg', '°')}\n肘屈曲 {value('elbow_flex_release_deg', '°')}\narm slot {value('arm_slot_deg', '°')}", PURPLE)
+    text_box(draw, (int(w * 0.34), int(h * 0.20)), f"出手手臂角度\n肩外展 {value('shoulder_abduction_release_deg', '°')}\n肘屈曲 {value('elbow_flex_release_deg', '°')}\n手臂角度 {value('arm_slot_deg', '°')}", PURPLE)
 
     # Ball path / hand speed.
     for offset, width_line in ((0, 7), (24, 4), (44, 3)):
         draw.arc((int(w * 0.63), int(h * 0.05) + offset, int(w * 0.91), int(h * 0.36) + offset), 205, 296, fill=BLUE, width=width_line)
-    text_box(draw, (int(w * 0.68), int(h * 0.05)), f"出手点\n出手高度 {value('release_height_pct', '%')} 身高\n手速 {value('hand_speed_mps', ' m/s')}", BLUE)
+    text_box(draw, (int(w * 0.68), int(h * 0.05)), f"出手点\n出手高度 {value('release_height_pct', '%')} 身高\n出手手速 {value('hand_speed_kmh', ' km/h', 1)}", BLUE)
 
     # Whole-body transfer, drawn on the release frame because it summarizes the action.
     hip = (int(w * 0.48), int(h * 0.56))

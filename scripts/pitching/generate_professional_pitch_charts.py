@@ -33,6 +33,8 @@ GRID = "#e4e7ec"
 
 def zh_font() -> FontProperties | None:
     for path in (
+        Path("/System/Library/Fonts/STHeiti Medium.ttc"),
+        Path("/System/Library/Fonts/PingFang.ttc"),
         Path(r"C:\Windows\Fonts\msyh.ttc"),
         Path(r"C:\Windows\Fonts\simhei.ttf"),
         Path(r"C:\Windows\Fonts\simsun.ttc"),
@@ -250,7 +252,7 @@ def build_speed_chart(julian: dict, times: np.ndarray) -> Path:
     peak = events["peak_knee"] / rate
     plant = events["foot_plant"] / rate
     release = events["release"] / rate
-    hand_peak = float(v.get("hand_speed_kmh", float(v["hand_speed_mps"]) * 3.6))
+    hand_peak = float(v["hand_speed_kmh"]) if "hand_speed_kmh" in v else float(v["hand_speed_mps"]) * 3.6
     start = float(times.min())
     end = float(times.max())
     hand_speed_curve = curve(times, [(start, 0.72), (peak, 1.80), (plant, 8.64), (release - 0.01, hand_peak), (release + 0.08, 18.72), (end, 4.32)])
@@ -305,13 +307,13 @@ def build_kinetic_chain_chart(julian: dict, times: np.ndarray) -> Path:
         (u(r"\u540e\u817f\u652f\u6491"), curve(times, [(start, 18), (peak, 28), (plant - 0.18, 94), (plant, 100), (release, 82), (end, 58)]), GREEN),
         (u(r"\u8de8\u6b65\u63a8\u8fdb"), curve(times, [(start, 10), (peak, 12), (plant - 0.06, 98), (plant, 100), (release, 97), (end, 94)]), BLUE),
         (u(r"\u9acb\u80a9\u5206\u79bb"), curve(times, [(start, 22), (peak, 38), (plant - 0.05, 100), (release, 60), (end, 35)]), PURPLE),
-        (u(r"\u624b\u81c2\u69fd\u4f4d"), curve(times, [(start, 8), (peak, 20), (plant, 40), (release - 0.08, 100), (release, 94), (end, 48)]), ORANGE),
+        (u(r"\u51fa\u624b\u624b\u81c2\u89d2\u5ea6"), curve(times, [(start, 8), (peak, 20), (plant, 40), (release - 0.08, 100), (release, 94), (end, 48)]), ORANGE),
     ]
     ax.set_xlim(times.min(), times.max())
     ax.set_ylim(0, 145)
     for label, y, color in series:
         ax.plot(times, y, color=color, linewidth=2.1, label=label)
-    hand_peak = float(v.get("hand_speed_kmh", float(v["hand_speed_mps"]) * 3.6))
+    hand_peak = float(v["hand_speed_kmh"]) if "hand_speed_kmh" in v else float(v["hand_speed_mps"]) * 3.6
     hand_speed = curve(times, [(start, 0.72), (peak, 1.80), (plant, 8.64), (release - 0.01, hand_peak), (release + 0.08, 18.72), (end, 4.32)])
     if np.isfinite(hand_speed).any() and float(np.nanmax(hand_speed)) > 0:
         hand_speed *= hand_peak / float(np.nanmax(hand_speed))
