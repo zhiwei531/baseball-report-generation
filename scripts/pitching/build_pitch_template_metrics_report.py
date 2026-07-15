@@ -69,9 +69,10 @@ PEER_COLORS = {
     "julian": RED,
     "youyou": "#0891b2",
     "james": "#ca8a04",
-    "branden": "#db2777",
-    "brandon": "#db2777",
+    "branden": "#344054",
+    "brandon": "#344054",
 }
+PEER_KEY_ALIASES = {"brandon": "branden"}
 
 
 def zh_font_prop() -> FontProperties | None:
@@ -710,13 +711,13 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
     player_marker_style = f'; background:{player_color}; --marker-color:{player_color}' if show_all else ''
     dots = [f'<span class="peer-dot current-player" style="left:{left:.2f}%{player_marker_style}" title="{esc(PLAYER_NAME)}: {esc(fmt(jv, unit))}"></span>']
     if show_all:
-        colors = [BLUE, GREEN, ORANGE, PURPLE, RED, "#0891b2", "#ca8a04"]
-        for idx, b in enumerate(bundles):
+        for b in bundles:
             val = b.values.get(key, float("nan"))
             if not finite(val):
                 continue
             pos = max(0, min(100, (val - mn) / span * 100))
-            dots.append(f'<span class="peer-dot" style="left:{pos:.2f}%; background:{colors[idx % len(colors)]}" title="{esc(b.name)}: {esc(fmt(val, unit))}"></span>')
+            color = PEER_COLORS.get(peer_key(b.key), MID)
+            dots.append(f'<span class="peer-dot" style="left:{pos:.2f}%; background:{color}" title="{esc(b.name)}: {esc(fmt(val, unit))}"></span>')
     return f"""
       <div class="peer-range">
         <div class="peer-label">乐风U9同组表现</div>
@@ -904,7 +905,8 @@ def write_json_summary(bundles: list[TrialBundle]) -> None:
 
 
 def peer_key(name: str) -> str:
-    return name.strip().casefold().replace(" ", "")
+    key = name.strip().casefold().replace(" ", "")
+    return PEER_KEY_ALIASES.get(key, key)
 
 
 def peer_display_name(name: str) -> str:

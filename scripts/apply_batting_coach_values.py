@@ -28,9 +28,10 @@ PEER_COLOR_BY_NAME = {
     "julian": "#ef4444",
     "youyou": "#0891b2",
     "james": "#ca8a04",
-    "branden": "#db2777",
-    "brandon": "#db2777",
+    "branden": "#344054",
+    "brandon": "#344054",
 }
+PEER_KEY_ALIASES = {"brandon": "branden"}
 PEER_DISPLAY_BY_NAME = {
     "bryan": "Bryan陈柏谚",
     "7zai": "席启源",
@@ -409,7 +410,8 @@ def update_player_batting_cards(html: str, values: dict[str, str]) -> str:
 
 def update_legend_names(html: str) -> str:
     def key(name: str) -> str:
-        return name.strip().casefold().replace(" ", "")
+        normalized = name.strip().casefold().replace(" ", "")
+        return PEER_KEY_ALIASES.get(normalized, normalized)
 
     def display(name: str) -> str:
         return PEER_DISPLAY_BY_NAME.get(key(name), name)

@@ -176,7 +176,7 @@ FRONT_FEEDBACK_EN = {
 }
 
 
-PEER_COLORS = ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#ef4444", "#0891b2", "#ca8a04", "#db2777", "#475569"]
+PEER_COLORS = ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#ef4444", "#0891b2", "#ca8a04", "#344054"]
 PEER_COLOR_BY_NAME = {
     "bryan": "#2563eb",
     "7zai": "#16a34a",
@@ -185,8 +185,8 @@ PEER_COLOR_BY_NAME = {
     "julian": "#ef4444",
     "youyou": "#0891b2",
     "james": "#ca8a04",
-    "branden": "#db2777",
-    "brandon": "#db2777",
+    "branden": "#344054",
+    "brandon": "#344054",
 }
 PEER_DISPLAY_BY_NAME = {
     "bryan": "Bryan陈柏谚",
@@ -208,8 +208,8 @@ PEER_LEGEND_ORDER = (
     "youyou",
     "james",
     "branden",
-    "brandon",
 )
+PEER_KEY_ALIASES = {"brandon": "branden"}
 BLUE = "#2563eb"
 GREEN = "#16a34a"
 ORANGE = "#f97316"
@@ -220,7 +220,8 @@ MID = "#667085"
 
 
 def peer_key(name: object) -> str:
-    return str(name or "").strip().casefold().replace(" ", "")
+    key = str(name or "").strip().casefold().replace(" ", "")
+    return PEER_KEY_ALIASES.get(key, key)
 
 
 def peer_color(name: object, fallback_index: int = 0) -> str:
@@ -2069,11 +2070,14 @@ def event_gif_panel(
 def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anonymize_names: bool = True) -> str:
     if not peer_rows:
         return ""
-    legend_rank = {name: index for index, name in enumerate(PEER_LEGEND_ORDER)}
-    ordered_rows = sorted(
-        peer_rows,
-        key=lambda row: legend_rank.get(peer_key(row.get("name")), len(legend_rank)),
-    )
+    # Render the reference legend in one fixed eight-player order. Do not let
+    # C3D/CSV row order change a player's color or add Brandon as a ninth alias.
+    row_by_key: dict[str, dict[str, object]] = {}
+    for row in peer_rows:
+        key = peer_key(row.get("name"))
+        if key in PEER_LEGEND_ORDER and key not in row_by_key:
+            row_by_key[key] = row
+    ordered_rows = [row_by_key[key] for key in PEER_LEGEND_ORDER if key in row_by_key]
     items = []
     for idx, row in enumerate(ordered_rows):
         name = row.get("name", "peer")
