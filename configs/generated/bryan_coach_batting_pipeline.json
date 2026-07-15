@@ -1,0 +1,20 @@
+{
+  "root_dir": ".",
+  "c3d_dir": "../vicon_2026",
+  "report_dir": "reports/vicon_2026_bryan_coach",
+  "pitch_report": "reports/pitching_bryan_coach/index.html",
+  "peers": "outputs/batting_metrics_excel/all_players",
+  "alignment_dir": null,
+  "video": "../vicon_2026/bryan/bat_2d.mp4",
+  "c3d_file": "../vicon_2026/bryan/001 Cal 04 Bat 05.c3d",
+  "mediapipe_model": "../baseball-analysis/models/pose_landmarker_heavy.task",
+  "video_capture_fps": 30,
+  "video_event_frame": 544,
+  "ready_valid_start_frame": 770,
+  "xlsx_out_dir": "outputs/batting_metrics_excel",
+  "sample_name": "bryan",
+  "coach_sample_name": "coach",
+  "player_slug": "bryan",
+  "player_label": "Bryan",
+  "trial_id": "bryan_001_cal_04_bat_05"
+}

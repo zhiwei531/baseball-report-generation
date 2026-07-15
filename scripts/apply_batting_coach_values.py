@@ -15,6 +15,33 @@ METRICS_PATH = REPORT_DIR / "batting_dashboard_metrics.csv"
 POSE3D_PATH = REPORT_DIR / "vicon_2026_pose3d.csv"
 PEERS_DIR = PROJECT_DIR / "outputs" / "batting_metrics_excel" / "all_players"
 BUILDER_PATH = PROJECT_DIR / "scripts" / "build_julian_coach_metrics_section.py"
+PLAYER_SAMPLE_NAME = "julian"
+COACH_SAMPLE_NAME = "coach"
+PLAYER_SLUG = "julian"
+PLAYER_LABEL = "Julian"
+
+PEER_COLOR_BY_NAME = {
+    "bryan": "#2563eb",
+    "7zai": "#16a34a",
+    "xuanxuan": "#f97316",
+    "green": "#a855f7",
+    "julian": "#ef4444",
+    "youyou": "#0891b2",
+    "james": "#ca8a04",
+    "branden": "#db2777",
+    "brandon": "#db2777",
+}
+PEER_DISPLAY_BY_NAME = {
+    "bryan": "Bryan陈柏谚",
+    "7zai": "席启源",
+    "xuanxuan": "姚槿宏",
+    "green": "杜子墨",
+    "julian": "Julian",
+    "youyou": "费怡然",
+    "james": "桑禹诚",
+    "branden": "缪炜昱",
+    "brandon": "缪炜昱",
+}
 
 PLAYER_CARD_METRIC_KEYS = [
     "ready_com_height_ratio",
@@ -185,7 +212,7 @@ def player_metric_values() -> dict[str, float]:
     values: dict[str, float] = {}
     with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            if row.get("sample_name") != "julian":
+            if row.get("sample_name") != PLAYER_SAMPLE_NAME:
                 continue
             key = row.get("metric_key") or ""
             if key not in PLAYER_CARD_METRIC_KEYS:
@@ -224,7 +251,7 @@ def coach_values() -> dict[str, str]:
     values: dict[str, str] = {}
     with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            if row.get("sample_name") != "coach":
+            if row.get("sample_name") != COACH_SAMPLE_NAME:
                 continue
             key = row.get("metric_key") or ""
             if key in PLAYER_CARD_METRIC_KEYS:
@@ -252,8 +279,8 @@ def sample_metric_rows(sample_name: str) -> dict[str, dict[str, str]]:
 
 def update_player_batting_statuses(html: str) -> str:
     builder = load_builder_module()
-    player_rows = sample_metric_rows("julian")
-    coach_rows = sample_metric_rows("coach")
+    player_rows = sample_metric_rows(PLAYER_SAMPLE_NAME)
+    coach_rows = sample_metric_rows(COACH_SAMPLE_NAME)
     pitch_start = html.index('<div class="section-title"><span class="mark"></span><h3>投球</h3></div>')
     before_pitch = html[:pitch_start]
     after_pitch = html[pitch_start:]
@@ -296,7 +323,7 @@ def apply_css(html: str) -> str:
     )
     html = html.replace(
         "    .peer-dot.current-player { width:12px; height:12px; background:#101828; box-shadow:0 0 0 2px rgba(37,99,235,.28),0 0 0 1px rgba(16,24,40,.18); }\n",
-        "    .peer-dot.current-player { width:16px; height:16px; background:#ef4444; box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(239,68,68,.2); }\n",
+        "    .peer-dot.current-player { z-index:4; width:16px; height:16px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }\n",
     )
     html = re.sub(
         r"\n\s*\.two-column-metrics \.peer-range \{[^\n]*\}"
@@ -315,13 +342,13 @@ def apply_css(html: str) -> str:
                 "    .two-column-metrics .peer-track { min-width:52px; max-width:76px; width:100%; }\n"
             ),
         )
-    html = re.sub(r"\n\s*\.issue-metrics \.peer-dot(?:\[style\*=\"background:#ef4444\"\]|\.julian) \{[^\n]*\}", "", html)
-    if "    .issue-metrics .peer-dot.julian {" not in html:
+    html = re.sub(r"\n\s*\.issue-metrics \.peer-dot(?:\[style\*=\"background:#ef4444\"\]|\.julian|\.current-player) \{[^\n]*\}", "", html)
+    if "    .issue-metrics .peer-dot.current-player {" not in html:
         html = html.replace(
             "    .issue-metrics .compare-pill b { color:#667085; font-size:11px; line-height:14px; }\n",
             (
                 "    .issue-metrics .compare-pill b { color:#667085; font-size:11px; line-height:14px; }\n"
-                "    .issue-metrics .peer-dot.julian { width:12px; height:12px; background:#ef4444; box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(239,68,68,.2); }\n"
+                "    .issue-metrics .peer-dot.current-player { z-index:4; width:16px; height:16px; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }\n"
             ),
         )
     html = re.sub(r"\n\s*\.batting-coach-reference[^\n]*", "", html)
@@ -381,26 +408,41 @@ def update_player_batting_cards(html: str, values: dict[str, str]) -> str:
 
 
 def update_legend_names(html: str) -> str:
-    def rename(match: re.Match[str]) -> str:
-        legend = match.group(0)
-        legend = legend.replace("Bryan陈柏谚", "陈柏谚")
-        legend = legend.replace("陈柏谚", "Bryan陈柏谚")
-        legend = legend.replace("黄炜宸", "Julian")
-        return legend
+    def key(name: str) -> str:
+        return name.strip().casefold().replace(" ", "")
+
+    def display(name: str) -> str:
+        return PEER_DISPLAY_BY_NAME.get(key(name), name)
+
+    def dot_replacement(match: re.Match[str]) -> str:
+        prefix, old_color, between, raw_name, suffix = match.groups()
+        return f"{prefix}{PEER_COLOR_BY_NAME.get(key(raw_name), old_color)}{between}{display(raw_name)}{suffix}"
 
     html = re.sub(
-        r'<aside class="peer-legend" aria-label="其他球员颜色图例">.*?</aside>',
-        rename,
+        r'(<span class="peer-dot[^>]*style="[^"]*background:)(#[0-9a-fA-F]+)([^"]*" title=")([^":]+)(:)',
+        dot_replacement,
         html,
-        flags=re.S,
     )
+
+    def legend_replacement(match: re.Match[str]) -> str:
+        prefix, old_color, between, raw_name, suffix = match.groups()
+        return f"{prefix}{PEER_COLOR_BY_NAME.get(key(raw_name), old_color)}{between}{display(raw_name)}{suffix}"
+
     html = re.sub(
-        r'<aside class="peer-legend coach-legend" aria-label="颜色图例">.*?</aside>',
-        rename,
+        r'(<li><span class="legend-dot" style="background:)(#[0-9a-fA-F]+)(\"></span>)([^<]+)(</li>)',
+        legend_replacement,
         html,
-        flags=re.S,
     )
-    return html
+
+    def compact_legend_replacement(match: re.Match[str]) -> str:
+        prefix, old_color, between, raw_name, suffix = match.groups()
+        return f"{prefix}{PEER_COLOR_BY_NAME.get(key(raw_name), old_color)}{between}{display(raw_name)}{suffix}"
+
+    return re.sub(
+        r'(<span class="peer-legend-item"><i class="peer-legend-dot" style="background:)(#[0-9a-fA-F]+)(\"></i>)([^<]+)(</span>)',
+        compact_legend_replacement,
+        html,
+    )
 
 
 def update_peer_range_labels(html: str) -> str:
@@ -419,7 +461,7 @@ def update_coach_batting_main_player_markers(html: str) -> str:
         style = re.sub(r";{2,}", ";", style).strip(" ;")
         if style:
             style = f' style="{style}"'
-        return f'<span class="peer-dot julian"{style} title="黄炜宸:'
+        return f'<span class="peer-dot current-player"{style} title="黄炜宸:'
 
     return re.sub(
         r'<span class="peer-dot" style="([^"]*background:#ef4444[^"]*)" title="黄炜宸:',
@@ -603,6 +645,17 @@ def update_between(html: str, start: str, end: str, update: callable[[str], str]
     return html[:start_idx] + update(html[start_idx:end_idx]) + html[end_idx:]
 
 
+def find_first_section_title(html: str, titles: tuple[str, ...]) -> int:
+    candidates = [
+        html.find(f'<div class="section-title"><span class="mark"></span><h2>{title}</h2></div>')
+        for title in titles
+    ]
+    candidates = [idx for idx in candidates if idx != -1]
+    if not candidates:
+        raise ValueError(f"None of the section titles were found: {', '.join(titles)}")
+    return min(candidates)
+
+
 def update_batting_units(html: str) -> str:
     html = update_between(
         html,
@@ -610,7 +663,7 @@ def update_batting_units(html: str) -> str:
         '<div class="section-title"><span class="mark"></span><h3>投球</h3></div>',
         normalize_units_fragment,
     )
-    coach_start = html.index('<div class="section-title"><span class="mark"></span><h2>阿楽教练视角</h2></div>')
+    coach_start = find_first_section_title(html, ("阿楽教练视角", "教练视角"))
     batting_start = html.index('<div class="section-title"><span class="mark"></span><h3>打击</h3></div>', coach_start)
     pitching_start = html.index('<div class="section-title"><span class="mark"></span><h3>投球</h3></div>', batting_start)
     html = html[:batting_start] + normalize_units_fragment(html[batting_start:pitching_start]) + html[pitching_start:]
@@ -631,11 +684,15 @@ def load_builder_module():
 def regenerate_research_assets() -> None:
     builder = load_builder_module()
     builder.DEFAULT_POSE3D = POSE3D_PATH
+    builder.ACTIVE_PLAYER_SAMPLE = PLAYER_SAMPLE_NAME
+    builder.ACTIVE_COACH_SAMPLE = COACH_SAMPLE_NAME
+    builder.ACTIVE_PLAYER_SLUG = PLAYER_SLUG
+    builder.ACTIVE_PLAYER_LABEL = PLAYER_LABEL
     rows = builder.read_csv(METRICS_PATH)
     by_sample: dict[str, dict[str, dict[str, str]]] = {}
     for row in rows:
         by_sample.setdefault(row["sample_name"], {})[row["metric_key"]] = row
-    builder.make_research_assets(by_sample["julian"], by_sample["coach"], REPORT_DIR)
+    builder.make_research_assets(by_sample[PLAYER_SAMPLE_NAME], by_sample[COACH_SAMPLE_NAME], REPORT_DIR)
 
 
 def versioned_asset(path: str) -> str:
@@ -669,12 +726,13 @@ def update_research_section(html: str) -> str:
         '<p class="analyst-chart-copy">How to read it: the angle chart now labels each peak with its time and value. Around contact, the useful signal is bat-direction stability rather than simply producing a larger angle peak.</p>',
     )
     for path in (
-        "assets/kinetic_chain/julian_batting_kinetic_chain_flow.png",
-        "assets/kinetic_chain/julian_batting_kinetic_speed_time_curve.png",
-        "assets/analyst_charts/julian_batting_bat1_speed_time_curve.png",
-        "assets/analyst_charts/julian_batting_bat_axis_angle_time_curve.png",
+        f"assets/kinetic_chain/{PLAYER_SLUG}_batting_kinetic_chain_flow.png",
+        f"assets/kinetic_chain/{PLAYER_SLUG}_batting_kinetic_speed_time_curve.png",
+        f"assets/analyst_charts/{PLAYER_SLUG}_batting_bat1_speed_time_curve.png",
+        f"assets/analyst_charts/{PLAYER_SLUG}_batting_bat_axis_angle_time_curve.png",
     ):
-        html = re.sub(rf'{re.escape(path)}\?v=\d+', versioned_asset(path), html)
+        if (REPORT_DIR / path).exists():
+            html = re.sub(rf'{re.escape(path)}\?v=\d+', versioned_asset(path), html)
     return html
 
 
@@ -692,6 +750,7 @@ def update_bat_speed_copy(html: str) -> str:
 
 def main() -> None:
     global REPORT_DIR, HTML_PATH, METRICS_PATH, POSE3D_PATH, PEERS_DIR, BUILDER_PATH
+    global PLAYER_SAMPLE_NAME, COACH_SAMPLE_NAME, PLAYER_SLUG, PLAYER_LABEL
 
     parser = argparse.ArgumentParser(
         description="Apply the final vicon_2026_julian_coach 4 schema polish to a generated metrics section."
@@ -702,6 +761,10 @@ def main() -> None:
     parser.add_argument("--pose3d", type=Path, default=None)
     parser.add_argument("--peers", type=Path, default=PEERS_DIR)
     parser.add_argument("--builder", type=Path, default=BUILDER_PATH)
+    parser.add_argument("--player-sample-name", default=PLAYER_SAMPLE_NAME)
+    parser.add_argument("--coach-sample-name", default=COACH_SAMPLE_NAME)
+    parser.add_argument("--player-slug", default=PLAYER_SLUG)
+    parser.add_argument("--player-label", default=PLAYER_LABEL)
     args = parser.parse_args()
 
     REPORT_DIR = args.report_dir
@@ -710,6 +773,10 @@ def main() -> None:
     POSE3D_PATH = args.pose3d or REPORT_DIR / "vicon_2026_pose3d.csv"
     PEERS_DIR = args.peers
     BUILDER_PATH = args.builder
+    PLAYER_SAMPLE_NAME = args.player_sample_name
+    COACH_SAMPLE_NAME = args.coach_sample_name
+    PLAYER_SLUG = args.player_slug
+    PLAYER_LABEL = args.player_label
 
     regenerate_research_assets()
     html = HTML_PATH.read_text(encoding="utf-8")

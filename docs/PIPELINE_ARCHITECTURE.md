@@ -1,6 +1,8 @@
 # Pipeline Architecture
 
-The repo is organized around a staged batting-report pipeline. The intended long-term input contract is:
+The repo is organized around separate staged batting and pitching pipelines. They do not write into the same output directory unless explicitly configured to do so.
+
+The batting input contract is:
 
 ```text
 Vicon C3D folder + batting 2D video
@@ -10,35 +12,63 @@ Vicon C3D folder + batting 2D video
   -> 2D/Vicon alignment and 2D metric annotations
   -> static metric illustration annotations
   -> final HTML schema
-  -> optional XLSX body-metrics workbook
+  -> XLSX body-metrics workbook unless skipped
 ```
 
-Pitching is now a sibling pipeline. The batting report builder accepts its completed HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
+The pitching input contract is:
+
+```text
+Pitching C3D manifest + pitching template directory
+  -> pitching metrics CSV/JSON
+  -> pitching 3D reconstruction events
+  -> pitching line-art metric annotations
+  -> pitching kinetic-chain assets
+  -> reports/pitching/index.html
+```
+
+The batting report builder accepts the independently built pitching HTML through `--pitch-report` and copies that HTML's `assets/` into `pitch_assets/`.
 
 ## Unified Command
 
-Preferred command:
+The single final-deliverable entry builds pitching and then batting:
 
 ```bash
-python scripts/run_batting_report_pipeline.py \
-  --c3d-dir ../vicon_2026 \
-  --alignment-dir outputs/julian_bat_2d_vicon_alignment \
-  --pitch-report ../julian_pitch_template_report_2026-07-06/index.html
+python scripts/report_cli.py final --config configs/final_report.json
 ```
 
-When a prepared 2D alignment folder is not available, the MediaPipe alignment stage can be used directly:
+Start from `configs/final_report.example.json`. It references a batting pipeline
+config and specifies the pitching manifest/template/output inputs:
+
+```text
+configs/default_report_pipeline.json
+```
+
+Path rules:
+
+- `root_dir` is the shared base folder for the pipeline.
+- Relative path fields are resolved from `root_dir`.
+- A relative `root_dir` is resolved from the repository root.
+- CLI arguments override config values.
+
+For a new player, copy both the final config and batting config, then update the
+batting C3D/video identity fields and pitching inputs:
 
 ```bash
-python scripts/run_batting_report_pipeline.py \
-  --c3d-dir ../vicon_2026 \
-  --video ../vicon_2026/julian/Bat_2D.mp4 \
-  --c3d-file "../vicon_2026/julian/007-julian Cal 04 Bat 05.c3d" \
-  --mediapipe-model models/pose_landmarker_heavy.task
+python scripts/report_cli.py final \
+  --config configs/<player_slug>_final_report.json
 ```
 
-The raw-video path requires the MediaPipe task model file. The `mediapipe` Python package is part of the main requirements.
+The raw-video path is mandatory. The config must provide `mediapipe_model`, plus manually reviewed `video_capture_fps` and `video_event_frame`; automatic event inference and a prepared alignment folder are not supported report inputs.
+
+For the validated Julian batting alignment, the Vicon event is `bat_speed_peak` at C3D frame `854`. The 2D event frame is manually reviewed as encoded video frame `184`. The source video metadata reports playback FPS `29.48022763100522`; with `240` capture FPS this produces slow-motion factor `8.141049757281554`.
+
+`report_cli.py` passes the freshly built `pitching.out_dir/index.html` to the
+batting builder, so the final report cannot accidentally embed a separately
+hard-coded pitching output.
 
 ## Stages
+
+### Batting
 
 | Stage | Script | Inputs | Outputs |
 |---|---|---|---|
@@ -48,12 +78,23 @@ The raw-video path requires the MediaPipe task model file. The `mediapipe` Pytho
 | Batting event GIFs | `build_julian_coach_event_gifs.py` | `batting_dashboard_metrics.csv` + source C3D | `assets/vicon_reconstruction_events/*.gif` |
 | Annotated speed GIFs | `build_julian_coach_annotated_speed_gifs.py` | metrics + point summary + source C3D | `assets/vicon_reconstruction_annotated/*.gif` |
 | 2D alignment | `align_2d_video_vicon.py` | 2D video + single C3D + MediaPipe model | `alignment_summary.json`, `pose2d_landmarks.csv` |
-| Aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4` |
+| Aligned overlay | `render_aligned_2d_overlay.py` | alignment summary + 2D landmarks | `aligned_2d_skeleton_overlay.mp4`, `aligned_2d_overlay_preview.jpg` |
+| 2D-vs-3D QA comparison | `render_vicon_3d_2d_alignment_comparison.py` | alignment summary + C3D | `assets/vicon_2d_vicon_3d_comparison/*` |
 | 2D metric annotations | `render_vicon_geometry_metrics_on_2d.py` | alignment folder + metrics | `assets/vicon_2d_geometry_annotations/*.png` |
 | Metric illustrations | `annotate_frontend_metric_illustrations.py` | static illustration sources + metrics | `assets/frontend_metric_illustrations_annotated_standalone/*.png` |
 | HTML schema | `build_julian_coach_metrics_section.py` | metrics + assets + optional pitching HTML | `julian_coach_metrics_section.html` |
 | Final polish | `apply_batting_coach_values.py` | HTML + metrics + peer XLSX folder | final schema HTML and refreshed researcher charts |
 | XLSX | `build_batting_metrics_xlsx.mjs` | metrics CSV | `*_batting_report_metrics.xlsx` |
+
+### Pitching
+
+| Stage | Script | Inputs | Outputs |
+|---|---|---|---|
+| Pitching metrics/assets | `pitching/build_pitch_template_metrics_report.py` | manifest + template dir | `reports/pitching/index.html`, metrics CSV/JSON, pitching assets |
+| Pitching line-art annotation | `pitching/annotate_pitch_lineart_metrics.py` | pitch summary + line-art source dir | `assets/lineart_actions/*_metrics.png` |
+| Pitching chart utility | `pitching/generate_professional_pitch_charts.py` | pitch summary JSON | `assets/professional_pitch_charts/*.png` |
+| Vicon/video sync | `pitching/sync_vicon_video.py` | video/C3D pairs | `outputs/vicon_video_sync/*.json` |
+Individual builders are implementation details, not report entries. The public report contract is the config-driven `report_cli.py pitching|batting|final --config ...` executions.
 
 ## Skip Flags
 
@@ -82,23 +123,21 @@ Fully automated from Vicon C3D:
 - Researcher batting kinetic-chain and graphs.
 - XLSX body metrics.
 
-Automated when alignment/static inputs exist:
+Automated when raw 2D inputs or prepared alignment inputs exist:
 
+- MediaPipe 2D/Vicon alignment.
+- 2D skeleton overlay preview video.
 - 2D metric overlay PNGs.
+
+Automated when static illustration sources exist:
+
 - Metric illustration annotation PNGs.
 
-Implemented as separate commands:
+Built separately:
 
-- Pitching C3D metrics and report assets: `build-pitch-report`.
-- Standalone single-video 2D report: `build-video-report`.
-- 2D video/Vicon timing alignment: `sync-vicon-video`.
-
-Optional external inputs remain:
-
-- Prepared pitching 2D alignment images.
-- Base line-art illustrations.
-- MediaPipe task model files and other model weights.
+- Pitching image generation and pitching report generation. Default output is `reports/pitching`; batting integration copies it into batting as `pitch_assets/`.
 
 Current schema role constraint:
 
-- The final HTML builder still treats `julian` as the primary batting role and `coach` as the reference role in several filenames and copy blocks. For a new athlete, the immediate compatible path is to generate the metrics CSV with the primary athlete mapped to `sample_name=julian`, or to refactor `build_julian_coach_metrics_section.py` to accept role aliases.
+- The final HTML builder still treats `julian` as the primary batting role and `coach` as the reference role in several filenames and copy blocks. For a new athlete, the immediate compatible path is to generate the metrics CSV with the primary athlete mapped to `sample_name=julian`.
+- If this is later refactored to accept role aliases, keep the implementation inside the standard final-schema builder and validate the output against `baseball-analysis/reports/vicon_2026_julian_coach 4/julian_coach_metrics_section.html`. Do not keep alternate HTML builders in the repo until they match that standard template.

@@ -24,6 +24,10 @@ DEFAULT_POSE3D = ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_pose
 DEFAULT_PITCH_REPORT = ROOT.parent / "julian_pitch_template_report_2026-07-06" / "index.html"
 PITCH_ASSET_PREFIX = "pitch_assets"
 ACTIVE_OUT_DIR = DEFAULT_OUT.parent
+ACTIVE_PLAYER_SAMPLE = "julian"
+ACTIVE_COACH_SAMPLE = "coach"
+ACTIVE_PLAYER_SLUG = "julian"
+ACTIVE_PLAYER_LABEL = "Julian"
 
 
 UNIT_CN = {
@@ -172,7 +176,29 @@ FRONT_FEEDBACK_EN = {
 }
 
 
-PEER_COLORS = ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#dc2626", "#0891b2", "#ca8a04", "#db2777", "#475569"]
+PEER_COLORS = ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#ef4444", "#0891b2", "#ca8a04", "#db2777", "#475569"]
+PEER_COLOR_BY_NAME = {
+    "bryan": "#2563eb",
+    "7zai": "#16a34a",
+    "xuanxuan": "#f97316",
+    "green": "#a855f7",
+    "julian": "#ef4444",
+    "youyou": "#0891b2",
+    "james": "#ca8a04",
+    "branden": "#db2777",
+    "brandon": "#db2777",
+}
+PEER_DISPLAY_BY_NAME = {
+    "bryan": "Bryan陈柏谚",
+    "7zai": "席启源",
+    "xuanxuan": "姚槿宏",
+    "green": "杜子墨",
+    "julian": "Julian",
+    "youyou": "费怡然",
+    "james": "桑禹诚",
+    "branden": "缪炜昱",
+    "brandon": "缪炜昱",
+}
 BLUE = "#2563eb"
 GREEN = "#16a34a"
 ORANGE = "#f97316"
@@ -180,6 +206,19 @@ RED = "#ef4444"
 PURPLE = "#7c3aed"
 INK = "#101828"
 MID = "#667085"
+
+
+def peer_key(name: object) -> str:
+    return str(name or "").strip().casefold().replace(" ", "")
+
+
+def peer_color(name: object, fallback_index: int = 0) -> str:
+    return PEER_COLOR_BY_NAME.get(peer_key(name), PEER_COLORS[fallback_index % len(PEER_COLORS)])
+
+
+def peer_display_name(name: object) -> str:
+    raw_name = str(name or "peer")
+    return PEER_DISPLAY_BY_NAME.get(peer_key(raw_name), raw_name)
 
 BAT_SPEED_U8_U10_GOOD_MIN_KMH = 48.0
 BAT_SPEED_U8_U10_EXCELLENT_MIN_KMH = 72.0
@@ -833,10 +872,12 @@ def peer_range_bar(
         offset_idx = min(lane, len(x_offsets) - 1)
         pos = clamp(pos + x_offsets[offset_idx], 2.0, 98.0)
         top = 50 + y_offsets[offset_idx]
-        color = PEER_COLORS[int(item.get("color_index", 0)) % len(PEER_COLORS)]
-        klass = "peer-dot missing" if missing else "peer-dot"
+        color = peer_color(item.get("name"), int(item.get("color_index", 0)))
+        is_current_player = not missing and peer_key(item.get("name")) == peer_key(ACTIVE_PLAYER_SAMPLE)
+        klass = "peer-dot missing" if missing else "peer-dot current-player" if is_current_player else "peer-dot"
+        current_marker = f"; --marker-color:{esc(color)}" if is_current_player else ""
         return (
-            f'<span class="{klass}" style="left:{pos:.2f}%; top:{top:.1f}%; background:{esc(color)}" '
+            f'<span class="{klass}" style="left:{pos:.2f}%; top:{top:.1f}%; background:{esc(color)}{current_marker}" '
             f'title="{esc(title)}"></span>'
         )
 
@@ -972,10 +1013,12 @@ def peer_metric_range_bar(
         x_offsets = [0.0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, 4.4]
         offset_idx = min(lane, len(x_offsets) - 1)
         pos = clamp(pos + x_offsets[offset_idx], 2.0, 98.0)
-        color = PEER_COLORS[int(item.get("color_index", 0)) % len(PEER_COLORS)]
-        klass = "peer-dot missing" if missing else "peer-dot"
+        color = peer_color(item.get("name"), int(item.get("color_index", 0)))
+        is_current_player = not missing and peer_key(item.get("name")) == peer_key(ACTIVE_PLAYER_SAMPLE)
+        klass = "peer-dot missing" if missing else "peer-dot current-player" if is_current_player else "peer-dot"
+        current_marker = f"; --marker-color:{esc(color)}" if is_current_player else ""
         return (
-            f'<span class="{klass}" style="left:{pos:.2f}%; top:50.0%; background:{esc(color)}" '
+            f'<span class="{klass}" style="left:{pos:.2f}%; top:50.0%; background:{esc(color)}{current_marker}" '
             f'title="{esc(title)}"></span>'
         )
 
@@ -1078,7 +1121,7 @@ def metric_card(
     coach_reference = ""
     if key not in ISSUE_BACKEND_KEYS:
         coach_reference = (
-            f'<div class="batting-coach-reference"><b>阿楽教练</b>'
+            f'<div class="pitch-coach-reference"><b>阿楽教练</b>'
             f'<span>{esc(coach_value)}</span></div>'
         )
     return f"""
@@ -1661,19 +1704,29 @@ def draw_batting_kinetic_chain(rows_by_key: dict[str, dict[str, str]], series: d
     img.save(output)
 
 
+def sample_trial_id(rows_by_key: dict[str, dict[str, str]]) -> str:
+    for row in rows_by_key.values():
+        trial = row.get("trial_id")
+        if trial:
+            return trial
+    raise ValueError("No trial_id found for sample metrics.")
+
+
 def make_research_assets(rows_by_key: dict[str, dict[str, str]], coach_rows: dict[str, dict[str, str]], out_dir: Path) -> dict[str, str]:
-    series = batting_time_series(rows_by_key, "julian_007-julian_cal_04_bat_05")
-    coach_series = batting_time_series(coach_rows, "coach_008-coach_cal_03_bat_02")
-    kinetic_speed_series_data = kinetic_speed_series(rows_by_key, "julian_007-julian_cal_04_bat_05")
-    kinetic = "assets/kinetic_chain/julian_batting_kinetic_chain_flow.png"
-    kinetic_speed = "assets/kinetic_chain/julian_batting_kinetic_speed_time_curve.png"
-    speed = "assets/analyst_charts/julian_batting_bat1_speed_time_curve.png"
-    angle = "assets/analyst_charts/julian_batting_bat_axis_angle_time_curve.png"
+    player_trial_id = sample_trial_id(rows_by_key)
+    coach_trial_id = sample_trial_id(coach_rows)
+    series = batting_time_series(rows_by_key, player_trial_id)
+    coach_series = batting_time_series(coach_rows, coach_trial_id)
+    kinetic_speed_series_data = kinetic_speed_series(rows_by_key, player_trial_id)
+    kinetic = f"assets/kinetic_chain/{ACTIVE_PLAYER_SLUG}_batting_kinetic_chain_flow.png"
+    kinetic_speed = f"assets/kinetic_chain/{ACTIVE_PLAYER_SLUG}_batting_kinetic_speed_time_curve.png"
+    speed = f"assets/analyst_charts/{ACTIVE_PLAYER_SLUG}_batting_bat1_speed_time_curve.png"
+    angle = f"assets/analyst_charts/{ACTIVE_PLAYER_SLUG}_batting_bat_axis_angle_time_curve.png"
     draw_batting_kinetic_chain(rows_by_key, series, out_dir / kinetic)
     draw_kinetic_speed_chart(kinetic_speed_series_data, out_dir / kinetic_speed)
     draw_line_chart(
         [
-            {"label": "Julian", "color": ORANGE, "points": series.get("speed", [])},
+            {"label": ACTIVE_PLAYER_LABEL, "color": ORANGE, "points": series.get("speed", [])},
             {"label": "阿楽教练", "color": BLUE, "points": coach_series.get("speed", [])},
         ],
         "挥棒速度时间曲线",
@@ -1682,7 +1735,7 @@ def make_research_assets(rows_by_key: dict[str, dict[str, str]], coach_rows: dic
     )
     draw_line_chart(
         [
-            {"label": "Julian", "color": ORANGE, "points": series.get("angle", [])},
+            {"label": ACTIVE_PLAYER_LABEL, "color": ORANGE, "points": series.get("angle", [])},
             {"label": "阿楽教练", "color": BLUE, "points": coach_series.get("angle", [])},
         ],
         "挥棒角度时间曲线",
@@ -1940,7 +1993,7 @@ def metric_illustration(name: str) -> str:
 
 def speed_annotation_panel(rows: dict[str, dict[str, str]], sample: str) -> str:
     media_path = versioned_asset(f"assets/vicon_reconstruction_annotated/{sample}_speed_annotated.gif")
-    display_name = "球员" if sample == "julian" else "教练示范"
+    display_name = "球员" if sample == ACTIVE_PLAYER_SAMPLE else "教练示范"
     return f"""
     <figure class="reconstruction-annotated">
       {reconstruction_media(media_path, f"{display_name}打击动作观察")}
@@ -1975,7 +2028,7 @@ def event_gif_panel(
     peer_rows: list[dict[str, object]] | None = None,
 ) -> str:
     julian_metric = julian_rows[metric_key]
-    gif_src = versioned_asset(f"assets/vicon_reconstruction_events/julian_{event_slug}.gif")
+    gif_src = versioned_asset(f"assets/vicon_reconstruction_events/{ACTIVE_PLAYER_SAMPLE}_{event_slug}.gif")
     legend = peer_legend(peer_rows or [], embedded=True)
     notes = {
         "ready": (
@@ -2011,8 +2064,9 @@ def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anon
         return ""
     items = []
     for idx, row in enumerate(peer_rows):
-        color = PEER_COLORS[idx % len(PEER_COLORS)]
-        label = anonymous_peer_label(idx) if anonymize_names else str(row.get("name", "peer"))
+        name = row.get("name", "peer")
+        color = peer_color(name, idx)
+        label = anonymous_peer_label(idx) if anonymize_names else peer_display_name(name)
         items.append(
             f'<li><span class="legend-dot" style="background:{esc(color)}"></span>{esc(label)}</li>'
         )
@@ -2026,14 +2080,31 @@ def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anon
     """
 
 
-def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_dir: Path, pitch_report: Path = DEFAULT_PITCH_REPORT) -> str:
-    global ACTIVE_OUT_DIR
+def render(
+    rows: list[dict[str, str]],
+    peer_rows: list[dict[str, object]],
+    out_dir: Path,
+    pitch_report: Path = DEFAULT_PITCH_REPORT,
+    player_sample_name: str = "julian",
+    coach_sample_name: str = "coach",
+    player_slug: str | None = None,
+    player_label: str | None = None,
+) -> str:
+    global ACTIVE_OUT_DIR, ACTIVE_PLAYER_SAMPLE, ACTIVE_COACH_SAMPLE, ACTIVE_PLAYER_SLUG, ACTIVE_PLAYER_LABEL
     ACTIVE_OUT_DIR = out_dir
+    ACTIVE_PLAYER_SAMPLE = player_sample_name
+    ACTIVE_COACH_SAMPLE = coach_sample_name
+    ACTIVE_PLAYER_SLUG = player_slug or player_sample_name
+    ACTIVE_PLAYER_LABEL = player_label or player_sample_name.title()
     by_sample: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
     for row in rows:
         by_sample[row["sample_name"]][row["metric_key"]] = row
-    julian = by_sample["julian"]
-    coach = by_sample["coach"]
+    if player_sample_name not in by_sample:
+        raise ValueError(f"Metrics CSV is missing player sample_name={player_sample_name!r}. Found: {', '.join(sorted(by_sample))}")
+    if coach_sample_name not in by_sample:
+        raise ValueError(f"Metrics CSV is missing coach sample_name={coach_sample_name!r}. Found: {', '.join(sorted(by_sample))}")
+    julian = by_sample[player_sample_name]
+    coach = by_sample[coach_sample_name]
 
     grouped: dict[str, list[str]] = defaultdict(list)
     for metric_key in BACKEND_ORDER:
@@ -2099,20 +2170,20 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
     .card.review,.metric-card.review,
     .card.risk,.metric-card.risk {{ background:#fffefa; }}
     .metric-card {{ display:grid; grid-template-columns:minmax(110px,145px) minmax(130px,165px) minmax(0,1fr); gap:18px; align-items:center; min-height:236px; border-color:#d2d2d2; border-radius:26px; background:#fffefa; }}
-    .metric-summary {{ min-width:0; display:grid; align-content:center; gap:12px; }}
+    .metric-summary {{ min-width:0; display:grid; align-content:center; gap:14px; }}
     .metric-en {{ color:#667085; font-size:13px; line-height:17px; font-weight:700; margin-top:0; }}
     .metric-detail {{ min-width:0; display:grid; gap:12px; }}
     .metric-detail-cn,.copy-cn,.module-note-cn,.caption-cn {{ color:#344054; font-size:15px; line-height:22px; font-weight:700; }}
     .metric-detail-en,.copy-en,.module-note-en,.caption-en {{ color:#7a8494; font-size:12px; line-height:18px; font-weight:600; }}
     .card-head {{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }}
     .badge {{ display:inline-flex; align-items:center; justify-content:center; width:max-content; min-width:70px; border-radius:999px; padding:4px 12px; font-size:14px; line-height:20px; font-weight:700; white-space:nowrap; }}
-    .badge.good {{ background:#dbeafe; color:#166534; }}
+    .badge.good {{ background:#dcfce7; color:#166534; }}
     .badge.review {{ background:#fff7ed; color:#9a3412; }}
     .badge.risk {{ background:#fef2f2; color:#b91c1c; }}
     .metric-value {{ font-size:38px; line-height:1; font-weight:800; margin:0; color:#000; overflow-wrap:anywhere; }}
-    .batting-coach-reference {{ display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
-    .batting-coach-reference b {{ color:#101828; font-size:12px; line-height:16px; font-weight:800; }}
-    .batting-coach-reference span {{ color:#667085; font-size:12px; line-height:15px; font-weight:800; }}
+    .pitch-coach-reference {{ display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
+    .pitch-coach-reference b {{ color:#101828; font-size:12px; line-height:16px; font-weight:800; }}
+    .pitch-coach-reference span {{ color:#667085; font-size:12px; line-height:15px; font-weight:800; }}
     .compact-metrics {{ grid-template-columns:1fr; gap:18px; }}
     .compact-metrics .metric-card {{ padding:22px 26px; }}
     .compact-metrics .metric-card h4 {{ font-size:18px; line-height:23px; font-weight:800; }}
@@ -2140,7 +2211,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
     .peer-track {{ position:relative; height:28px; border-radius:999px; background:linear-gradient(180deg,transparent 0 11px,#eef2f7 11px 17px,transparent 17px); }}
     .peer-span {{ position:absolute; top:11px; height:6px; border-radius:999px; background:linear-gradient(90deg,#dcfce7,#bae6fd); }}
     .peer-dot {{ position:absolute; top:50%; width:10px; height:10px; border:2px solid #fff; border-radius:999px; transform:translate(-50%,-50%); box-shadow:0 0 0 1px rgba(16,24,40,.12); }}
-    .peer-dot.current-player {{ width:12px; height:12px; background:#101828; box-shadow:0 0 0 2px rgba(37,99,235,.28),0 0 0 1px rgba(16,24,40,.18); }}
+    .peer-dot.current-player {{ z-index:4; width:16px; height:16px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }}
     .peer-range.no-markers .peer-track {{ height:18px; background:linear-gradient(180deg,transparent 0 6px,#eef2f7 6px 12px,transparent 12px); }}
     .peer-range.no-markers .peer-span {{ top:6px; }}
     .peer-dot.missing {{ opacity:.45; box-shadow:0 0 0 1px rgba(16,24,40,.22),0 0 0 4px rgba(16,24,40,.04); }}
@@ -2226,7 +2297,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
       <div class="grid-2">
         <article class="visual-card">
           <h4>球员速度与挥棒方向</h4>
-          {speed_annotation_panel(julian, "julian")}
+          {speed_annotation_panel(julian, ACTIVE_PLAYER_SAMPLE)}
         </article>
         <article class="visual-card">
           <h4>教练示范动作对照</h4>
@@ -2303,7 +2374,7 @@ def render(rows: list[dict[str, str]], peer_rows: list[dict[str, object]], out_d
         <article class="visual-card kinetic-chain-card">
           <h4>下肢 -> 髋部 -> 躯干 -> 手腕 -> 球棒</h4>
           <figure class="kinetic-chain-figure">
-            <img src="{esc(versioned_asset(research_assets["kinetic"]))}" alt="Julian 打击动力链图" loading="lazy">
+            <img src="{esc(versioned_asset(research_assets["kinetic"]))}" alt="{esc(ACTIVE_PLAYER_LABEL)} 打击动力链图" loading="lazy">
           </figure>
           <figure class="kinetic-speed-figure">
             <img src="{esc(versioned_asset(research_assets["kinetic_speed"]))}" alt="动力链速度时间曲线" loading="lazy">
@@ -2358,12 +2429,28 @@ def main() -> None:
         default=DEFAULT_PITCH_REPORT,
         help="Existing pitching-template index.html whose sections and assets are copied into pitch_assets/.",
     )
+    parser.add_argument("--player-sample-name", default="julian")
+    parser.add_argument("--coach-sample-name", default="coach")
+    parser.add_argument("--player-slug", default=None)
+    parser.add_argument("--player-label", default=None)
     args = parser.parse_args()
 
     rows = read_csv(args.metrics)
     peer_rows = read_peer_metrics(args.peers)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    html_text = "\n".join(line.rstrip() for line in render(rows, peer_rows, args.out.parent, args.pitch_report).splitlines()) + "\n"
+    html_text = "\n".join(
+        line.rstrip()
+        for line in render(
+            rows,
+            peer_rows,
+            args.out.parent,
+            args.pitch_report,
+            args.player_sample_name,
+            args.coach_sample_name,
+            args.player_slug,
+            args.player_label,
+        ).splitlines()
+    ) + "\n"
     args.out.write_text(html_text, encoding="utf-8")
     print(args.out)
 

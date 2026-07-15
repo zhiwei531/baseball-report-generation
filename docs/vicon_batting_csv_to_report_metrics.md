@@ -2,13 +2,14 @@
 
 本文整理当前 Vicon batting trial 从 CSV 提取、指标计算到 HTML report 展示的实际流程。内容以当前代码为准，主要对应：
 
+- `configs/default_report_pipeline.json`
+- `scripts/report_cli.py final --config configs/final_report.json`
+- `scripts/run_batting_report_pipeline.py`
 - `scripts/build_batting_dashboard_metrics.py`
 - `scripts/build_julian_coach_metrics_section.py`
 - `reports/vicon_2026_julian_coach/batting_dashboard_metrics.csv`
-- `reports/vicon_coach_metrics_template/README.md`
-- `reports/vicon_coach_metrics_template/DESIGN.md`
 
-当前实现仍有 Julian/Coach 命名假设：HTML builder 默认把 `sample_name == "julian"` 当作主体球员，把 `sample_name == "coach"` 当作教练参考。迁移到其他球员时，需要参数化这些 sample name 和资源文件名。
+当前生产入口是 config-driven pipeline。单个 builder 仍有 Julian/Coach 命名假设：HTML builder 默认把 `sample_name == "julian"` 当作主体球员，把 `sample_name == "coach"` 当作教练参考。迁移到其他球员时，先复制 `configs/default_report_pipeline.json`，改 `report_dir`、`video`、`c3d_file`、`sample_name` 等字段；如需彻底去 Julian 文件名前缀，还需要继续参数化 HTML builder。
 
 ## 1. 总体数据流
 
@@ -25,6 +26,19 @@ Vicon C3D
 ```
 
 标准生成命令：
+
+```bash
+python scripts/report_cli.py final --config configs/final_report.json
+```
+
+新球员复用时：
+
+```bash
+python scripts/report_cli.py \
+  --config configs/<player_slug>_report_pipeline.json
+```
+
+分阶段调试命令：
 
 ```bash
 .venv312/bin/python scripts/build_batting_dashboard_metrics.py \
@@ -326,20 +340,13 @@ ratio = abs(player_value - coach_value) / max(abs(coach_value), 1.0)
 
 ## 9. 建议后续标准化
 
-为了让其他球员报告可复用，建议把 report builder 改成显式参数：
+当前已经把主入口路径、球员输出目录、2D 视频、C3D、MediaPipe model、XLSX 输出目录等集中到 `configs/default_report_pipeline.json`。
 
-```bash
-.venv312/bin/python scripts/build_vicon_coach_metrics_section.py \
-  --metrics reports/vicon_2026_<player_slug>_coach/batting_dashboard_metrics.csv \
-  --pose3d reports/vicon_2026_<player_slug>_coach/vicon_2026_pose3d.csv \
-  --peers outputs/batting_metrics_excel/all_players \
-  --player-slug <player_slug> \
-  --player-sample-name <player_sample_name> \
-  --coach-sample-name coach \
-  --out reports/vicon_2026_<player_slug>_coach/<player_slug>_coach_metrics_section.html
-```
+HTML final-schema builder 目前只保留 `scripts/build_julian_coach_metrics_section.py`。它必须以
+`baseball-analysis/reports/vicon_2026_julian_coach 4/julian_coach_metrics_section.html`
+为标准模板对齐后再复用；不要保留或推荐未通过该模板校验的泛化 builder，否则容易造成颜色 schema、卡片内部结构和资源位置漂移。
 
-并将下面内容配置化：
+后续如果要支持任意球员，应在现有标准 builder 内做参数化，并继续校验以下内容：
 
 - player / coach sample name
 - batting handedness

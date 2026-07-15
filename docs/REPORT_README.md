@@ -1,8 +1,14 @@
 # Vicon Benchmark Report README
 
-这份文档说明当前中文棒球动作体检报告的完整构建流程。报告入口是
-`scripts/build_benchmark_report_html.py`，设计约束来自 `DESIGN.md`，最终产物是
-`report.html`。
+这份文档保留早期 Bryan/Green benchmark report 的背景、设计规则和历史构建流程。当前可复用的 batting final-schema report 主入口已经迁移到：
+
+```bash
+python scripts/report_cli.py final --config configs/final_report.json
+```
+
+该入口读取 `configs/default_report_pipeline.json`，并由 `scripts/run_batting_report_pipeline.py` 串联 C3D CSV、3D reconstruction、2D alignment/annotation、HTML schema、researcher charts 和 XLSX stages。新球员报告应复制 config 并输出到 `reports/vicon_2026_<player_slug>_coach/`，不要直接复用 Julian 输出目录。
+
+以下 “benchmark report” 章节仍可用于理解历史 `report.html`、PDF/PPTX 导出和 Vicon 可视化规范，但不是当前 batting final-schema 的推荐操作手册。
 
 ## 当前数据原则
 
@@ -144,36 +150,20 @@ reports/vicon_2026_julian_coach/vicon_2026_point_summary.csv
 ../vicon_2026/coach/008-coach Cal 03 Bat 02.c3d
 ```
 
-构建顺序：
+当前推荐构建入口：
 
 ```bash
-.venv312/bin/python scripts/build_batting_dashboard_metrics.py \
-  --points reports/vicon_2026_julian_coach/vicon_2026_points_all.csv \
-  --out reports/vicon_2026_julian_coach/batting_dashboard_metrics.csv \
-  --wide-out reports/vicon_2026_julian_coach/batting_dashboard_metrics_wide.csv \
-  --ready-valid-start-frame 770
-
-MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
-XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-.venv312/bin/python scripts/build_julian_coach_event_gifs.py \
-  --metrics reports/vicon_2026_julian_coach/batting_dashboard_metrics.csv \
-  --out-dir reports/vicon_2026_julian_coach/assets/vicon_reconstruction_events
-
-MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
-XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-.venv312/bin/python scripts/build_julian_coach_annotated_speed_gifs.py \
-  --metrics reports/vicon_2026_julian_coach/batting_dashboard_metrics.csv \
-  --points reports/vicon_2026_julian_coach/vicon_2026_point_summary.csv \
-  --out-dir reports/vicon_2026_julian_coach/assets/vicon_reconstruction_annotated
-
-.venv312/bin/python scripts/build_julian_coach_metrics_section.py \
-  --metrics reports/vicon_2026_julian_coach/batting_dashboard_metrics.csv \
-  --out reports/vicon_2026_julian_coach/julian_coach_metrics_section.html
-
-node scripts/build_batting_metrics_xlsx.mjs
-
-.venv312/bin/python ../srs_2d_video_report_package_20260702_194156/render_vicon_geometry_metrics_on_2d.py
+python scripts/report_cli.py final --config configs/final_report.json
 ```
+
+新球员复用：
+
+```bash
+python scripts/report_cli.py \
+  --config configs/<player_slug>_report_pipeline.json
+```
+
+底层构建顺序由 `scripts/run_batting_report_pipeline.py` 管理：C3D extraction -> batting metrics -> 3D event GIFs -> MediaPipe 2D alignment/overlay -> 2D metric annotations -> static illustration annotations -> HTML schema -> final polish -> XLSX export。单个 builder 命令只建议用于调试 partial rebuild。
 
 主要产物：
 
@@ -187,7 +177,7 @@ reports/vicon_2026_julian_coach/assets/vicon_reconstruction_annotated/julian_spe
 reports/vicon_2026_julian_coach/assets/vicon_reconstruction_annotated/coach_speed_annotated.gif
 reports/vicon_2026_julian_coach/assets/vicon_2d_geometry_annotations/ready_position_vicon_geometry_on_2d.png
 reports/vicon_2026_julian_coach/assets/vicon_2d_geometry_annotations/contact_position_vicon_geometry_on_2d.png
-../srs_2d_video_report_package_20260702_194156/outputs/julian_bat_2d_vicon_alignment/vicon_geometry_metric_annotations/vicon_geometry_metrics_on_2d_events.mp4
+reports/vicon_2026_julian_coach/alignment_2d/aligned_2d_skeleton_overlay.mp4
 outputs/batting_metrics_excel/007-julian Cal 04 Bat 05_batting_report_metrics.xlsx
 ```
 

@@ -1,0 +1,22 @@
+{
+  "athletes": [
+    {
+      "key": "julian",
+      "name": "Primary athlete",
+      "role": "student",
+      "c3d": "../../data/pitching/primary_pitch.c3d"
+    },
+    {
+      "key": "coach",
+      "name": "Coach reference",
+      "role": "coach",
+      "c3d": "../../data/pitching/coach_pitch.c3d"
+    },
+    {
+      "key": "peer_01",
+      "name": "Peer 01",
+      "role": "student",
+      "c3d": "../../data/pitching/peer_01_pitch.c3d"
+    }
+  ]
+}

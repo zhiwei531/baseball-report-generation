@@ -49,11 +49,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Render Ready/Contact short GIFs for Julian-vs-Coach metric section.")
     parser.add_argument("--metrics", type=Path, default=DEFAULT_METRICS)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument("--samples", nargs="+", default=["julian", "coach"])
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     rows = read_csv(args.metrics)
-    selected = [row for row in rows if row.get("metric_key") in EVENT_SPECS]
+    sample_names = set(args.samples)
+    selected = [row for row in rows if row.get("metric_key") in EVENT_SPECS and row.get("sample_name") in sample_names]
     for metric in selected:
         event_slug, event_name = EVENT_SPECS[metric["metric_key"]]
         c3d_path = ROOT.parent / metric["source_file"]

@@ -14,11 +14,14 @@ import mediapipe as mp
 from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python import vision
 
+from pipeline_config import load_pipeline_config
+
 
 ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = ROOT.parents[0]
-DEFAULT_MODEL = PROJECT_ROOT / "models" / "pose_landmarker_heavy.task"
-DEFAULT_OUT = PROJECT_ROOT / "outputs" / "aligned_2d_vicon"
+PIPELINE_DEFAULTS = load_pipeline_config()
+DEFAULT_MODEL = PIPELINE_DEFAULTS.mediapipe_model or PROJECT_ROOT / "models" / "pose_landmarker_heavy.task"
+DEFAULT_OUT = PIPELINE_DEFAULTS.report_dir / "alignment_2d"
 
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
@@ -81,7 +84,11 @@ def open_video(path: Path) -> tuple[cv2.VideoCapture, int, int, float, int]:
     return cap, width, height, fps, frames
 
 
-def detect_2d(video_path: Path, model_path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def detect_2d(
+    video_path: Path,
+    model_path: Path,
+    frame_indices: set[int] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if not model_path.exists():
         raise FileNotFoundError(f"MediaPipe task model not found: {model_path}")
 
@@ -103,6 +110,9 @@ def detect_2d(video_path: Path, model_path: Path) -> tuple[list[dict[str, Any]],
             ok, frame = cap.read()
             if not ok:
                 break
+            if frame_indices is not None and frame_index not in frame_indices:
+                frame_index += 1
+                continue
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
             timestamp_ms = int(round(frame_index / fps * 1000.0))
@@ -136,6 +146,16 @@ def detect_2d(video_path: Path, model_path: Path) -> tuple[list[dict[str, Any]],
         "duration_sec": frame_index / fps if fps else None,
     }
     return rows, meta
+
+
+def parse_frame_indices(value: str | None) -> set[int] | None:
+    """Parse a comma-separated list for event-only MediaPipe inference."""
+    if value is None:
+        return None
+    values = {int(part.strip()) for part in value.split(",") if part.strip()}
+    if not values or min(values) < 0:
+        raise ValueError("--frame-indices must contain one or more non-negative frame indices.")
+    return values
 
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -239,6 +259,11 @@ def main() -> None:
         default=None,
         help="Override the MediaPipe-derived event frame when the encoded slow-motion video needs manual phase alignment.",
     )
+    parser.add_argument(
+        "--frame-indices",
+        default=None,
+        help="Optional comma-separated source video frame indices for event-only MediaPipe inference. Default: all frames.",
+    )
     args = parser.parse_args()
 
     out_dir = args.out_dir.resolve()
@@ -248,7 +273,11 @@ def main() -> None:
     vicon_event_frame, vicon_event_label, vicon_event_rule = key_action_frame(trial)
     vicon_rows = all_point_rows(trial)
 
-    pose2d_rows, video_meta = detect_2d(args.video.resolve(), args.model.resolve())
+    pose2d_rows, video_meta = detect_2d(
+        args.video.resolve(),
+        args.model.resolve(),
+        parse_frame_indices(args.frame_indices),
+    )
     playback_fps = float(video_meta["fps"])
     video_capture_fps = float(args.video_capture_fps or playback_fps)
     if args.video_event_frame is None:
