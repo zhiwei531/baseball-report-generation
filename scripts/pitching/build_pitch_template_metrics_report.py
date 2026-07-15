@@ -369,7 +369,7 @@ METRICS = [
     {"key": "shoulder_abduction_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肩外展", "en": "Release Shoulder Abduction", "unit": "deg", "image": "release", "lo": 80, "hi": 105, "copy": "出手时上臂抬起角度决定手臂路径和出手槽位。"},
     {"key": "elbow_flex_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肘屈曲", "en": "Release Elbow Flexion", "unit": "deg", "image": "release", "lo": 60, "hi": 95, "copy": "肘屈曲角用于观察出手时手臂是否有足够延展和控制。"},
     {"key": "arm_slot_deg", "event": "出手点", "section": "出手角度", "name": "出手手臂角度", "en": "Release Arm Angle", "unit": "deg", "image": "release", "lo": 55, "hi": 85, "copy": "出手手臂角度描述前臂抬升方向，是观察投球手臂出手路径的核心指标。"},
-    {"key": "release_height_pct", "event": "出手点", "section": "出手点", "name": "出手高度", "en": "Release Height", "unit": "pct", "image": "release", "lo": 85, "hi": 105, "copy": "用右手手指 marker 近似出手点高度，后续有球 marker 时可再校准。"},
+    {"key": "release_height_pct", "event": "出手点", "section": "出手点", "name": "出手高度", "en": "Release Height", "unit": "pct", "image": "release", "lo": 85, "hi": 105, "copy": "以投球手手部位置近似出手点高度；后续可结合实际出手位置继续校准。"},
     {"key": "hand_speed_kmh", "event": "出手点", "section": "出手点", "name": "出手手速", "en": "Release Hand Speed", "unit": "kmh", "image": "release", "direction": "higher", "copy": "出手手速不是球速，但能作为同一套 Vicon 数据中的出手强度参考。"},
     {"key": "max_hss_deg", "event": "专项问题", "section": "身体带动程度", "name": "最大髋肩分离", "en": "Maximum Hip-Shoulder Separation", "unit": "deg", "image": "release", "lo": 15, "hi": 35, "copy": "最大髋肩分离越清楚，说明身体有更明显的先后顺序。"},
     {"key": "hss_release_amount_deg", "event": "专项问题", "section": "身体带动程度", "name": "髋肩分离释放量", "en": "Hip-Shoulder Separation Release", "unit": "deg", "image": "release", "lo": 8, "hi": 24, "copy": "释放量表示从最大分离到出手时释放了多少躯干旋转空间。"},
@@ -610,8 +610,8 @@ def render_movement_gif(bundle: TrialBundle, out: Path, title: str, subtitle: st
 
 def render_movement_gifs(bundles: list[TrialBundle]) -> None:
     lookup = {b.key: b for b in bundles}
-    render_movement_gif(lookup[PLAYER_KEY], ASSET_DIR / "vicon_reconstruction_events" / f"{PLAYER_SLUG}_player_movement.gif", "球员动作 Player Movement", f"{PLAYER_NAME} / 投球 / C3D骨架动画")
-    render_movement_gif(lookup["coach"], ASSET_DIR / "vicon_reconstruction_events" / "coach_player_movement.gif", "教练动作 Coach Movement", "Coach / 投球 / C3D骨架动画")
+    render_movement_gif(lookup[PLAYER_KEY], ASSET_DIR / "vicon_reconstruction_events" / f"{PLAYER_SLUG}_player_movement.gif", "球员动作 Player Movement", f"{PLAYER_NAME} / 投球 / 动作重建动画")
+    render_movement_gif(lookup["coach"], ASSET_DIR / "vicon_reconstruction_events" / "coach_player_movement.gif", "教练动作 Coach Movement", "教练 / 投球 / 动作重建动画")
 
 
 def make_metric_illustrations(bundles: list[TrialBundle]) -> None:
@@ -858,14 +858,14 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
     <section class="section">
       <div class="section-title"><span class="mark"></span><h2>分析员视角：完整指标表</h2></div>
       <article class="visual-card">
-        <h4>{esc(PLAYER_NAME)}、测试组均值与 Coach 对照</h4>
+        <h4>{esc(PLAYER_NAME)}、测试组均值与阿楽教练对照</h4>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>事件</th><th>前端指标</th><th>{esc(PLAYER_NAME)}</th><th>测试组均值</th><th>Coach</th><th>解释</th></tr></thead>
+            <thead><tr><th>事件</th><th>前端指标</th><th>{esc(PLAYER_NAME)}</th><th>测试组均值</th><th>阿楽教练</th><th>解释</th></tr></thead>
             <tbody>{metric_rows_table(bundles)}</tbody>
           </table>
         </div>
-        <p class="copy-cn">数据口径：全部来自用户提供的 C3D 文件。前脚接触/踏稳由 marker 高度和脚部速度近似，出手点由踏稳后投球手速度峰值近似，没有使用力板或球 marker。</p>
+        <p class="copy-cn">数据说明：本报告根据本次投球动作的连续记录整理。前脚接触、踏稳和出手点按动作过程的变化定位；未使用力板或球速数据。</p>
       </article>
     </section>
   </main>
@@ -1099,6 +1099,29 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     html_text = html_text.replace("julian_", f"{PLAYER_SLUG}_")
     html_text = html_text.replace("julian:", f"{PLAYER_SLUG}:")
     html_text = html_text.replace("Julian", PLAYER_NAME)
+    # Legacy templates contain user-visible provenance jargon in captions and
+    # researcher explanations. Keep the implementation details in source/JSON,
+    # while presenting the report in plain movement language.
+    for old, new in {
+        "球员和 Coach": "球员和教练",
+        "球员与 Coach": "球员与教练",
+        "C3D骨架动画": "动作重建动画",
+        "C3D/Vicon": "本次动作记录",
+        "C3D marker": "本次动作变化",
+        "C3D 文件": "本次动作记录",
+        "C3D数据": "本次动作记录",
+        "Vicon markers": "动作变化",
+        "main release markers": "key release positions",
+        "手部 marker": "手部位置",
+        "球 marker": "球的位置",
+    }.items():
+        html_text = html_text.replace(old, new)
+    html_text = re.sub(
+        r"曲线来自[^<。]*?(?:C3D|marker)[^<。]*?逐帧计算。",
+        "曲线展示本次投球过程中各项动作随时间的变化。",
+        html_text,
+        flags=re.IGNORECASE,
+    )
     # Never inherit a prior athlete's researcher assets when the template is
     # reused. Both flow and timing figures must be rebound to this player.
     html_text = re.sub(

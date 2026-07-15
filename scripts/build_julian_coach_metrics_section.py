@@ -1870,6 +1870,31 @@ def copy_pitch_assets(pitch_report: Path, out_dir: Path) -> None:
     )
 
 
+def sanitize_imported_pitch_copy(section_html: str) -> str:
+    """Remove implementation jargon from imported player-facing pitching copy."""
+    replacements = {
+        "球员和 Coach": "球员和教练",
+        "球员与 Coach": "球员与教练",
+        "C3D骨架动画": "动作重建动画",
+        "C3D/Vicon": "本次动作记录",
+        "C3D marker": "本次动作变化",
+        "C3D 文件": "本次动作记录",
+        "C3D数据": "本次动作记录",
+        "Vicon markers": "动作变化",
+        "main release markers": "key release positions",
+        "手部 marker": "手部位置",
+        "球 marker": "球的位置",
+    }
+    for old, new in replacements.items():
+        section_html = section_html.replace(old, new)
+    return re.sub(
+        r"曲线来自[^<。]*?(?:C3D|marker)[^<。]*?逐帧计算。",
+        "曲线展示本次投球过程中各项动作随时间的变化。",
+        section_html,
+        flags=re.IGNORECASE,
+    )
+
+
 def load_pitch_report_parts(pitch_report: Path, out_dir: Path) -> tuple[str, dict[str, list[str]]]:
     if not pitch_report.exists():
         return "", {"player": [], "coach": [], "researcher": []}
@@ -1885,6 +1910,7 @@ def load_pitch_report_parts(pitch_report: Path, out_dir: Path) -> tuple[str, dic
             continue
         clean_title = title.replace("教练视角：", "").replace("研究者视角：", "")
         section = rewrite_pitch_asset_paths(section)
+        section = sanitize_imported_pitch_copy(section)
         section = set_section_heading(section, 4, clean_title)
         if title.startswith("教练视角"):
             groups["coach"].append(section)
@@ -2411,13 +2437,13 @@ def render(
         <div class="analyst-chart-grid">
           <article class="visual-card analyst-chart-card">
             <figure class="analyst-chart-figure"><img src="{esc(versioned_asset(research_assets["speed"]))}" alt="挥棒速度时间曲线" loading="eager"></figure>
-            <p class="analyst-chart-copy">怎么看：速度曲线用来比较球员和 Coach 的挥棒加速节奏。重点看速度最高点是否靠近击球窗口，以及速度是否集中释放。</p>
-            <p class="analyst-chart-copy">How to read it: the speed graph compares the player's swing rhythm with the Coach reference. Look for whether the fastest moment happens near contact and whether speed is released in one clear burst.</p>
+            <p class="analyst-chart-copy">怎么看：速度曲线用来比较球员和教练的挥棒加速节奏。重点看速度最高点是否靠近击球窗口，以及速度是否集中释放。</p>
+            <p class="analyst-chart-copy">How to read it: the speed graph compares the player's swing rhythm with the coach reference. Look for whether the fastest moment happens near contact and whether speed is released in one clear burst.</p>
           </article>
           <article class="visual-card analyst-chart-card">
             <figure class="analyst-chart-figure"><img src="{esc(versioned_asset(research_assets["angle"]))}" alt="挥棒角度时间曲线" loading="eager"></figure>
-            <p class="analyst-chart-copy">怎么看：角度曲线用来比较球员和 Coach 的球棒方向变化。重点不是角度越大越好，而是击球窗口前后方向是否稳定。</p>
-            <p class="analyst-chart-copy">How to read it: the angle graph compares how the bat direction changes for the player and the Coach reference. Around contact, steadiness matters more than a bigger number.</p>
+            <p class="analyst-chart-copy">怎么看：角度曲线用来比较球员和教练的球棒方向变化。重点不是角度越大越好，而是击球窗口前后方向是否稳定。</p>
+            <p class="analyst-chart-copy">How to read it: the angle graph compares how the bat direction changes for the player and the coach reference. Around contact, steadiness matters more than a bigger number.</p>
           </article>
         </div>
       </div>

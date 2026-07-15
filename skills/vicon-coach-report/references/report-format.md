@@ -39,6 +39,12 @@ When a metric card contains the three white comparison pills, label them
 `乐风U9均值`, `阿楽教练参考`, and `球员<实际球员名>` (for example,
 `球员Bryan`). Never leave a generic `球员` or a hard-coded Julian name.
 
+Researcher chart captions and nearby explanatory copy must use coaching
+language. Do not expose `C3D`, `marker`, or other implementation provenance in
+Chinese or English report text; describe the observed action, timing, and
+movement sequence instead. In Chinese copy, call the comparison role `教练`,
+not `Coach`; English copy may use lowercase `coach` where needed.
+
 ## Required Batting Inputs
 
 The long-form metrics CSV must include target-player and coach rows, plus:

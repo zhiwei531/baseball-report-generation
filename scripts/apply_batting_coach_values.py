@@ -735,7 +735,28 @@ def update_research_section(html: str) -> str:
     ):
         if (REPORT_DIR / path).exists():
             html = re.sub(rf'{re.escape(path)}\?v=\d+', versioned_asset(path), html)
-    return html
+    # The final polish also receives imported pitching sections. Keep all
+    # player-facing researcher copy free of implementation jargon.
+    for old, new in {
+        "球员和 Coach": "球员和教练",
+        "球员与 Coach": "球员与教练",
+        "C3D骨架动画": "动作重建动画",
+        "C3D/Vicon": "本次动作记录",
+        "C3D marker": "本次动作变化",
+        "C3D 文件": "本次动作记录",
+        "C3D数据": "本次动作记录",
+        "Vicon markers": "动作变化",
+        "main release markers": "key release positions",
+        "手部 marker": "手部位置",
+        "球 marker": "球的位置",
+    }.items():
+        html = html.replace(old, new)
+    return re.sub(
+        r"曲线来自[^<。]*?(?:C3D|marker)[^<。]*?逐帧计算。",
+        "曲线展示本次投球过程中各项动作随时间的变化。",
+        html,
+        flags=re.IGNORECASE,
+    )
 
 
 def update_bat_speed_copy(html: str) -> str:
