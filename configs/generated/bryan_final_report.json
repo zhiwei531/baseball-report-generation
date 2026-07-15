@@ -1,0 +1,9 @@
+{
+  "root_dir": ".",
+  "batting_config": "configs/generated/bryan_coach_batting_pipeline.json",
+  "pitching": {
+    "manifest": "configs/generated/bryan_coach_pitching_manifest.json",
+    "template_dir": "reports/pitching_bryan_coach",
+    "out_dir": "reports/pitching_bryan_coach"
+  }
+}
