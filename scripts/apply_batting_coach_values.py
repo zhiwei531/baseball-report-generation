@@ -703,30 +703,47 @@ def versioned_asset(path: str) -> str:
 
 
 def update_research_section(html: str) -> str:
+    player = PLAYER_LABEL
     html = html.replace(
         '<p class="copy-cn">研究者模块把准备、髋部打开、躯干旋转、手腕控制和球棒速度放在同一条线上，便于检查力量是否顺着身体释放到球棒。</p>',
-        '<p class="copy-cn">从本次曲线看，Julian 的挥棒输出主要集中在击球窗口附近：髋部和躯干先建立旋转，手腕随后出现较高峰值，球棒速度在接近击球时释放。后续研究者复盘时，重点不是单个峰值越大越好，而是观察峰值顺序是否稳定、手腕峰值是否过早，以及球棒速度能否在击球窗口附近集中出现。</p>',
+        f'<p class="copy-cn">从本次曲线看，{player} 的挥棒输出主要集中在击球窗口附近：髋部和躯干先建立旋转，手腕随后出现较高峰值，球棒速度在接近击球时释放。后续研究者复盘时，重点不是单个峰值越大越好，而是观察峰值顺序是否稳定、手腕峰值是否过早，以及球棒速度能否在击球窗口附近集中出现。</p>',
     )
     html = html.replace(
         '<p class="copy-en">This researcher view puts preparation, hip opening, trunk rotation, wrist control, and bat speed into one sequence to show whether the swing releases smoothly into the bat.</p>',
-        '<p class="copy-en">The curves suggest that Julian releases most of the swing output near the contact window: the hips and trunk build the rotation first, the wrist peaks later, and bat speed rises close to contact. For review, the key question is not whether one peak is large, but whether the sequence is repeatable, whether the wrist peaks too early, and whether bat speed is concentrated around contact.</p>',
+        f'<p class="copy-en">The curves suggest that {player} releases most of the swing output near the contact window: the hips and trunk build the rotation first, the wrist peaks later, and bat speed rises close to contact. For review, the key question is not whether one peak is large, but whether the sequence is repeatable, whether the wrist peaks too early, and whether bat speed is concentrated around contact.</p>',
     )
     html = html.replace(
         '<p class="analyst-chart-copy">怎么看：速度曲线用来比较 Julian 和阿楽教练的挥棒加速节奏。重点看速度最高点是否靠近击球窗口，以及速度是否集中释放。</p>',
-        '<p class="analyst-chart-copy">怎么看：速度曲线现在标出 Julian 和阿楽教练各自峰值对应的时间与速度。重点看 Julian 的最高速度是否靠近击球窗口，以及峰值是否比教练示范更早或更晚。</p>',
+        f'<p class="analyst-chart-copy">怎么看：速度曲线现在标出 {player} 和阿楽教练各自峰值对应的时间与速度。重点看 {player} 的最高速度是否靠近击球窗口，以及峰值是否比教练示范更早或更晚。</p>',
     )
     html = html.replace(
         "<p class=\"analyst-chart-copy\">How to read it: the speed graph compares Julian's swing rhythm with the 阿楽教练 reference. Look for whether the fastest moment happens near contact and whether speed is released in one clear burst.</p>",
-        "<p class=\"analyst-chart-copy\">How to read it: the speed chart now labels each peak with its time and speed. Check whether Julian's fastest moment is close to contact and whether that peak arrives earlier or later than the coach reference.</p>",
+        f"<p class=\"analyst-chart-copy\">How to read it: the speed chart now labels each peak with its time and speed. Check whether {player}'s fastest moment is close to contact and whether that peak arrives earlier or later than the coach reference.</p>",
     )
     html = html.replace(
         '<p class="analyst-chart-copy">怎么看：角度曲线用来比较 Julian 和阿楽教练的球棒方向变化。重点不是角度越大越好，而是击球窗口前后方向是否稳定。</p>',
-        '<p class="analyst-chart-copy">怎么看：角度曲线现在标出 Julian 和阿楽教练各自峰值对应的时间与角度。重点看击球窗口前后球棒方向是否稳定，而不是追求更大的角度峰值。</p>',
+        f'<p class="analyst-chart-copy">怎么看：角度曲线现在标出 {player} 和阿楽教练各自峰值对应的时间与角度。重点看击球窗口前后球棒方向是否稳定，而不是追求更大的角度峰值。</p>',
     )
     html = html.replace(
         '<p class="analyst-chart-copy">How to read it: the angle graph compares how the bat direction changes for Julian and the 阿楽教练 reference. Around contact, steadiness matters more than a bigger number.</p>',
         '<p class="analyst-chart-copy">How to read it: the angle chart now labels each peak with its time and value. Around contact, the useful signal is bat-direction stability rather than simply producing a larger angle peak.</p>',
     )
+    # Rewrite reports already polished with the former Julian-only researcher
+    # copy, without touching Julian's legitimate peer-legend entry.
+    html = re.sub(
+        r'(<p class="copy-cn">从本次曲线看，)[^<]*?( 的挥棒输出)',
+        rf'\g<1>{player}\2',
+        html,
+    )
+    html = re.sub(
+        r'(The curves suggest that )[^ ]+( releases most of the swing output)',
+        rf'\g<1>{player}\2',
+        html,
+    )
+    html = re.sub(r'(速度曲线现在标出 )[^ 和<]+( 和阿楽教练)', rf'\g<1>{player}\2', html)
+    html = re.sub(r'(重点看 )[^ 的<]+( 的最高速度)', rf'\g<1>{player}\2', html)
+    html = re.sub(r"(Check whether )[^']+('s fastest moment)", rf'\g<1>{player}\2', html)
+    html = re.sub(r'(角度曲线现在标出 )[^ 和<]+( 和阿楽教练)', rf'\g<1>{player}\2', html)
     for path in (
         f"assets/kinetic_chain/{PLAYER_SLUG}_batting_kinetic_chain_flow.png",
         f"assets/kinetic_chain/{PLAYER_SLUG}_batting_kinetic_speed_time_curve.png",
