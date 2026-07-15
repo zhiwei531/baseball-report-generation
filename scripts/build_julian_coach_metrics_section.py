@@ -199,6 +199,17 @@ PEER_DISPLAY_BY_NAME = {
     "branden": "缪炜昱",
     "brandon": "缪炜昱",
 }
+PEER_LEGEND_ORDER = (
+    "bryan",
+    "7zai",
+    "xuanxuan",
+    "green",
+    "julian",
+    "youyou",
+    "james",
+    "branden",
+    "brandon",
+)
 BLUE = "#2563eb"
 GREEN = "#16a34a"
 ORANGE = "#f97316"
@@ -2058,8 +2069,13 @@ def event_gif_panel(
 def peer_legend(peer_rows: list[dict[str, object]], embedded: bool = False, anonymize_names: bool = True) -> str:
     if not peer_rows:
         return ""
+    legend_rank = {name: index for index, name in enumerate(PEER_LEGEND_ORDER)}
+    ordered_rows = sorted(
+        peer_rows,
+        key=lambda row: legend_rank.get(peer_key(row.get("name")), len(legend_rank)),
+    )
     items = []
-    for idx, row in enumerate(peer_rows):
+    for idx, row in enumerate(ordered_rows):
         name = row.get("name", "peer")
         color = peer_color(name, idx)
         label = anonymous_peer_label(idx) if anonymize_names else peer_display_name(name)

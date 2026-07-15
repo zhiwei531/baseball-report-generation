@@ -35,7 +35,13 @@ def clean_2d_outputs(report_dir: Path) -> None:
         report_dir / "assets" / "vicon_2d_vicon_3d_comparison",
     ):
         if path.exists():
-            shutil.rmtree(path)
+            # Finder/Spotlight sidecar files can disappear between scandir and
+            # unlink on macOS.  They are not report inputs, so a vanished file
+            # must not abort a clean rebuild of the generated 2D assets.
+            try:
+                shutil.rmtree(path)
+            except FileNotFoundError:
+                pass
 
 
 def validate_alignment_summary(alignment_dir: Path, args: argparse.Namespace) -> None:
