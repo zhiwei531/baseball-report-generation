@@ -1033,6 +1033,11 @@ def refresh_metric_card_summaries(html_text: str, bundles: list[TrialBundle]) ->
     html_text = html_text.replace("右腿蹬地伸展线索", "右腿蹬伸推进")
     html_text = html_text.replace("手臂链条槽位", "出手手臂角度")
     html_text = html_text.replace("手臂槽位", "出手手臂角度")
+    # Keep every legacy and newly generated three-pill comparison card on the
+    # same naming contract, without retaining a hard-coded Julian label.
+    html_text = html_text.replace("<b>测试组均值</b>", "<b>乐风U9均值</b>")
+    html_text = html_text.replace("<b>教练参考</b>", "<b>阿楽教练参考</b>")
+    html_text = html_text.replace("<b>球员</b>", f"<b>球员{esc(PLAYER_NAME)}</b>")
     html_text = re.sub(r"(?<!出手)手速", "出手手速", html_text)
     html_text = html_text.replace("hand_speed_mps.png", "hand_speed_kmh.png")
 

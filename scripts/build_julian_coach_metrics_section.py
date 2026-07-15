@@ -978,9 +978,9 @@ def issue_compare_pills(
     player_value = metric.get("value")
     return f"""
         <div class="compare-pills">
-          <span class="compare-pill"><b>测试组均值</b>{esc(fmt(group_mean, unit))}</span>
-          <span class="compare-pill"><b>教练参考</b>{esc(fmt(coach_value, coach.get("unit") if coach else unit))}</span>
-          <span class="compare-pill"><b>球员</b>{esc(fmt(player_value, unit))}</span>
+          <span class="compare-pill"><b>乐风U9均值</b>{esc(fmt(group_mean, unit))}</span>
+          <span class="compare-pill"><b>阿楽教练参考</b>{esc(fmt(coach_value, coach.get("unit") if coach else unit))}</span>
+          <span class="compare-pill"><b>球员{esc(ACTIVE_PLAYER_LABEL)}</b>{esc(fmt(player_value, unit))}</span>
         </div>
     """
 

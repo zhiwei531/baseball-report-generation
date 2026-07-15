@@ -35,6 +35,10 @@ Each card requires a Chinese label, English label, status badge, main value/unit
 
 For pitching player and coach cards, use `乐风U9同组表现` as the peer-range caption. Use the shared eight-player legend order/colors: Bryan blue, 席启源 green, 姚槿宏 orange, 杜子墨 purple, Julian red, 费怡然 teal, 桑禹诚 yellow, 缪炜昱 pink.
 
+When a metric card contains the three white comparison pills, label them
+`乐风U9均值`, `阿楽教练参考`, and `球员<实际球员名>` (for example,
+`球员Bryan`). Never leave a generic `球员` or a hard-coded Julian name.
+
 ## Required Batting Inputs
 
 The long-form metrics CSV must include target-player and coach rows, plus:
