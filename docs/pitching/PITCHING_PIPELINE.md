@@ -37,6 +37,8 @@ reports/pitching/pitch_metrics_all_players.csv
 reports/pitching/pitch_metrics_summary.json
 reports/pitching/assets/frontend_metric_illustrations_pitch/
 reports/pitching/assets/kinetic_chain/
+reports/pitching/assets/analyst_charts/
+reports/pitching/assets/video_2d_alignment/
 reports/pitching/assets/vicon_reconstruction_events/
 ```
 
@@ -54,13 +56,14 @@ To generate publication-style presentation charts:
 ```bash
 python scripts/pitching/generate_professional_pitch_charts.py \
   --summary reports/pitching/pitch_metrics_summary.json \
-  --out-dir reports/pitching/assets/professional_pitch_charts \
+  --out-dir reports/pitching/assets/analyst_charts \
+  --kinetic-out-dir reports/pitching/assets/kinetic_chain \
   --athlete-key julian
 ```
 
 The chart utility reconstructs smooth presentation curves from event anchors and summary metrics. These are not raw frame-by-frame time series and must be labeled accordingly.
 
-To generate pitching 2D-video / Vicon-3D alignment QA assets, use the dedicated lower-level wrapper documented in `docs/pitching/PITCHING_VICON_2D_ALIGNMENT.md`. It requires reviewed slow-motion capture FPS and reviewed release frame, then writes the 2D skeleton overlay plus the side-by-side 2D-vs-3D comparison assets.
+To generate pitching 2D-video / Vicon-3D alignment QA assets, use the dedicated lower-level wrapper documented in `docs/pitching/PITCHING_VICON_2D_ALIGNMENT.md`. It requires reviewed capture FPS and reviewed release frame, then writes the 2D skeleton overlay plus the side-by-side 2D-vs-3D comparison assets. The combined `report_cli.py pitching/final` execution additionally runs `render_pitch_event_overlays.py`, which maps the report's Vicon release event to the reviewed 2D release frame and writes three report-ready images for peak knee lift, front-foot plant, and release.
 
 ## Event and metric limitations
 

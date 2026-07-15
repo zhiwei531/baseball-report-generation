@@ -22,6 +22,8 @@ DEFAULT_METRICS = ROOT / "reports" / "vicon_2026_julian_coach" / "batting_dashbo
 DEFAULT_OUT = ALIGN_DIR / "vicon_geometry_metric_annotations"
 
 FONT_CANDIDATES = [
+    r"C:\Windows\Fonts\msyh.ttc",
+    r"C:\Windows\Fonts\simhei.ttf",
     "/System/Library/Fonts/PingFang.ttc",
     "/System/Library/Fonts/STHeiti Light.ttc",
     "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",

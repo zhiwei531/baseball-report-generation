@@ -116,6 +116,8 @@ RAW_MARKER_PARTS = {
     "右腿": {"RTHI", "RKNE", "RTIB", "RANK", "RHEE", "RTOE"},
 }
 ZH_FONT_PATHS = [
+    Path(r"C:\Windows\Fonts\msyh.ttc"),
+    Path(r"C:\Windows\Fonts\simhei.ttf"),
     Path("/System/Library/Fonts/PingFang.ttc"),
     Path("/System/Library/Fonts/STHeiti Medium.ttc"),
     Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),

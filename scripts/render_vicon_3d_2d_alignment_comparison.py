@@ -37,6 +37,8 @@ from render_vicon_reconstruction_images import (  # noqa: E402
 DEFAULT_SUMMARY = ROOT / "reports" / "vicon_2026_julian_coach" / "alignment_2d" / "alignment_summary.json"
 
 FONT_CANDIDATES = [
+    r"C:\Windows\Fonts\msyh.ttc",
+    r"C:\Windows\Fonts\simhei.ttf",
     "/System/Library/Fonts/PingFang.ttc",
     "/System/Library/Fonts/STHeiti Light.ttc",
     "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",

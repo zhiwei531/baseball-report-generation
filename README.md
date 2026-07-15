@@ -33,6 +33,8 @@ python scripts/report_cli.py batting --config configs/final_report.json
 `batting` requires the `pitching` execution's `out_dir/index.html`. `final`
 is the convenience execution that runs those two stages in that order.
 
+The pitching execution fails closed unless the two researcher curves, kinetic-chain curve, and (when alignment is configured) three report-ready 2D/Vicon event overlays are all generated.
+
 ## Required 2D/Vicon sequence
 
 ```text
@@ -54,3 +56,25 @@ For the Julian reference trial, Vicon `bat_speed_peak` frame 854 is manually map
 The report entry owns cross-discipline orchestration. Individual batting and
 pitching scripts remain implementation details, preventing a stale hard-coded
 pitching report from being embedded in a newly generated batting deliverable.
+
+## Final report validation
+
+Run the delivery gate after generation:
+
+```bash
+python scripts/validate_final_report.py \
+  reports/vicon_2026_bryan_coach/bryan_coach_metrics_section.html \
+  --athlete Bryan \
+  --forbidden-subject Julian \
+  --gold-html path/to/approved/bryan_coach_metrics_section.html
+```
+
+The validator checks every local `src`/`href`/`poster`, the required role and discipline labels, required pitching researcher assets, U9 copy, subject leakage, and gold-template tag/class structure. Data-driven status classes are ignored during structure comparison.
+
+Create a compact self-contained delivery (HTML, every referenced asset, and small provenance/metric files; no multi-hundred-megabyte raw coordinate CSVs):
+
+```bash
+python scripts/package_final_report.py \
+  reports/vicon_2026_bryan_coach/bryan_coach_metrics_section.html \
+  --out outputs/bryan_final_report_delivery.zip
+```

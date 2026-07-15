@@ -703,11 +703,21 @@ def versioned_asset(path: str) -> str:
 def update_research_section(html: str) -> str:
     html = html.replace(
         '<p class="copy-cn">研究者模块把准备、髋部打开、躯干旋转、手腕控制和球棒速度放在同一条线上，便于检查力量是否顺着身体释放到球棒。</p>',
-        '<p class="copy-cn">从本次曲线看，Julian 的挥棒输出主要集中在击球窗口附近：髋部和躯干先建立旋转，手腕随后出现较高峰值，球棒速度在接近击球时释放。后续研究者复盘时，重点不是单个峰值越大越好，而是观察峰值顺序是否稳定、手腕峰值是否过早，以及球棒速度能否在击球窗口附近集中出现。</p>',
+        f'<p class="copy-cn">从本次曲线看，{PLAYER_LABEL} 的挥棒输出主要集中在击球窗口附近：髋部和躯干先建立旋转，手腕随后出现较高峰值，球棒速度在接近击球时释放。后续研究者复盘时，重点不是单个峰值越大越好，而是观察峰值顺序是否稳定、手腕峰值是否过早，以及球棒速度能否在击球窗口附近集中出现。</p>',
     )
     html = html.replace(
         '<p class="copy-en">This researcher view puts preparation, hip opening, trunk rotation, wrist control, and bat speed into one sequence to show whether the swing releases smoothly into the bat.</p>',
-        '<p class="copy-en">The curves suggest that Julian releases most of the swing output near the contact window: the hips and trunk build the rotation first, the wrist peaks later, and bat speed rises close to contact. For review, the key question is not whether one peak is large, but whether the sequence is repeatable, whether the wrist peaks too early, and whether bat speed is concentrated around contact.</p>',
+        f'<p class="copy-en">The curves suggest that {PLAYER_LABEL} releases most of the swing output near the contact window: the hips and trunk build the rotation first, the wrist peaks later, and bat speed rises close to contact. For review, the key question is not whether one peak is large, but whether the sequence is repeatable, whether the wrist peaks too early, and whether bat speed is concentrated around contact.</p>',
+    )
+    # Keep the rewrite idempotent for reports that already received the older,
+    # Julian-specific schema pass.
+    html = html.replace(
+        "从本次曲线看，Julian 的挥棒输出主要集中在击球窗口附近",
+        f"从本次曲线看，{PLAYER_LABEL} 的挥棒输出主要集中在击球窗口附近",
+    )
+    html = html.replace(
+        "The curves suggest that Julian releases most of the swing output near the contact window",
+        f"The curves suggest that {PLAYER_LABEL} releases most of the swing output near the contact window",
     )
     html = html.replace(
         '<p class="analyst-chart-copy">怎么看：速度曲线用来比较 Julian 和阿楽教练的挥棒加速节奏。重点看速度最高点是否靠近击球窗口，以及速度是否集中释放。</p>',

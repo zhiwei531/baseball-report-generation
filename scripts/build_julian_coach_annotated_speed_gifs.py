@@ -128,6 +128,8 @@ def rows_for_trial(rows: list[dict[str, str]], trial_id: str) -> list[dict[str, 
 
 def font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     for path in (
+        Path(r"C:\Windows\Fonts\msyh.ttc"),
+        Path(r"C:\Windows\Fonts\simhei.ttf"),
         Path("/System/Library/Fonts/PingFang.ttc"),
         Path("/System/Library/Fonts/STHeiti Medium.ttc"),
         Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),

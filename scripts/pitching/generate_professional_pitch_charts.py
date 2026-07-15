@@ -195,6 +195,8 @@ def build_angle_chart(julian: dict, times: np.ndarray) -> Path:
     peak = events["peak_knee"] / rate
     plant = events["foot_plant"] / rate
     release = events["release"] / rate
+    start = float(times.min())
+    end = float(times.max())
     fig, ax, ax2 = setup_figure(
         u(r"\u6295\u7403\u89d2\u5ea6-\u65f6\u95f4\u66f2\u7ebf"),
         u(r"\u8bba\u6587\u98ce\u683c\u91cd\u7ed8\uff1a\u89d2\u5ea6\u6307\u6807\u7528\u5de6\u8f74\uff0c\u8098-\u80a9\u9ad8\u5ea6\u5dee\u7528\u53f3\u8f74\uff1b\u7ec6\u5f15\u7ebf\u6807\u51fa\u5404\u66f2\u7ebf\u5cf0\u503c\u3002"),
@@ -204,22 +206,22 @@ def build_angle_chart(julian: dict, times: np.ndarray) -> Path:
     series = [
         (
             u(r"\u524d\u817f\u652f\u6491\u89d2"),
-            curve(times, [(1.65, 112), (peak, v["front_knee_peak_deg"]), (plant, v["front_knee_plant_deg"]), (release, v["front_knee_release_deg"]), (3.85, 46)]),
+            curve(times, [(start, 112), (peak, v["front_knee_peak_deg"]), (plant, v["front_knee_plant_deg"]), (release, v["front_knee_release_deg"]), (end, 46)]),
             BLUE,
         ),
         (
             u(r"\u6295\u7403\u8098\u5c48\u66f2"),
-            curve(times, [(1.65, 92), (peak, 110), (plant, v["elbow_flex_plant_deg"]), (release, v["elbow_flex_release_deg"]), (3.85, 64)]),
+            curve(times, [(start, 92), (peak, 110), (plant, v["elbow_flex_plant_deg"]), (release, v["elbow_flex_release_deg"]), (end, 64)]),
             ORANGE,
         ),
         (
             u(r"\u9acb\u80a9\u5206\u79bb"),
-            curve(times, [(1.65, 8), (peak, v["hss_peak_knee_deg"]), (plant - 0.05, v["max_hss_deg"]), (release, v["hss_release_deg"]), (3.85, 6)]),
+            curve(times, [(start, 8), (peak, v["hss_peak_knee_deg"]), (plant - 0.05, v["max_hss_deg"]), (release, v["hss_release_deg"]), (end, 6)]),
             PURPLE,
         ),
         (
             u(r"\u8eaf\u5e72\u524d\u503e"),
-            curve(times, [(1.65, -6), (peak, -2), (plant, 18), (release, 30), (3.85, 12)]),
+            curve(times, [(start, -6), (peak, -2), (plant, 18), (release, 30), (end, 12)]),
             GREEN,
         ),
     ]
@@ -227,7 +229,7 @@ def build_angle_chart(julian: dict, times: np.ndarray) -> Path:
     ax.set_ylim(-20, 176)
     for label, y, color in series:
         ax.plot(times, y, color=color, linewidth=2.0, label=label)
-    elbow_height = curve(times, [(1.65, -4), (peak, -7), (plant, v["elbow_vs_shoulder_cm"]), (release, 5.8), (3.85, 2.0)])
+    elbow_height = curve(times, [(start, -4), (peak, -7), (plant, v["elbow_vs_shoulder_cm"]), (release, 5.8), (end, 2.0)])
     ax2.set_ylim(-20, 16)
     ax2.plot(times, elbow_height, color=TEAL, linewidth=1.9, linestyle=(0, (5, 2)), label=u(r"\u8098-\u80a9\u9ad8\u5ea6\u5dee"))
     add_events(ax, events, rate, 166)
@@ -249,6 +251,8 @@ def build_speed_chart(julian: dict, times: np.ndarray) -> Path:
     plant = events["foot_plant"] / rate
     release = events["release"] / rate
     hand_peak = float(v["hand_speed_mps"])
+    start = float(times.min())
+    end = float(times.max())
     fig, ax, ax2 = setup_figure(
         u(r"\u6295\u7403\u901f\u5ea6-\u65f6\u95f4\u66f2\u7ebf"),
         u(r"\u8eab\u4f53\u901f\u5ea6\u7528\u5de6\u8f74\uff0c\u8eaf\u5e72\u89d2\u901f\u5ea6\u7528\u53f3\u8f74\uff1b\u89c2\u5bdf\u8eab\u4f53\u5148\u52a0\u901f\u3001\u624b\u90e8\u540e\u8fbe\u5cf0\u3002"),
@@ -256,16 +260,16 @@ def build_speed_chart(julian: dict, times: np.ndarray) -> Path:
         u(r"\u89d2\u901f\u5ea6 (deg/s)"),
     )
     series = [
-        (u(r"\u9aa8\u76c6\u4e2d\u5fc3\u901f\u5ea6"), curve(times, [(1.65, 0.15), (peak, 0.35), (plant - 0.18, 1.6), (plant, 1.1), (release, 0.55), (3.85, 0.25)]), BLUE),
-        (u(r"\u80a9\u90e8\u4e2d\u5fc3\u901f\u5ea6"), curve(times, [(1.65, 0.25), (peak, 0.55), (plant - 0.10, 2.2), (plant, 1.55), (release, 1.0), (3.85, 0.55)]), PURPLE),
-        (u(r"\u8098\u90e8\u901f\u5ea6"), curve(times, [(1.65, 0.2), (peak, 0.45), (plant, 2.2), (release - 0.07, 4.8), (release, 3.4), (3.85, 1.0)]), GREEN),
-        (u(r"\u624b\u90e8\u901f\u5ea6"), curve(times, [(1.65, 0.2), (peak, 0.5), (plant, 2.4), (release - 0.01, hand_peak), (release + 0.08, 5.2), (3.85, 1.2)]), ORANGE),
+        (u(r"\u9aa8\u76c6\u4e2d\u5fc3\u901f\u5ea6"), curve(times, [(start, 0.15), (peak, 0.35), (plant - 0.18, 1.6), (plant, 1.1), (release, 0.55), (end, 0.25)]), BLUE),
+        (u(r"\u80a9\u90e8\u4e2d\u5fc3\u901f\u5ea6"), curve(times, [(start, 0.25), (peak, 0.55), (plant - 0.10, 2.2), (plant, 1.55), (release, 1.0), (end, 0.55)]), PURPLE),
+        (u(r"\u8098\u90e8\u901f\u5ea6"), curve(times, [(start, 0.2), (peak, 0.45), (plant, 2.2), (release - 0.07, 4.8), (release, 3.4), (end, 1.0)]), GREEN),
+        (u(r"\u624b\u90e8\u901f\u5ea6"), curve(times, [(start, 0.2), (peak, 0.5), (plant, 2.4), (release - 0.01, hand_peak), (release + 0.08, 5.2), (end, 1.2)]), ORANGE),
     ]
     ax.set_xlim(times.min(), times.max())
     ax.set_ylim(0, 10.4)
     for label, y, color in series:
         ax.plot(times, y, color=color, linewidth=2.0, label=label)
-    trunk_w = curve(times, [(1.65, 40), (peak, 95), (plant - 0.15, 430), (plant, 360), (release, 210), (3.85, 75)])
+    trunk_w = curve(times, [(start, 40), (peak, 95), (plant - 0.15, 430), (plant, 360), (release, 210), (end, 75)])
     ax2.set_ylim(0, 560)
     ax2.plot(times, trunk_w, color=RED, linewidth=1.9, linestyle=(0, (5, 2)), label=u(r"\u8eaf\u5e72\u89d2\u901f\u5ea6"))
     add_events(ax, events, rate, 9.9)
@@ -286,6 +290,8 @@ def build_kinetic_chain_chart(julian: dict, times: np.ndarray) -> Path:
     peak = events["peak_knee"] / rate
     plant = events["foot_plant"] / rate
     release = events["release"] / rate
+    start = float(times.min())
+    end = float(times.max())
     fig, ax, ax2 = setup_figure(
         u(r"\u7403\u5458\u6295\u7403\u52a8\u529b\u94fe\u65f6\u95f4\u66f2\u7ebf"),
         u(r"\u524d\u540e\u8282\u594f\u6307\u6807\u7edf\u4e00\u5230 0-100\uff0c\u624b\u901f\u7528\u53f3\u8f74\uff1b\u5cf0\u503c\u70b9\u7528\u7ec6\u5f15\u7ebf\u6807\u51fa\u65f6\u95f4\u4e0e\u6570\u503c\u3002"),
@@ -293,16 +299,16 @@ def build_kinetic_chain_chart(julian: dict, times: np.ndarray) -> Path:
         u(r"\u624b\u90e8\u901f\u5ea6 (m/s)"),
     )
     series = [
-        (u(r"\u540e\u817f\u652f\u6491"), curve(times, [(1.65, 18), (peak, 28), (plant - 0.18, 94), (plant, 100), (release, 82), (3.85, 58)]), GREEN),
-        (u(r"\u8de8\u6b65\u63a8\u8fdb"), curve(times, [(1.65, 10), (peak, 12), (plant - 0.06, 98), (plant, 100), (release, 97), (3.85, 94)]), BLUE),
-        (u(r"\u9acb\u80a9\u5206\u79bb"), curve(times, [(1.65, 22), (peak, 38), (plant - 0.05, 100), (release, 60), (3.85, 35)]), PURPLE),
-        (u(r"\u624b\u81c2\u69fd\u4f4d"), curve(times, [(1.65, 8), (peak, 20), (plant, 40), (release - 0.08, 100), (release, 94), (3.85, 48)]), ORANGE),
+        (u(r"\u540e\u817f\u652f\u6491"), curve(times, [(start, 18), (peak, 28), (plant - 0.18, 94), (plant, 100), (release, 82), (end, 58)]), GREEN),
+        (u(r"\u8de8\u6b65\u63a8\u8fdb"), curve(times, [(start, 10), (peak, 12), (plant - 0.06, 98), (plant, 100), (release, 97), (end, 94)]), BLUE),
+        (u(r"\u9acb\u80a9\u5206\u79bb"), curve(times, [(start, 22), (peak, 38), (plant - 0.05, 100), (release, 60), (end, 35)]), PURPLE),
+        (u(r"\u624b\u81c2\u69fd\u4f4d"), curve(times, [(start, 8), (peak, 20), (plant, 40), (release - 0.08, 100), (release, 94), (end, 48)]), ORANGE),
     ]
     ax.set_xlim(times.min(), times.max())
     ax.set_ylim(0, 145)
     for label, y, color in series:
         ax.plot(times, y, color=color, linewidth=2.1, label=label)
-    hand_speed = curve(times, [(1.65, 0.2), (peak, 0.5), (plant, 2.4), (release - 0.01, v["hand_speed_mps"]), (release + 0.08, 5.2), (3.85, 1.2)])
+    hand_speed = curve(times, [(start, 0.2), (peak, 0.5), (plant, 2.4), (release - 0.01, v["hand_speed_mps"]), (release + 0.08, 5.2), (end, 1.2)])
     ax2.set_ylim(0, 10.4)
     ax2.plot(times, hand_speed, color=RED, linewidth=2.0, linestyle=(0, (5, 2)), label=u(r"\u624b\u90e8\u901f\u5ea6"))
     add_events(ax, events, rate, 134)
@@ -344,6 +350,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate publication-style pitching charts from a metric summary.")
     parser.add_argument("--summary", required=True, type=Path, help="pitch_metrics_summary.json")
     parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument("--kinetic-out-dir", type=Path, default=None)
     parser.add_argument("--athlete-key", default="", help="Player key. Defaults to the first student in the summary.")
     args = parser.parse_args()
     SUMMARY_PATH = args.summary.resolve()
@@ -351,12 +358,19 @@ def main() -> None:
     ATHLETE_KEY = args.athlete_key
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     julian = load_athlete()
-    times = np.linspace(1.65, 3.85, 360)
-    paths = [
-        build_angle_chart(julian, times),
-        build_speed_chart(julian, times),
-        build_kinetic_chain_chart(julian, times),
-    ]
+    values = julian["values"]
+    start = max(0.0, float(values["peak_knee_time_s"]) - 0.6)
+    end = float(values["release_time_s"]) + 0.28
+    times = np.linspace(start, end, 420)
+    paths = [build_angle_chart(julian, times), build_speed_chart(julian, times)]
+    chain = build_kinetic_chain_chart(julian, times)
+    if args.kinetic_out_dir is not None:
+        kinetic_out_dir = args.kinetic_out_dir.resolve()
+        kinetic_out_dir.mkdir(parents=True, exist_ok=True)
+        target = kinetic_out_dir / chain.name
+        chain.replace(target)
+        chain = target
+    paths.append(chain)
     write_prompt_note(paths)
     prompt = ROOT / "prompts" / "pitch_chart_redraw.md"
     if prompt.exists():

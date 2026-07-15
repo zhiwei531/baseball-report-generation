@@ -14,7 +14,12 @@ REPORT_DIR = Path(__file__).resolve().parents[1] / "reports" / "vicon_2026_julia
 SRC_DIR = REPORT_DIR / "assets" / "frontend_metric_illustrations"
 OUT_DIR = REPORT_DIR / "assets" / "frontend_metric_illustrations_annotated_standalone"
 METRICS_CSV = REPORT_DIR / "batting_dashboard_metrics.csv"
-FONT_PATH = Path("/System/Library/Fonts/PingFang.ttc")
+FONT_CANDIDATES = (
+    Path(r"C:\Windows\Fonts\msyh.ttc"),
+    Path(r"C:\Windows\Fonts\simhei.ttf"),
+    Path("/System/Library/Fonts/PingFang.ttc"),
+    Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+)
 
 BLUE = "#2563eb"
 GREEN = "#00a85a"
@@ -29,7 +34,10 @@ WARM = "#fffaf2"
 
 
 def font(size: int, weight_index: int = 0) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(str(FONT_PATH), size=size, index=weight_index)
+    for path in FONT_CANDIDATES:
+        if path.exists():
+            return ImageFont.truetype(str(path), size=size, index=weight_index)
+    return ImageFont.load_default()
 
 
 F_TITLE = font(54)
