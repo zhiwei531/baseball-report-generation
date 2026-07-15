@@ -26,7 +26,12 @@ def clean_standard_outputs(out_dir: Path) -> None:
     for child in ("sync", "alignment", "comparison"):
         target = out_dir / child
         if target.exists():
-            shutil.rmtree(target)
+            # Finder/Spotlight sidecars can disappear between scandir and
+            # unlink on macOS. They are generated-output noise, not inputs.
+            try:
+                shutil.rmtree(target)
+            except FileNotFoundError:
+                pass
     manifest = out_dir / "pitching_alignment_manifest.json"
     if manifest.exists():
         manifest.unlink()

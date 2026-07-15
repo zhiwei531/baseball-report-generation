@@ -1092,6 +1092,35 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     html_text = html_text.replace("julian_", f"{PLAYER_SLUG}_")
     html_text = html_text.replace("julian:", f"{PLAYER_SLUG}:")
     html_text = html_text.replace("Julian", PLAYER_NAME)
+    # Never inherit a prior athlete's researcher assets when the template is
+    # reused. Both flow and timing figures must be rebound to this player.
+    html_text = re.sub(
+        r'(src="assets/kinetic_chain/)[^"]*_pitch_kinetic_chain_flow\.png(" alt="球员投球动力链图")',
+        rf'\g<1>{PLAYER_SLUG}_pitch_kinetic_chain_flow.png\2',
+        html_text,
+    )
+    # Some older templates put the generic timing-curve filename in the
+    # flow-card slot. Preserve the intended flow-card asset during migration.
+    html_text = re.sub(
+        r'(src="assets/kinetic_chain/)[^"]*_kinetic_chain_time_curves\.png(" alt="球员投球动力链时间曲线")',
+        rf'\g<1>{PLAYER_SLUG}_pitch_kinetic_chain_flow.png\2',
+        html_text,
+    )
+    html_text = re.sub(
+        r'(src="assets/kinetic_chain/)[^"]*_kinetic_chain_time_curves\.png(" alt="球员投球动力链五指标时间曲线")',
+        rf'\g<1>{PLAYER_SLUG}_kinetic_chain_time_curves.png\2',
+        html_text,
+    )
+    html_text = re.sub(
+        r'(src="assets/analyst_charts/)[^"]*_pitch_angle_time_curve\.png(?:\?v=[^"]*)?(" alt="球员投球角度时间曲线")',
+        rf'\g<1>{PLAYER_SLUG}_pitch_angle_time_curve.png\2',
+        html_text,
+    )
+    html_text = re.sub(
+        r'(src="assets/analyst_charts/)[^"]*_pitch_speed_time_curve\.png(?:\?v=[^"]*)?(" alt="球员投球速度时间曲线")',
+        rf'\g<1>{PLAYER_SLUG}_pitch_speed_time_curve.png\2',
+        html_text,
+    )
     html_text = html_text.replace("优秀学员 Bryan", f"球员 {PLAYER_NAME}")
     html_text = html_text.replace("优秀学员 julian", f"球员 {PLAYER_SLUG}")
     html_text = html_text.replace("peer-dot julian", "peer-dot current-player")
