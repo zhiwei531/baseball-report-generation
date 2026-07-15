@@ -310,7 +310,10 @@ def fmt(value: float, unit: str) -> str:
     if unit == "deg":
         return f"{value:.1f}°"
     if unit == "pct":
-        return f"{value:.1f}%"
+        # Pitching distance/height measures are normalized by the athlete's
+        # height.  Keep that meaning visible everywhere this formatter is
+        # reused (cards, comparison pills, ranges, and issue summaries).
+        return f"{value:.1f}%身高比"
     if unit == "mm":
         return f"{value:.0f} mm"
     if unit == "cm":
@@ -488,7 +491,7 @@ def render_reference_images(bundles: list[TrialBundle]) -> None:
 def metric_label(value: float, suffix: str) -> str:
     if not finite(value):
         return "N/A"
-    sep = "" if suffix == "%" else " "
+    sep = "" if suffix.startswith("%") else " "
     return f"{value:.1f}{sep}{suffix}".strip()
 
 
@@ -566,7 +569,7 @@ def render_movement_panel(
     cards = (
         ("Hand speed", metric_label(bundle.values.get("hand_speed_kmh", float("nan")), "km/h")),
         ("Rotation angle", metric_label(bundle.values.get("hss_release_deg", float("nan")), "deg")),
-        ("Release height", metric_label(bundle.values.get("release_height_pct", float("nan")), "%")),
+        ("Release height", metric_label(bundle.values.get("release_height_pct", float("nan")), "%身高比")),
     )
     x0, y0, w, h = 26, 250, 250, 96
     for idx, (label, value) in enumerate(cards):
@@ -779,21 +782,21 @@ def render_section(title: str, subtitle: str, metrics: list[dict[str, object]], 
       <div class="section-title"><span class="mark"></span><h2>投球动作与教练对照</h2></div>
       <div class="grid-2">
         <article class="visual-card">
-          <h4>{esc(PLAYER_NAME)} 出手点 Vicon 标注</h4>
+          <h4>球员{esc(PLAYER_NAME)} 出手点动作对照</h4>
           <figure class="reconstruction-annotated">
-            <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_player_movement.gif" alt="{esc(PLAYER_NAME)} 投球出手点 Vicon 动画重建" loading="lazy">
+            <img src="assets/vicon_reconstruction_events/{esc(PLAYER_SLUG)}_player_movement.gif" alt="球员{esc(PLAYER_NAME)} 投球出手点动作重建" loading="lazy">
             <figcaption>
-              <b>{esc(PLAYER_NAME)} 投球动作出手点</b>
+              <b>球员{esc(PLAYER_NAME)} 投球动作出手点</b>
               <span class="caption-cn">当前出手点主要看前腿支撑、肩外展、肘屈曲、手臂槽位和手速。球员动作链已经具备基础，重点是让前脚落地后的身体传力更清楚。</span>
             </figcaption>
           </figure>
         </article>
         <article class="visual-card">
-          <h4>教练技术参考</h4>
+          <h4>阿楽教练 动作参考</h4>
           <figure class="reconstruction-annotated">
-            <img src="assets/vicon_reconstruction_events/coach_player_movement.gif" alt="教练投球出手点 Vicon 动画重建" loading="lazy">
+            <img src="assets/vicon_reconstruction_events/coach_player_movement.gif" alt="阿楽教练 投球出手点动作重建" loading="lazy">
             <figcaption>
-              <b>教练投球动作参考</b>
+              <b>阿楽教练 投球动作参考</b>
               <span class="caption-cn">教练画面用于理解目标动作节奏，不作为硬性复制标准。报告里的教练数值会在教练视角里作为参考列展示。</span>
             </figcaption>
           </figure>
@@ -1042,6 +1045,10 @@ def refresh_metric_card_summaries(html_text: str, bundles: list[TrialBundle]) ->
     html_text = html_text.replace("<b>球员</b>", f"<b>球员{esc(PLAYER_NAME)}</b>")
     html_text = re.sub(r"(?<!出手)手速", "出手手速", html_text)
     html_text = html_text.replace("hand_speed_mps.png", "hand_speed_kmh.png")
+    html_text = html_text.replace(
+        "assets/frontend_metric_illustrations_pitch_event/hand_speed_kmh.png",
+        "assets/frontend_metric_illustrations_pitch/hand_speed_kmh.png",
+    )
 
     def convert_mps(match: re.Match[str]) -> str:
         return f"{float(match.group(1)) * 3.6:.1f} km/h"
@@ -1099,6 +1106,55 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
     html_text = html_text.replace("julian_", f"{PLAYER_SLUG}_")
     html_text = html_text.replace("julian:", f"{PLAYER_SLUG}:")
     html_text = html_text.replace("Julian", PLAYER_NAME)
+
+    # The reconstruction cards are reused from a report template.  Rebind all
+    # four visible labels on every rebuild so no generic player/coach wording
+    # or old template instruction can leak into another athlete's report.
+    player_reconstruction_label = f"球员{PLAYER_NAME}"
+    coach_reconstruction_label = "阿楽教练"
+    html_text = re.sub(
+        r'<h4>(?:球员)?[^<]*出手点 Vicon 标注</h4>',
+        f'<h4>{esc(player_reconstruction_label)} 出手点动作对照</h4>',
+        html_text,
+        count=1,
+    )
+    html_text = html_text.replace(
+        '<h4>教练技术参考</h4>',
+        f'<h4>{esc(coach_reconstruction_label)} 动作参考</h4>',
+        1,
+    )
+    html_text = re.sub(
+        r'alt="[^"]*投球出手点 Vicon 动画重建"',
+        f'alt="{esc(player_reconstruction_label)} 投球出手点动作重建"',
+        html_text,
+        count=1,
+    )
+    html_text = html_text.replace(
+        'alt="教练投球出手点 Vicon 动画重建"',
+        f'alt="{esc(coach_reconstruction_label)} 投球出手点动作重建"',
+        1,
+    )
+    html_text = re.sub(
+        r'<b>(?:球员)?[^<]*投球动作出手点</b>',
+        f'<b>{esc(player_reconstruction_label)} 投球动作出手点</b>',
+        html_text,
+        count=1,
+    )
+    html_text = html_text.replace(
+        '<b>教练投球动作参考</b>',
+        f'<b>{esc(coach_reconstruction_label)} 投球动作参考</b>',
+        1,
+    )
+    html_text = re.sub(r'HTML模板此处更改为[^<]*', '', html_text)
+
+    # Existing report templates already contain rendered card values.  Upgrade
+    # visible percentage text nodes during migration as well as new values
+    # emitted through fmt(), while leaving CSS percentages untouched.
+    html_text = re.sub(
+        r'>(-?\d+(?:\.\d+)?)%(?=<)',
+        r'>\1%身高比',
+        html_text,
+    )
     # Legacy templates contain user-visible provenance jargon in captions and
     # researcher explanations. Keep the implementation details in source/JSON,
     # while presenting the report in plain movement language.
@@ -1159,6 +1215,11 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
             f"assets/vicon_2d_geometry_annotations/{event_key}_position_vicon_geometry_on_2d.png",
             f"assets/video_2d_alignment/{PLAYER_SLUG}_pitch_{event_key}_2d_overlay.png",
         )
+    html_text = re.sub(
+        r'(src="assets/video_2d_alignment/)[^"]*_pitch_(peak_knee|foot_plant|release)_2d_overlay\.png(?:\?v=[^"]*)?(")',
+        lambda match: f"{match.group(1)}{PLAYER_SLUG}_pitch_{match.group(2)}_2d_overlay.png{match.group(3)}",
+        html_text,
+    )
     html_text = re.sub(
         r'(<div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>)\s*<div class="module-note">.*?</div>',
         r'\1',

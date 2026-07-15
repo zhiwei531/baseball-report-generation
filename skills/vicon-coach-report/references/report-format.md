@@ -39,6 +39,12 @@ When a metric card contains the three white comparison pills, label them
 `乐风U9均值`, `阿楽教练参考`, and `球员<实际球员名>` (for example,
 `球员Bryan`). Never leave a generic `球员` or a hard-coded Julian name.
 
+Pitching values normalized by body height must retain that context in every
+player/coach card, comparison pill, range endpoint, issue summary, and event
+overlay: render `79.4%身高比`, never a bare `79.4%`. The four 3D
+reconstruction captions must likewise identify `球员<实际球员名>` or `阿楽教练`;
+do not show generic labels or template-editing instructions.
+
 Researcher chart captions and nearby explanatory copy must use coaching
 language. Do not expose `C3D`, `marker`, or other implementation provenance in
 Chinese or English report text; describe the observed action, timing, and

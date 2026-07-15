@@ -76,7 +76,7 @@ def fmt(value: Any, unit: str) -> str:
     except (TypeError, ValueError):
         return "N/A"
     if unit == "pct":
-        return f"{number:.1f}%"
+        return f"{number:.1f}%身高比"
     if unit == "deg":
         return f"{number:.1f}\u00b0"
     if unit == "cm":

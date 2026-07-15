@@ -2027,7 +2027,7 @@ def metric_illustration(name: str) -> str:
 
 def speed_annotation_panel(rows: dict[str, dict[str, str]], sample: str) -> str:
     media_path = versioned_asset(f"assets/vicon_reconstruction_annotated/{sample}_speed_annotated.gif")
-    display_name = "球员" if sample == ACTIVE_PLAYER_SAMPLE else "教练示范"
+    display_name = f"球员{ACTIVE_PLAYER_LABEL}" if sample == ACTIVE_PLAYER_SAMPLE else "阿楽教练"
     return f"""
     <figure class="reconstruction-annotated">
       {reconstruction_media(media_path, f"{display_name}打击动作观察")}
