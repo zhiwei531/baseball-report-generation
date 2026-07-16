@@ -6,18 +6,29 @@ pitching before embedding its assets in the batting report.
 
 ## Run a report
 
-From this repository, use the project virtual environment and a player-specific
-final config:
+From this repository, use the project virtual environment and the
+player-specific final config in `configs/generated/`:
 
 ```bash
 MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
 XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
 ../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
-  --config configs/<player_slug>_final_report.json
+  --config configs/generated/<player_slug>_final_report.json
 ```
 
-Copy `configs/final_report.example.json` and its referenced batting config to
-player-specific files. Set distinct output directories:
+For example, the current 7zai deliverable is generated with:
+
+```bash
+MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
+XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
+../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+  --config configs/generated/7zai_final_report.json
+```
+
+For a new player, create the three player-specific files under
+`configs/generated/`: final config, batting config, and pitching manifest.
+Start with `configs/final_report.example.json` and its referenced batting
+config. Set distinct output directories:
 
 ```text
 reports/pitching_<player_slug>_coach/
@@ -45,10 +56,10 @@ disciplines, timing, assets, or the merged deliverable.
 
 ```bash
 ../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py pitching \
-  --config configs/<player_slug>_final_report.json
+  --config configs/generated/<player_slug>_final_report.json
 
 ../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py batting \
-  --config configs/<player_slug>_final_report.json
+  --config configs/generated/<player_slug>_final_report.json
 ```
 
 The lower-level builders in `scripts/` are implementation details for focused
