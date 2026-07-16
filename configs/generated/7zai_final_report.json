@@ -1,0 +1,19 @@
+{
+  "root_dir": ".",
+  "batting_config": "configs/generated/7zai_coach_batting_pipeline.json",
+  "pitching": {
+    "manifest": "configs/generated/7zai_coach_pitching_manifest.json",
+    "template_dir": "reports/pitching_bryan_coach",
+    "out_dir": "reports/pitching_7zai_coach",
+    "alignment": {
+      "video": "../vicon_2026/7zai/pitch_2d.mp4",
+      "c3d": "../vicon_2026/7zai/002 Cal 04 Pitch 05.c3d",
+      "model": "../baseball-analysis/models/pose_landmarker_heavy.task",
+      "out_dir": "reports/pitching_7zai_coach/alignment_2d",
+      "player_slug": "7zai",
+      "player_label": "7zai",
+      "video_capture_fps": 30,
+      "video_event_frame": 300
+    }
+  }
+}

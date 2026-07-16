@@ -1,10 +1,10 @@
 {
   "athletes": [
     {
-      "key": "green",
-      "name": "Green",
+      "key": "7zai",
+      "name": "7zai",
       "role": "student",
-      "c3d": "../../../vicon_2026/green/006 Pitch 09.c3d"
+      "c3d": "../../../vicon_2026/7zai/002 Cal 04 Pitch 05.c3d"
     },
     {
       "key": "bryan",
@@ -13,10 +13,10 @@
       "c3d": "../../../vicon_2026/bryan/001 Cal 04 Pitch 05.c3d"
     },
     {
-      "key": "7zai",
-      "name": "7zai",
+      "key": "green",
+      "name": "Green",
       "role": "student",
-      "c3d": "../../../vicon_2026/7zai/002 Cal 04 Pitch 05.c3d"
+      "c3d": "../../../vicon_2026/green/006 Pitch 09.c3d"
     },
     {
       "key": "xuanxuan",
