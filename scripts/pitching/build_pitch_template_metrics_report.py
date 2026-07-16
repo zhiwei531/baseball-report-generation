@@ -73,6 +73,7 @@ PEER_COLORS = {
     "brandon": "#344054",
 }
 PEER_KEY_ALIASES = {"brandon": "branden"}
+PEER_LEGEND_ORDER = ("bryan", "7zai", "xuanxuan", "green", "julian", "youyou", "james", "branden")
 
 
 def zh_font_prop() -> FontProperties | None:
@@ -724,16 +725,17 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
 
 
 def replace_balanced_div(html_text: str, class_name: str, replacement: str) -> str:
-    """Replace the first complete div carrying class_name, including nesting."""
+    """Replace the first complete div/aside carrying class_name, including nesting."""
     start_match = re.search(
-        rf'<div\b[^>]*class="[^"]*\b{re.escape(class_name)}\b[^"]*"[^>]*>',
+        rf'<(?P<tag>div|aside)\b[^>]*class="[^"]*\b{re.escape(class_name)}\b[^"]*"[^>]*>',
         html_text,
         flags=re.IGNORECASE,
     )
     if not start_match:
         return html_text
+    tag_name = start_match.group("tag")
     depth = 1
-    for tag in re.finditer(r'</?div\b[^>]*>', html_text[start_match.end() :], flags=re.IGNORECASE):
+    for tag in re.finditer(rf'</?{tag_name}\b[^>]*>', html_text[start_match.end() :], flags=re.IGNORECASE):
         depth += -1 if tag.group(0).startswith("</") else 1
         if depth == 0:
             end = start_match.end() + tag.end()
@@ -751,6 +753,14 @@ def coach_comparison_pills(metric: dict[str, object], bundles: list[TrialBundle]
         f'<span class="compare-pill"><b>阿楽教练参考</b>{esc(fmt(coach.values.get(key, float("nan")), unit))}</span>'
         f'<span class="compare-pill"><b>球员{esc(PLAYER_NAME)}</b>{esc(fmt(player.values.get(key, float("nan")), unit))}</span>'
         '</div>'
+    )
+
+
+def player_coach_reference(metric: dict[str, object], coach: TrialBundle) -> str:
+    key, unit = str(metric["key"]), str(metric["unit"])
+    return (
+        '<div class="pitch-coach-reference"><b>阿楽教练</b>'
+        f'<span>{esc(fmt(coach.values.get(key, float("nan")), unit))}</span></div>'
     )
 
 
@@ -809,7 +819,13 @@ def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
             card = replace_balanced_div(card, "compare-pills", coach_comparison_pills(metric, bundles, coach))
             card = replace_balanced_div(card, "peer-range-with-legend", f'<div class="peer-range-with-legend">{range_html(metric, bundles, show_all=True)}</div>')
         else:
-            card = replace_balanced_div(card, "pitch-compare-pills", comparison_pills(metric, bundles, coach, fmt(value, unit)))
+            card = replace_balanced_div(card, "pitch-compare-pills", "")
+            card = re.sub(
+                r'(<div class="metric-value">[^<]*</div>)',
+                rf'\1{player_coach_reference(metric, coach)}',
+                card,
+                count=1,
+            )
             card = replace_balanced_div(card, "peer-range", range_html(metric, bundles, show_all=False))
         return card
 
@@ -822,10 +838,9 @@ def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
 
 
 def fresh_peer_legend(bundles: list[TrialBundle]) -> str:
-    order = ("bryan", "7zai", "xuanxuan", "green", "julian", "youyou", "james", "branden")
     students = {peer_key(bundle.key): bundle for bundle in bundles if bundle.role == "student"}
     items = []
-    for key in order:
+    for key in PEER_LEGEND_ORDER:
         if key not in students:
             continue
         items.append(
@@ -1534,6 +1549,12 @@ def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -
         "球 marker": "球的位置", "同组区间": "乐风U9同组表现",
     }.items():
         html_text = html_text.replace(old, new)
+    player_reference_css = """
+    .pitch-coach-reference { display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }
+    .pitch-coach-reference b { color:#101828; font-size:12px; line-height:16px; font-weight:800; }
+    .pitch-coach-reference span { color:#667085; font-size:12px; line-height:15px; font-weight:800; }
+    """
+    html_text = html_text.replace("</style>", player_reference_css + "\n</style>", 1)
     return html_text
 
 
@@ -1557,6 +1578,20 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
     malformed_tokens = [token for token in ("<div<h4", "<h4><h4", ">lass=", "</h4>>") if token in report_html]
     if malformed_tokens:
         mismatches.append("malformed card markup: " + ", ".join(malformed_tokens))
+    player_section = report_html.split("教练视角：专项问题", 1)[0]
+    player_cards = len(re.findall(r'class="[^"]*\bmetric-card\b', player_section))
+    player_references = len(re.findall(r'class="pitch-coach-reference"', player_section))
+    if player_references != player_cards:
+        mismatches.append(f"player coach-reference boxes: expected {player_cards}, got {player_references}")
+    if 'class="pitch-compare-pills"' in player_section:
+        mismatches.append("player cards retain three-way comparison pills")
+    legend_match = re.search(r'<aside class="peer-legend coach-legend".*?</aside>', report_html, flags=re.DOTALL)
+    expected_legend = [(PEER_COLORS[key], PEER_DISPLAY_NAMES[key]) for key in PEER_LEGEND_ORDER]
+    actual_legend = [] if legend_match is None else re.findall(
+        r'background:([^;\"]+)[^\"]*"[^>]*></i>([^<]+)', legend_match.group(0)
+    )
+    if actual_legend != expected_legend:
+        mismatches.append(f"coach legend mismatch: expected {expected_legend}, got {actual_legend}")
     movement_assets = {
         f"{PLAYER_SLUG}_player_movement.gif": 1,
         "coach_player_movement.gif": 1,
