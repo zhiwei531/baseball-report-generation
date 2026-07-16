@@ -1257,33 +1257,78 @@ def rewrite_legacy_template_html(html_text: str, bundles: list[TrialBundle]) -> 
 
     coach_heading = '<div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>'
     player_html, coach_html = html_text.split(coach_heading, 1)
+    active_player_names = {
+        PLAYER_KEY.casefold(),
+        PLAYER_NAME.casefold(),
+        peer_display_name(PLAYER_KEY).casefold(),
+    }
 
-    def reset_player_marker_color(match: re.Match[str]) -> str:
-        style = re.sub(r';?\s*background:[^;\"]*', '', match.group(1))
+    def marker_style(style: str, color: str) -> str:
+        style = re.sub(r';?\s*background:[^;\"]*', '', style)
         style = re.sub(r';?\s*--marker-color:[^;\"]*', '', style).strip().rstrip(';')
-        return f'<span class="peer-dot current-player" style="{style}"'
+        return f"{style}; background:{color}; --marker-color:{color}".strip("; ")
+
+    def is_active_player(name: str) -> bool:
+        return name.strip().casefold() in active_player_names
+
+    def highlight_player_marker(match: re.Match[str]) -> str:
+        style, name, suffix = match.groups()
+        if not is_active_player(name):
+            return match.group(0)
+        return (
+            f'<span class="peer-dot current-player" '
+            f'style="{marker_style(style, RED)}" title="{name}{suffix}'
+        )
 
     player_html = re.sub(
-        r'<span class="peer-dot current-player" style="([^\"]*)"',
-        reset_player_marker_color,
+        r'<span class="peer-dot(?:\s+current-player)?" style="([^\"]*)" title="([^":]+)(:)',
+        highlight_player_marker,
         player_html,
     )
     html_text = player_html + coach_heading + coach_html
 
     player_color = PEER_COLORS.get(peer_key(PLAYER_KEY), BLUE)
 
-    def highlight_current_player(match: re.Match[str]) -> str:
-        style = match.group(1)
-        if "background:" in style:
-            return match.group(0)
-        return f'<span class="peer-dot current-player" style="{style}; background:{player_color}; --marker-color:{player_color}"'
+    def focus_coach_player_marker(track_match: re.Match[str]) -> str:
+        """Highlight only the active test point in a coach comparison track.
+
+        Some legacy tracks retain a same-name peer reference before the active
+        test point.  The active point is the final same-name marker in that
+        track; leave earlier references at their normal legend color.
+        """
+        track = track_match.group(0)
+        marker_pattern = re.compile(
+            r'<span class="peer-dot(?:\s+current-player)?" style="([^\"]*)" title="([^":]+)(:)'
+        )
+        active_matches = [match for match in marker_pattern.finditer(track) if is_active_player(match.group(2))]
+        if not active_matches:
+            return track
+        active_index = len(active_matches) - 1
+        seen_active = -1
+
+        def rewrite_marker(match: re.Match[str]) -> str:
+            nonlocal seen_active
+            style, name, suffix = match.groups()
+            if not is_active_player(name):
+                return match.group(0)
+            seen_active += 1
+            if seen_active == active_index:
+                return (
+                    f'<span class="peer-dot current-player" '
+                    f'style="{marker_style(style, player_color)}" title="{name}{suffix}'
+                )
+            normal_style = re.sub(r';?\s*--marker-color:[^;\"]*', '', style).strip().rstrip(';')
+            return f'<span class="peer-dot" style="{normal_style}" title="{name}{suffix}'
+
+        return marker_pattern.sub(rewrite_marker, track)
 
     html_text = re.sub(
         r'(<article class="coach-issue-card\b[^>]*>.*?</article>)',
         lambda match: re.sub(
-            r'<span class="peer-dot current-player" style="([^"]*)"',
-            highlight_current_player,
+            r'<div class="peer-track">.*?</div>',
+            focus_coach_player_marker,
             match.group(1),
+            flags=re.DOTALL,
         ),
         html_text,
         flags=re.DOTALL,
