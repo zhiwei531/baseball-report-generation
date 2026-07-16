@@ -1,0 +1,20 @@
+{
+  "root_dir": ".",
+  "c3d_dir": "../vicon_2026",
+  "report_dir": "reports/vicon_2026_james_coach",
+  "pitch_report": "reports/pitching_james_coach/index.html",
+  "peers": "reports/vicon_2026_james_coach/batting_dashboard_metrics.csv",
+  "alignment_dir": null,
+  "video": "../vicon_2026/james/bat_2d.mov",
+  "c3d_file": "../vicon_2026/james/010-james Bat 04.c3d",
+  "mediapipe_model": "../baseball-analysis/models/pose_landmarker_heavy.task",
+  "video_capture_fps": 30,
+  "video_event_frame": 221,
+  "ready_valid_start_frame": 770,
+  "xlsx_out_dir": "outputs/james_batting_metrics_excel",
+  "sample_name": "james",
+  "coach_sample_name": "coach",
+  "player_slug": "james",
+  "player_label": "James",
+  "trial_id": "james_010-james_bat_04"
+}
