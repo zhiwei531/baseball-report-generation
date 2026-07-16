@@ -1210,15 +1210,14 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:19px; }}
     .two-column-metrics .metric-detail-en {{ font-size:11px; line-height:16px; }}
     .two-column-metrics .peer-range {{ grid-template-columns:max-content 28px minmax(90px,1fr) 28px; gap:7px; max-width:100%; justify-self:start; }}
-    /* Height-normalized metrics have two-line endpoints.  Keep their group
-       caption on its own row so it cannot force the detail column wider than
-       the card (notably knee lift, stride distance, and release height). */
-    .two-column-metrics .peer-range.height-ratio-range {{ width:100%; min-width:0; grid-template-columns:48px minmax(0,1fr) 48px; grid-template-areas:"label label label" "min track max"; gap:4px 7px; align-items:center; justify-self:stretch; }}
-    .two-column-metrics .peer-range.height-ratio-range .peer-label {{ grid-area:label; min-width:0; }}
-    .two-column-metrics .peer-range.height-ratio-range .peer-min {{ grid-area:min; min-width:0; }}
-    .two-column-metrics .peer-range.height-ratio-range .peer-track {{ grid-area:track; min-width:0; }}
-    .two-column-metrics .peer-range.height-ratio-range .peer-max {{ grid-area:max; min-width:0; }}
-    .peer-range:has(.unit-stack) .peer-min,.peer-range:has(.unit-stack) .peer-max {{ min-width:48px; white-space:normal; }}
+    /* Keep body-height ranges on the same single progress-row contract as
+       every other card.  Their two-line endpoints use compact fixed columns,
+       leaving the middle track flexible instead of pushing text beyond the
+       card edge. */
+    .two-column-metrics .peer-range.height-ratio-range {{ width:100%; min-width:0; grid-template-columns:minmax(0,1fr) 34px minmax(24px,1.4fr) 34px; gap:4px; align-items:center; justify-self:stretch; }}
+    .two-column-metrics .peer-range.height-ratio-range .peer-label,.two-column-metrics .peer-range.height-ratio-range .peer-min,.two-column-metrics .peer-range.height-ratio-range .peer-track,.two-column-metrics .peer-range.height-ratio-range .peer-max {{ min-width:0; }}
+    .two-column-metrics .peer-range.height-ratio-range .peer-label {{ overflow-wrap:anywhere; }}
+    .two-column-metrics .peer-range.height-ratio-range .peer-min,.two-column-metrics .peer-range.height-ratio-range .peer-max {{ font-size:9px; line-height:11px; white-space:normal; }}
     .peer-range.height-ratio-range .unit-stack,.peer-range:has(.unit-stack) .unit-stack {{ display:inline-grid; gap:2px; line-height:1.05; justify-items:center; text-align:center; }}
     .peer-range.height-ratio-range .unit-number,.peer-range.height-ratio-range .unit-label,.peer-range:has(.unit-stack) .unit-number,.peer-range:has(.unit-stack) .unit-label {{ display:block; white-space:nowrap; }}
     .coach-issue-card {{ grid-template-columns:minmax(148px,.62fr) minmax(176px,270px) minmax(0,1.2fr); gap:16px; padding:20px 16px; }}
