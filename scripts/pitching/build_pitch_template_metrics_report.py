@@ -792,7 +792,12 @@ def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
             rf'\g<1>{status_class}\2', card, count=1,
         )
         card = re.sub(r'(<span class="badge\s+)(?:good|review|risk)(">)[^<]*(</span>)', rf'\g<1>{status_class}\2{status}\3', card, count=1)
-        card = card[:name_match.start()] + f'<h4>{esc(str(metric["name"]))}</h4>' + card[name_match.end():]
+        card = re.sub(
+            r'<h4>[^<]*</h4>',
+            f'<h4>{esc(str(metric["name"]))}</h4>',
+            card,
+            count=1,
+        )
         card = re.sub(r'(<p class="metric-en">)[^<]*(</p>)', rf'\g<1>{esc(str(metric["en"]))}\g<2>', card, count=1)
         card = re.sub(r'(<div class="metric-value">)[^<]*(</div>)', rf'\g<1>{esc(fmt(value, unit))}\g<2>', card, count=1)
         image_key = str(metric.get("image_key") or key)
@@ -1549,6 +1554,9 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
     stale = [token for token in ("bryan_player_movement", "球员Bryan", "球员Julian") if token in report_html]
     if stale:
         mismatches.append("stale subject references: " + ", ".join(stale))
+    malformed_tokens = [token for token in ("<div<h4", "<h4><h4", ">lass=", "</h4>>") if token in report_html]
+    if malformed_tokens:
+        mismatches.append("malformed card markup: " + ", ".join(malformed_tokens))
     movement_assets = {
         f"{PLAYER_SLUG}_player_movement.gif": 1,
         "coach_player_movement.gif": 1,
