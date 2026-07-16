@@ -1,0 +1,20 @@
+{
+  "root_dir": ".",
+  "c3d_dir": "../vicon_2026",
+  "report_dir": "reports/vicon_2026_branden_coach",
+  "pitch_report": "reports/pitching_branden_coach/index.html",
+  "peers": "reports/vicon_2026_branden_coach/batting_dashboard_metrics.csv",
+  "alignment_dir": null,
+  "video": "../vicon_2026/branden/bat_2d.mov",
+  "c3d_file": "../vicon_2026/branden/011-branden Bat 03.c3d",
+  "mediapipe_model": "../baseball-analysis/models/pose_landmarker_heavy.task",
+  "video_capture_fps": 30,
+  "video_event_frame": 195,
+  "ready_valid_start_frame": 770,
+  "xlsx_out_dir": "outputs/branden_batting_metrics_excel",
+  "sample_name": "branden",
+  "coach_sample_name": "coach",
+  "player_slug": "branden",
+  "player_label": "Branden",
+  "trial_id": "branden_011-branden_bat_03"
+}

@@ -104,7 +104,15 @@ def detect_2d(
     )
 
     rows: list[dict[str, Any]] = []
-    with vision.PoseLandmarker.create_from_options(options) as detector:
+    try:
+        detector = vision.PoseLandmarker.create_from_options(options)
+    except RuntimeError as exc:
+        if "kGpuService" not in str(exc):
+            raise
+        cap.release()
+        return detect_2d_rtmpose(video_path, frame_indices)
+
+    with detector:
         frame_index = 0
         while True:
             ok, frame = cap.read()
@@ -146,6 +154,109 @@ def detect_2d(
         "duration_sec": frame_index / fps if fps else None,
     }
     return rows, meta
+
+
+RTMPOSE_COCO17 = {
+    "nose": 0,
+    "left_eye_inner": 1,
+    "left_eye": 1,
+    "left_eye_outer": 1,
+    "right_eye_inner": 2,
+    "right_eye": 2,
+    "right_eye_outer": 2,
+    "left_ear": 3,
+    "right_ear": 4,
+    "mouth_left": 0,
+    "mouth_right": 0,
+    "left_shoulder": 5,
+    "right_shoulder": 6,
+    "left_elbow": 7,
+    "right_elbow": 8,
+    "left_wrist": 9,
+    "right_wrist": 10,
+    "left_pinky": 9,
+    "right_pinky": 10,
+    "left_index": 9,
+    "right_index": 10,
+    "left_thumb": 9,
+    "right_thumb": 10,
+    "left_hip": 11,
+    "right_hip": 12,
+    "left_knee": 13,
+    "right_knee": 14,
+    "left_ankle": 15,
+    "right_ankle": 16,
+    "left_heel": 15,
+    "right_heel": 16,
+    "left_foot_index": 15,
+    "right_foot_index": 16,
+}
+
+
+def detect_2d_rtmpose(
+    video_path: Path,
+    frame_indices: set[int] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """CPU-only fallback for macOS sessions without an OpenGL pixel format.
+
+    It preserves the standard landmark CSV schema so all subsequent alignment
+    and geometry renderers operate unchanged.  This path is used only when the
+    configured MediaPipe task cannot create its platform graphics service.
+    """
+    from rtmlib import RTMPose
+
+    model = PROJECT_ROOT / "../baseball-analysis/models/rtmpose-m-wholebody.onnx"
+    cap, width, height, fps, frame_count = open_video(video_path)
+    estimator = RTMPose(
+        str(model.resolve()),
+        model_input_size=(192, 256),
+        to_openpose=False,
+        backend="onnxruntime",
+        device="cpu",
+    )
+    rows: list[dict[str, Any]] = []
+    frame_index = 0
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        if frame_indices is None or frame_index in frame_indices:
+            keypoints, scores = estimator(frame, bboxes=[[0, 0, width, height]])
+            points = keypoints[0] if len(keypoints) else None
+            confidences = scores[0] if len(scores) else None
+            for name in LANDMARK_NAMES:
+                index = RTMPOSE_COCO17[name]
+                has_point = points is not None and index < len(points)
+                x_px = float(points[index][0]) if has_point else ""
+                y_px = float(points[index][1]) if has_point else ""
+                score = float(confidences[index]) if confidences is not None and index < len(confidences) else ""
+                rows.append(
+                    {
+                        "frame_index": frame_index,
+                        "timestamp_sec": frame_index / fps,
+                        "landmark": name,
+                        "x_norm": x_px / width if has_point else "",
+                        "y_norm": y_px / height if has_point else "",
+                        "z_norm": "",
+                        "x_px": x_px,
+                        "y_px": y_px,
+                        "visibility": score,
+                        "presence": score,
+                    }
+                )
+        if frame_index and frame_index % 30 == 0:
+            print(f"RTMPose CPU fallback: processed frame {frame_index}/{frame_count}", flush=True)
+        frame_index += 1
+    cap.release()
+    return rows, {
+        "width": width,
+        "height": height,
+        "fps": fps,
+        "frame_count_meta": frame_count,
+        "frames_read": frame_index,
+        "duration_sec": frame_index / fps if fps else None,
+        "pose_backend": "rtmpose_cpu_fallback",
+    }
 
 
 def parse_frame_indices(value: str | None) -> set[int] | None:

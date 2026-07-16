@@ -7,6 +7,7 @@ import json
 import math
 import re
 import shutil
+import sys
 import zipfile
 from collections import defaultdict
 from pathlib import Path
@@ -15,6 +16,9 @@ from xml.etree import ElementTree as ET
 from PIL import Image, ImageDraw, ImageFont
 
 from pitching.player_card_contract import validate_pitch_player_cards
+
+
+csv.field_size_limit(sys.maxsize)
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -49,6 +49,47 @@ configs/generated/bryan_coach_batting_pipeline.json
 configs/generated/bryan_coach_pitching_manifest.json
 ```
 
+### Branden reproducible run
+
+Branden's reviewed inputs are checked in as:
+
+```text
+configs/generated/branden_final_report.json
+configs/generated/branden_coach_batting_pipeline.json
+configs/generated/branden_coach_pitching_manifest.json
+```
+
+The reviewed 30 fps anchors are frame **195** for batting (bat-speed/contact
+window) and frame **314** for pitching (release/throwing-hand-speed window).
+Rebuild the complete deliverable with:
+
+```bash
+MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
+XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
+../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+  --config configs/generated/branden_final_report.json
+```
+
+This produces:
+
+```text
+reports/pitching_branden_coach/index.html
+reports/vicon_2026_branden_coach/branden_coach_metrics_section.html
+outputs/branden_batting_metrics_excel/011-branden Bat 03_batting_report_metrics.xlsx
+```
+
+#### Headless macOS pose fallback
+
+The configured MediaPipe task is the default 2D detector. In a terminal
+without a macOS OpenGL pixel format, MediaPipe can fail while creating its GPU
+service even when its CPU delegate is requested. `align_2d_video_vicon.py`
+automatically falls back to the bundled CPU-only
+`../baseball-analysis/models/rtmpose-m-wholebody.onnx` model only for that
+specific `kGpuService` initialization failure. It writes the same landmark CSV
+schema and records `"pose_backend": "rtmpose_cpu_fallback"` in the alignment
+summary. The reviewed event frame, C3D clock, displayed metrics, and report
+output contract remain unchanged.
+
 The batting config requires reviewed `video_capture_fps` and
 `video_event_frame`. Configure `pitching.alignment` in the final config when
 matching pitching video, C3D, model, and reviewed release frame are available.
