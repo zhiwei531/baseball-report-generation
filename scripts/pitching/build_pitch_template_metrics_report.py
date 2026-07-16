@@ -403,35 +403,18 @@ def write_metric_csv(bundles: list[TrialBundle]) -> None:
 
 
 def copy_static_assets() -> None:
-    (ASSET_DIR / "lineart_actions").mkdir(parents=True, exist_ok=True)
+    """Copy only generic line-art sources; never copy another report's assets."""
+    target_dir = ASSET_DIR / "lineart_actions"
+    target_dir.mkdir(parents=True, exist_ok=True)
     for name in (
         "pitch_peak_knee_lineart.png",
         "pitch_foot_plant_lineart.png",
         "pitch_release_lineart.png",
     ):
-        target = ASSET_DIR / "lineart_actions" / name
-        bundled = BUNDLED_LINEART_DIR / name
-        previous = PREV_PITCH_ASSETS / "lineart_actions" / name if PREV_PITCH_ASSETS is not None else None
-        if bundled.exists():
-            shutil.copy2(bundled, target)
-        elif previous is not None and previous.exists():
-            shutil.copy2(previous, target)
-        else:
-            raise FileNotFoundError(f"Missing bundled pitching action illustration: {bundled}")
-    if PREV_PITCH_ASSETS is None:
-        return
-    (ASSET_DIR / "vicon_reconstruction_events").mkdir(parents=True, exist_ok=True)
-    prev_vicon = PREV_PITCH_ASSETS / "vicon_reconstruction_events"
-    for name in (
-        f"{PLAYER_SLUG}_peak_knee.gif",
-        f"{PLAYER_SLUG}_foot_plant.gif",
-        f"{PLAYER_SLUG}_release.gif",
-        f"{PLAYER_SLUG}_peak_knee.png",
-        f"{PLAYER_SLUG}_foot_plant.png",
-        f"{PLAYER_SLUG}_release.png",
-    ):
-        if (prev_vicon / name).exists():
-            shutil.copy2(prev_vicon / name, ASSET_DIR / "vicon_reconstruction_events" / name)
+        source = BUNDLED_LINEART_DIR / name
+        if not source.is_file():
+            raise FileNotFoundError(f"Missing bundled generic pitching illustration: {source}")
+        shutil.copy2(source, target_dir / name)
 
 
 def annotate_lineart_metrics() -> None:
@@ -715,6 +698,8 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
     dots = [f'<span class="peer-dot current-player" style="left:{left:.2f}%{player_marker_style}" title="{esc(PLAYER_NAME)}: {esc(fmt(jv, unit))}"></span>']
     if show_all:
         for b in bundles:
+            if b.key == PLAYER_KEY or b.role != "student":
+                continue
             val = b.values.get(key, float("nan"))
             if not finite(val):
                 continue
@@ -736,6 +721,133 @@ def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: 
         <div class="peer-max">{endpoint(mx)}</div>
       </div>
     """
+
+
+def replace_balanced_div(html_text: str, class_name: str, replacement: str) -> str:
+    """Replace the first complete div carrying class_name, including nesting."""
+    start_match = re.search(
+        rf'<div\b[^>]*class="[^"]*\b{re.escape(class_name)}\b[^"]*"[^>]*>',
+        html_text,
+        flags=re.IGNORECASE,
+    )
+    if not start_match:
+        return html_text
+    depth = 1
+    for tag in re.finditer(r'</?div\b[^>]*>', html_text[start_match.end() :], flags=re.IGNORECASE):
+        depth += -1 if tag.group(0).startswith("</") else 1
+        if depth == 0:
+            end = start_match.end() + tag.end()
+            return html_text[: start_match.start()] + replacement + html_text[end:]
+    raise ValueError(f"Unbalanced div while replacing class={class_name!r}")
+
+
+def coach_comparison_pills(metric: dict[str, object], bundles: list[TrialBundle], coach: TrialBundle) -> str:
+    player = next(bundle for bundle in bundles if bundle.key == PLAYER_KEY)
+    key, unit = str(metric["key"]), str(metric["unit"])
+    mean = group_mean_all(bundles, key)
+    return (
+        '<div class="compare-pills">'
+        f'<span class="compare-pill"><b>乐风U9均值</b>{esc(fmt(mean, unit))}</span>'
+        f'<span class="compare-pill"><b>阿楽教练参考</b>{esc(fmt(coach.values.get(key, float("nan")), unit))}</span>'
+        f'<span class="compare-pill"><b>球员{esc(PLAYER_NAME)}</b>{esc(fmt(player.values.get(key, float("nan")), unit))}</span>'
+        '</div>'
+    )
+
+
+def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
+    """Rebind every template card to active Vicon values and fresh peer tracks."""
+    player = next(bundle for bundle in bundles if bundle.key == PLAYER_KEY)
+    coach = next(bundle for bundle in bundles if bundle.key == "coach")
+    by_name = {str(metric["name"]): metric for metric in METRICS}
+    coach_specs: dict[str, dict[str, object]] = {
+        "抬腿平稳过渡": {**next(m for m in METRICS if m["key"] == "knee_height_pct"), "name": "抬腿平稳过渡", "en": "Knee-Lift Transition"},
+        "跨步距离与稳定": {**next(m for m in METRICS if m["key"] == "stride_distance_pct"), "name": "跨步距离与稳定", "en": "Stride Distance and Stability"},
+        "拉弓式髋肩分离": {**next(m for m in METRICS if m["key"] == "max_hss_deg"), "name": "拉弓式髋肩分离", "en": "Hip-Shoulder Separation"},
+        "右腿蹬伸推进": {
+            "key": "rear_knee_drive_extension_deg", "name": "右腿蹬伸推进", "en": "Rear-Leg Drive",
+            "unit": "deg", "direction": "higher", "image_key": "rear_knee_plant_deg",
+            "copy": "以后膝从前脚落地到出手的伸展变化作为推进线索；它不是力板测得的蹬地力量。",
+        },
+        "出手手臂角度": {**next(m for m in METRICS if m["key"] == "arm_slot_deg"), "name": "出手手臂角度", "en": "Release Arm Angle"},
+        "出手手速": {**next(m for m in METRICS if m["key"] == "hand_speed_kmh"), "name": "出手手速", "en": "Release Hand Speed"},
+    }
+    aliases = {"右腿蹬地伸展线索": "右腿蹬伸推进", "手臂槽位": "出手手臂角度", "手臂链条槽位": "出手手臂角度", "手速": "出手手速"}
+
+    def rewrite_card(match: re.Match[str]) -> str:
+        card = match.group(0)
+        is_coach = "coach-issue-card" in card
+        name_match = re.search(r'<h4>([^<]+)</h4>', card)
+        if not name_match:
+            return card
+        old_name = aliases.get(name_match.group(1).strip(), name_match.group(1).strip())
+        metric = coach_specs.get(old_name) if is_coach else by_name.get(old_name)
+        if metric is None:
+            return card
+        key, unit = str(metric["key"]), str(metric["unit"])
+        value = player.values.get(key, float("nan"))
+        score = score_metric(value, metric, coach.values.get(key, float("nan")))
+        status, status_class = status_from_score(score)
+        card = re.sub(
+            r'(<article class="(?:metric-card|coach-issue-card)\s+)(?:good|review|risk)(")',
+            rf'\g<1>{status_class}\2', card, count=1,
+        )
+        card = re.sub(r'(<span class="badge\s+)(?:good|review|risk)(">)[^<]*(</span>)', rf'\g<1>{status_class}\2{status}\3', card, count=1)
+        card = card[:name_match.start()] + f'<h4>{esc(str(metric["name"]))}</h4>' + card[name_match.end():]
+        card = re.sub(r'(<p class="metric-en">)[^<]*(</p>)', rf'\g<1>{esc(str(metric["en"]))}\g<2>', card, count=1)
+        card = re.sub(r'(<div class="metric-value">)[^<]*(</div>)', rf'\g<1>{esc(fmt(value, unit))}\g<2>', card, count=1)
+        image_key = str(metric.get("image_key") or key)
+        card = re.sub(r'(src="assets/frontend_metric_illustrations_pitch/)[^"?]+(?:\?v=[^"]*)?("[^>]*>)', rf'\g<1>{image_key}.png\2', card, count=1)
+        card = re.sub(r'(<p class="metric-detail-cn">).*?(</p>)', rf'\g<1>{esc(str(metric["copy"]))}\g<2>', card, count=1, flags=re.DOTALL)
+        english = f'Player: {fmt(value, unit)}. Read this value with the movement sequence and coach reference rather than as a medical or pass/fail threshold.'
+        card = re.sub(r'(<p class="metric-detail-en">).*?(</p>)', rf'\g<1>{esc(english)}\g<2>', card, count=1, flags=re.DOTALL)
+        if is_coach:
+            card = replace_balanced_div(card, "compare-pills", coach_comparison_pills(metric, bundles, coach))
+            card = replace_balanced_div(card, "peer-range-with-legend", f'<div class="peer-range-with-legend">{range_html(metric, bundles, show_all=True)}</div>')
+        else:
+            card = replace_balanced_div(card, "pitch-compare-pills", comparison_pills(metric, bundles, coach, fmt(value, unit)))
+            card = replace_balanced_div(card, "peer-range", range_html(metric, bundles, show_all=False))
+        return card
+
+    return re.sub(
+        r'<article class="(?:metric-card|coach-issue-card)\b[^>]*>.*?</article>',
+        rewrite_card,
+        html_text,
+        flags=re.DOTALL,
+    )
+
+
+def fresh_peer_legend(bundles: list[TrialBundle]) -> str:
+    order = ("bryan", "7zai", "xuanxuan", "green", "julian", "youyou", "james", "branden")
+    students = {peer_key(bundle.key): bundle for bundle in bundles if bundle.role == "student"}
+    items = []
+    for key in order:
+        if key not in students:
+            continue
+        items.append(
+            f'<span class="peer-legend-item"><i class="peer-legend-dot" style="background:{PEER_COLORS[key]}"></i>{esc(peer_display_name(key))}</span>'
+        )
+    return '<aside class="peer-legend coach-legend" aria-label="颜色图例"><span class="peer-legend-title">颜色图例</span>' + "".join(items) + '</aside>'
+
+
+def refresh_researcher_copy(html_text: str, bundles: list[TrialBundle]) -> str:
+    player = next(bundle for bundle in bundles if bundle.key == PLAYER_KEY)
+    v = player.values
+    cn1 = (
+        f'球员{PLAYER_NAME}本次投球呈现“后腿准备 → 骨盆推进 → 躯干旋转 → 手臂与手部输出”的动作顺序。'
+        f'{v["peak_knee_time_s"]:.2f}s 抬腿最高点、{v["foot_plant_time_s"]:.2f}s 前脚落地、{v["release_time_s"]:.2f}s 出手，'
+        f'落地到出手约 {v["release_time_s"] - v["foot_plant_time_s"]:.2f}s。'
+    )
+    cn2 = (
+        f'最大髋肩分离 {fmt(v["max_hss_deg"], "deg")}，分离释放量 {fmt(v["hss_release_amount_deg"], "deg")}；'
+        f'出手手臂角度 {fmt(v["arm_slot_deg"], "deg")}、出手手速 {fmt(v["hand_speed_kmh"], "kmh")}。'
+        '这些指标用于观察传力顺序与重复性，出手手速是手部位置速度代理，不是球速。'
+    )
+    replacement = (
+        '<div class="kinetic-analysis"><h4>详细解读</h4>'
+        f'<p class="copy-cn">{esc(cn1)}</p><p class="copy-en">The timing view summarizes the active player’s lower-body-to-hand sequence from the current motion record.</p>'
+        f'<p class="copy-cn">{esc(cn2)}</p><p class="copy-en">Use the curves to review sequencing and repeatability; release hand speed is a hand-motion proxy, not ball speed.</p></div>'
+    )
+    return replace_balanced_div(html_text, "kinetic-analysis", replacement)
 
 
 def metric_card(metric: dict[str, object], bundles: list[TrialBundle], coach: TrialBundle, coach_mode: bool = False) -> str:
@@ -924,21 +1036,8 @@ def peer_display_name(name: str) -> str:
 
 
 def reference_metric_values(metric_key: str, bundles: list[TrialBundle], coach: TrialBundle) -> tuple[float, float]:
-    reference_path = TEMPLATE_DIR / "pitch_metrics_all_players.csv" if TEMPLATE_DIR is not None else None
-    if reference_path is not None and reference_path.exists():
-        with reference_path.open(newline="", encoding="utf-8-sig") as handle:
-            rows = list(csv.DictReader(handle))
-        values = [
-            float(row["value"])
-            for row in rows
-            if row.get("metric_key") == metric_key and row.get("role") == "student" and finite(float(row["value"]))
-        ]
-        coach_row = next(
-            (row for row in rows if row.get("metric_key") == metric_key and row.get("role") == "coach"),
-            None,
-        )
-        if values and coach_row is not None:
-            return float(np.mean(values)), float(coach_row["value"])
+    # Template CSVs are deliberately excluded: all comparison values must
+    # come from the active manifest's Vicon trials.
     return group_mean_all(bundles, metric_key), coach.values.get(metric_key, float("nan"))
 
 
@@ -953,7 +1052,9 @@ def comparison_pills(
     mean, coach_value = reference_metric_values(key, bundles, coach)
     return (
         '<div class="pitch-compare-pills">'
+        f'<span><b>乐风U9均值</b>{esc(fmt(mean, unit))}</span>'
         f'<span><b>阿楽教练参考</b>{esc(fmt(coach_value, unit))}</span>'
+        f'<span><b>球员{esc(PLAYER_NAME)}</b>{esc(displayed_player_value)}</span>'
         '</div>'
     )
 
@@ -1372,11 +1473,160 @@ def remove_legacy_julian_assets() -> None:
             path.unlink()
 
 
+def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -> str:
+    """Keep the reference DOM/CSS contract while rebinding every dynamic field."""
+    html_text = template_html
+    html_text = html_text.replace('id="julian-pitching-metrics"', f'id="{PLAYER_SLUG}-pitching-metrics"')
+    html_text = html_text.replace("球员Bryan", f"球员{esc(PLAYER_NAME)}")
+    html_text = html_text.replace("球员Julian", f"球员{esc(PLAYER_NAME)}")
+    html_text = re.sub(
+        r'assets/vicon_reconstruction_events/(?!coach_)[^/"?]+_player_movement\.gif(?:\?v=[^"]*)?',
+        f'assets/vicon_reconstruction_events/{PLAYER_SLUG}_player_movement.gif',
+        html_text,
+    )
+    html_text = re.sub(
+        r'assets/vicon_reconstruction_events/coach_player_movement\.gif(?:\?v=[^"]*)?',
+        'assets/vicon_reconstruction_events/coach_player_movement.gif',
+        html_text,
+    )
+    for event_key in ("peak_knee", "foot_plant", "release"):
+        html_text = re.sub(
+            rf'assets/vicon_reconstruction_events/[^/"?]+_{event_key}\.gif(?:\?v=[^"]*)?',
+            f'assets/vicon_reconstruction_events/{PLAYER_SLUG}_{event_key}.gif',
+            html_text,
+        )
+        html_text = re.sub(
+            rf'assets/video_2d_alignment/[^/"?]+_pitch_{event_key}_2d_overlay\.png(?:\?v=[^"]*)?',
+            f'assets/video_2d_alignment/{PLAYER_SLUG}_pitch_{event_key}_2d_overlay.png',
+            html_text,
+        )
+    html_text = re.sub(
+        r'assets/kinetic_chain/[^/"?]+_pitch_kinetic_chain_flow\.png(?:\?v=[^"]*)?',
+        f'assets/kinetic_chain/{PLAYER_SLUG}_pitch_kinetic_chain_flow.png',
+        html_text,
+    )
+    html_text = re.sub(
+        r'assets/kinetic_chain/[^/"?]+_kinetic_chain_time_curves\.png(?:\?v=[^"]*)?',
+        f'assets/kinetic_chain/{PLAYER_SLUG}_kinetic_chain_time_curves.png',
+        html_text,
+    )
+    for chart in ("angle", "speed"):
+        html_text = re.sub(
+            rf'assets/analyst_charts/[^/"?]+_pitch_{chart}_time_curve\.png(?:\?v=[^"]*)?',
+            f'assets/analyst_charts/{PLAYER_SLUG}_pitch_{chart}_time_curve.png',
+            html_text,
+        )
+    html_text = refresh_template_cards(html_text, bundles)
+    html_text = replace_balanced_div(html_text, "coach-legend", fresh_peer_legend(bundles))
+    html_text = refresh_researcher_copy(html_text, bundles)
+    html_text = apply_peer_display_mapping(html_text)
+    for old, new in {
+        "球员和 Coach": "球员和教练", "球员与 Coach": "球员与教练",
+        "C3D骨架动画": "动作重建动画", "C3D/Vicon": "本次动作记录",
+        "C3D marker": "本次动作变化", "C3D 文件": "本次动作记录",
+        "C3D数据": "本次动作记录", "Vicon markers": "动作变化",
+        "main release markers": "key release positions", "手部 marker": "手部位置",
+        "球 marker": "球的位置", "同组区间": "乐风U9同组表现",
+    }.items():
+        html_text = html_text.replace(old, new)
+    return html_text
+
+
+def validate_template_contract(template_html: str, report_html: str) -> None:
+    selectors = {
+        "sections": r'<section\b',
+        "section titles": r'class="[^"]*\bsection-title\b',
+        "visual cards": r'class="[^"]*\bvisual-card\b',
+        "metric cards": r'class="[^"]*\bmetric-card\b',
+        "coach issue cards": r'class="[^"]*\bcoach-issue-card\b',
+    }
+    mismatches = []
+    for label, pattern in selectors.items():
+        expected = len(re.findall(pattern, template_html))
+        actual = len(re.findall(pattern, report_html))
+        if actual != expected:
+            mismatches.append(f"{label}: expected {expected}, got {actual}")
+    stale = [token for token in ("bryan_player_movement", "球员Bryan", "球员Julian") if token in report_html]
+    if stale:
+        mismatches.append("stale subject references: " + ", ".join(stale))
+    movement_assets = {
+        f"{PLAYER_SLUG}_player_movement.gif": 1,
+        "coach_player_movement.gif": 1,
+    }
+    for filename, expected in movement_assets.items():
+        actual = report_html.count(f"assets/vicon_reconstruction_events/{filename}")
+        if actual != expected:
+            mismatches.append(f"movement asset {filename}: expected {expected}, got {actual}")
+    coach_section = report_html.split("教练视角：专项问题", 1)[-1].split("研究者视角", 1)[0]
+    active_titles = {PLAYER_NAME.casefold(), peer_display_name(PLAYER_KEY).casefold(), PLAYER_KEY.casefold()}
+    for index, match in enumerate(
+        re.finditer(r'<article class="coach-issue-card\b[^>]*>.*?</article>', coach_section, flags=re.DOTALL),
+        start=1,
+    ):
+        card = match.group(0)
+        current_titles = re.findall(
+            r'class="peer-dot current-player"[^>]*title="([^":]+):', card
+        )
+        expected = 0 if "peer-empty" in card else 1
+        if len(current_titles) != expected:
+            mismatches.append(
+                f"coach card {index} highlighted markers: expected {expected}, got {len(current_titles)}"
+            )
+        wrong_titles = [title for title in current_titles if title.strip().casefold() not in active_titles]
+        if wrong_titles:
+            mismatches.append(f"coach card {index} highlights a non-active player: {', '.join(wrong_titles)}")
+    if mismatches:
+        raise RuntimeError("Pitch template contract validation failed: " + "; ".join(mismatches))
+
+
 def render_html(bundles: list[TrialBundle]) -> str:
-    existing = OUT_DIR / "index.html"
-    if existing.exists():
-        return rewrite_legacy_template_html(existing.read_text(encoding="utf-8"), bundles)
-    raise RuntimeError("index.html is required for this template report rebuild")
+    if TEMPLATE_DIR is None or not (TEMPLATE_DIR / "index.html").is_file():
+        raise FileNotFoundError("Pitching template index.html is required for the report DOM/CSS contract.")
+    template_html = (TEMPLATE_DIR / "index.html").read_text(encoding="utf-8")
+    report_html = build_template_report_html(template_html, bundles)
+    validate_template_contract(template_html, report_html)
+    return report_html
+
+    # The standalone fallback below is retained temporarily for source-history
+    # readability but is intentionally unreachable: final reports must honor
+    # the complete template DOM contract above.
+    player = next(bundle for bundle in bundles if bundle.key == PLAYER_KEY)
+    coach = next(bundle for bundle in bundles if bundle.key == "coach")
+    event_groups = {
+        "抬腿最高点": [metric for metric in METRICS if metric["event"] == "准备阶段"],
+        "前脚落地": [metric for metric in METRICS if metric["event"] == "前脚落地"],
+        "出手点": [metric for metric in METRICS if metric["event"] == "出手点"],
+    }
+
+    def cards(metrics: list[dict[str, object]]) -> str:
+        return "".join(metric_card(metric, bundles, coach) for metric in metrics)
+
+    def stage(title: str, key: str) -> str:
+        return f'''<section><h2>{esc(title)}</h2><div class="stage"><img src="assets/vicon_reconstruction_events/{PLAYER_SLUG}_{key}.gif" alt="{esc(PLAYER_NAME)} {esc(title)} 动作重建"><img src="assets/video_2d_alignment/{PLAYER_SLUG}_pitch_{key}_2d_overlay.png" alt="{esc(PLAYER_NAME)} {esc(title)} 2D 对齐"></div><div class="cards">{cards(event_groups[title])}</div></section>'''
+
+    table_rows = "".join(
+        f"<tr><td>{esc(metric['event'])}</td><td>{esc(metric['name'])}<br><small>{esc(metric['en'])}</small></td><td>{esc(fmt(player.values.get(str(metric['key']), float('nan')), str(metric['unit'])))}</td><td>{esc(fmt(group_mean_all(bundles, str(metric['key'])), str(metric['unit'])))}</td><td>{esc(fmt(coach.values.get(str(metric['key']), float('nan')), str(metric['unit'])))}</td><td>{esc(metric['copy'])}</td></tr>"
+        for metric in METRICS
+    )
+    # The template is a presentation contract only.  Its body, numbers, and
+    # assets are never copied into a clean-room report; only its CSS keeps the
+    # standalone pitching section visually compatible with the final report.
+    template_css = ""
+    if TEMPLATE_DIR is not None:
+        template_html = (TEMPLATE_DIR / "index.html").read_text(encoding="utf-8")
+        style_match = re.search(r"<style[^>]*>(.*?)</style>", template_html, flags=re.DOTALL | re.IGNORECASE)
+        if style_match:
+            template_css = style_match.group(1)
+
+    return f'''<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(PLAYER_NAME)} 投球报告</title>
+<style>{template_css}body{{margin:0;background:#f7f8fa;color:#101828;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}}main{{max-width:1220px;margin:auto;padding:40px 24px}}h1{{font-size:40px}}h2{{margin-top:48px;border-left:8px solid #2563eb;padding-left:12px}}h3{{margin:4px 0;color:#667085}}.grid,.stage,.cards{{display:grid;gap:18px}}.grid,.stage{{grid-template-columns:repeat(2,minmax(0,1fr))}}.cards{{grid-template-columns:repeat(2,minmax(0,1fr))}}.visual,.metric-card{{background:#fff;border:1px solid #d0d5dd;border-radius:20px;padding:18px;box-sizing:border-box}}img{{display:block;width:100%;border-radius:12px;background:#fff}}.metric-card{{display:grid;grid-template-columns:1fr 130px;gap:12px}}.metric-summary{{display:flex;flex-direction:column;gap:8px}}.metric-value{{font-size:28px;font-weight:800}}.metric-en,.metric-detail-en{{color:#667085}}.metric-detail{{grid-column:1/-1}}.peer-range{{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}}.peer-track{{height:8px;background:#dbeafe;border-radius:99px;position:relative}}.peer-dot{{position:absolute;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%}}.peer-dot.current-player{{width:16px;height:16px;border:3px solid #fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--marker-color,#0891b2) 25%,transparent)}}.badge{{width:max-content;padding:3px 8px;border-radius:99px;background:#dbeafe}}table{{width:100%;border-collapse:collapse;background:#fff}}td,th{{padding:10px;border:1px solid #d0d5dd;text-align:left}}@media(max-width:720px){{.grid,.stage,.cards,.metric-card{{grid-template-columns:1fr}}}}</style></head>
+<body><main><h1>{esc(PLAYER_NAME)} 球员综合表现报告</h1><h3>投球 · Player / Coach / Researcher</h3>
+<section><h2>球员与教练动作对照</h2><div class="grid"><article class="visual"><h3>球员{esc(PLAYER_NAME)}</h3><img src="assets/vicon_reconstruction_events/{PLAYER_SLUG}_player_movement.gif" alt="球员投球动作重建"></article><article class="visual"><h3>阿楽教练</h3><img src="assets/vicon_reconstruction_events/coach_player_movement.gif" alt="教练投球动作重建"></article></div></section>
+{stage("抬腿最高点", "peak_knee")}{stage("前脚落地", "foot_plant")}{stage("出手点", "release")}
+<section><h2>教练视角：专项问题</h2><div class="cards">{''.join(metric_card(metric, bundles, coach, coach_mode=True) for metric in METRICS if metric["event"] == "专项问题")}</div></section>
+<section><h2>研究者视角：动力链与时间曲线</h2><div class="grid"><article class="visual"><img src="assets/kinetic_chain/{PLAYER_SLUG}_pitch_kinetic_chain_flow.png" alt="投球动力链"></article><article class="visual"><img src="assets/kinetic_chain/{PLAYER_SLUG}_kinetic_chain_time_curves.png" alt="投球动力链时间曲线"></article><article class="visual"><img src="assets/analyst_charts/{PLAYER_SLUG}_pitch_angle_time_curve.png" alt="投球角度时间曲线"></article><article class="visual"><img src="assets/analyst_charts/{PLAYER_SLUG}_pitch_speed_time_curve.png" alt="投球速度时间曲线"></article></div></section>
+<section><h2>完整指标表</h2><table><thead><tr><th>事件</th><th>指标</th><th>{esc(PLAYER_NAME)}</th><th>乐风U9均值</th><th>阿楽教练</th><th>说明</th></tr></thead><tbody>{table_rows}</tbody></table></section></main></body></html>'''
 
 
 def load_manifest(path: Path) -> list[tuple[str, str, str, Path]]:
@@ -1410,8 +1660,18 @@ def parse_args() -> argparse.Namespace:
         description="Build the pitching C3D metrics/assets expected by the combined baseball report."
     )
     parser.add_argument("--manifest", required=True, type=Path, help="JSON manifest describing athlete C3D inputs.")
-    parser.add_argument("--template-dir", required=True, type=Path, help="Existing report template containing index.html and assets/.")
-    parser.add_argument("--previous-assets", type=Path, default=None, help="Optional prior pitching assets to reuse.")
+    parser.add_argument(
+        "--template-dir",
+        required=True,
+        type=Path,
+        help="Pitching HTML DOM/CSS contract; all athlete values and generated asset paths are rebound.",
+    )
+    parser.add_argument(
+        "--previous-assets",
+        type=Path,
+        default=None,
+        help="Deprecated and rejected: pitching builds must regenerate their own assets.",
+    )
     parser.add_argument("--out-dir", type=Path, default=ROOT / "reports" / "pitching")
     return parser.parse_args()
 
@@ -1420,27 +1680,32 @@ def main() -> None:
     global TEMPLATE_DIR, PREV_PITCH_ASSETS, OUT_DIR, ASSET_DIR, C3D_FILES, PLAYER_KEY, PLAYER_NAME, PLAYER_SLUG
     args = parse_args()
     TEMPLATE_DIR = args.template_dir.resolve()
-    PREV_PITCH_ASSETS = args.previous_assets.resolve() if args.previous_assets else None
+    if not (TEMPLATE_DIR / "index.html").is_file():
+        raise FileNotFoundError(f"Pitching template is missing index.html: {TEMPLATE_DIR}")
+    if args.previous_assets is not None:
+        raise ValueError("--previous-assets is no longer supported; all pitching assets must be regenerated.")
+    PREV_PITCH_ASSETS = None
     OUT_DIR = args.out_dir.resolve()
     ASSET_DIR = OUT_DIR / "assets"
     C3D_FILES = load_manifest(args.manifest.resolve())
     player_rows = [row for row in C3D_FILES if row[2] == "student" and row[0] != "coach"]
     PLAYER_KEY, PLAYER_NAME, _role, _path = player_rows[0]
     PLAYER_SLUG = PLAYER_KEY.lower().replace(" ", "_")
-    if not (TEMPLATE_DIR / "index.html").exists():
-        raise FileNotFoundError(f"Template index.html not found under {TEMPLATE_DIR}")
+    if OUT_DIR.exists():
+        # macOS Finder sidecars can disappear between scandir and unlink.
+        # The output directory is a generated clean-room target, so a vanished
+        # sidecar must not make its cleanup fail.
+        shutil.rmtree(OUT_DIR, ignore_errors=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    if TEMPLATE_DIR != OUT_DIR:
-        shutil.copytree(TEMPLATE_DIR, OUT_DIR, dirs_exist_ok=True)
     copy_static_assets()
     bundles = [load_trial_bundle(*row) for row in C3D_FILES]
+    write_metric_csv(bundles)
+    write_json_summary(bundles)
+    annotate_lineart_metrics()
     render_reference_images(bundles)
     render_movement_gifs(bundles)
     make_metric_illustrations(bundles)
     make_kinetic_chain(bundles)
-    write_metric_csv(bundles)
-    write_json_summary(bundles)
-    annotate_lineart_metrics()
     remove_legacy_julian_assets()
     html_text = render_html(bundles)
     (OUT_DIR / "index.html").write_text(html_text, encoding="utf-8")

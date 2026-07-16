@@ -562,6 +562,27 @@ def supplement_peer_records_from_csv(records: list[dict[str, object]]) -> list[d
 
 
 def read_peer_metrics(path: Path) -> list[dict[str, object]]:
+    # A report-local long-form CSV is a self-contained peer source.  This is
+    # useful for clean-room report builds: it deliberately avoids supplementing
+    # the group comparison with metrics discovered in other report folders.
+    if path.is_file() and path.suffix.casefold() == ".csv":
+        records: dict[str, dict[str, object]] = {}
+        for row in read_csv(path):
+            name = str(row.get("sample_name") or row.get("athlete") or "").strip()
+            key = str(row.get("metric_key") or "").strip()
+            value = row.get("value")
+            if not name or peer_key(name) == "coach" or key not in BACKEND_ORDER or value in (None, ""):
+                continue
+            record = records.setdefault(name, {"name": name, "rows": {}})
+            rows = record["rows"]
+            if isinstance(rows, dict):
+                rows[key] = {
+                    "metric_key": key,
+                    "metric_name_zh": row.get("metric_name_zh") or key,
+                    "value": str(value),
+                    "unit": row.get("unit") or "",
+                }
+        return list(records.values())
     if not path.exists():
         return list(csv_peer_metric_records().values())
     if path.is_dir():

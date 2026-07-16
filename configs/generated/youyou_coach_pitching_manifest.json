@@ -1,0 +1,13 @@
+{
+  "athletes": [
+    {"key": "youyou", "name": "Youyou", "role": "student", "c3d": "../../../vicon_2026/youyou/009-youyou Pitch 08.c3d"},
+    {"key": "bryan", "name": "Bryan", "role": "student", "c3d": "../../../vicon_2026/bryan/001 Cal 04 Pitch 05.c3d"},
+    {"key": "7zai", "name": "7zai", "role": "student", "c3d": "../../../vicon_2026/7zai/002 Cal 04 Pitch 05.c3d"},
+    {"key": "green", "name": "Green", "role": "student", "c3d": "../../../vicon_2026/green/006 Pitch 09.c3d"},
+    {"key": "xuanxuan", "name": "Xuanxuan", "role": "student", "c3d": "../../../vicon_2026/xuanxuan/005-xuanxuan Pitch 15.c3d"},
+    {"key": "julian", "name": "Julian", "role": "student", "c3d": "../../../vicon_2026/julian/007-julian Cal 04 Pitch 08.c3d"},
+    {"key": "james", "name": "James", "role": "student", "c3d": "../../../vicon_2026/james/010-james Pitch 09.c3d"},
+    {"key": "branden", "name": "Branden", "role": "student", "c3d": "../../../vicon_2026/branden/011-branden Pitch 09.c3d"},
+    {"key": "coach", "name": "Coach reference", "role": "coach", "c3d": "../../../vicon_2026/coach/008-coach Cal 03 Pitch 07.c3d"}
+  ]
+}
