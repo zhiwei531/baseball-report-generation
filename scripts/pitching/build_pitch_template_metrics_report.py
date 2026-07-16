@@ -273,6 +273,10 @@ def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor
         "front_knee_change_plant_to_release_deg": frame_value(channel(trial, clean_labels, "LKneeAngles", 0), rel) - frame_value(channel(trial, clean_labels, "LKneeAngles", 0), fp),
         "front_knee_change_contact_to_release_deg": frame_value(channel(trial, clean_labels, "LKneeAngles", 0), rel) - frame_value(channel(trial, clean_labels, "LKneeAngles", 0), fc),
         "rear_knee_release_deg": frame_value(channel(trial, clean_labels, "RKneeAngles", 0), rel),
+        # A decrease in the recorded rear-knee flexion angle from plant to
+        # release indicates extension through the drive phase.  Preserve the
+        # signed change so the group comparison reports the actual sequence.
+        "rear_knee_drive_extension_deg": frame_value(channel(trial, clean_labels, "RKneeAngles", 0), rel) - frame_value(channel(trial, clean_labels, "RKneeAngles", 0), fp),
         "shoulder_abduction_release_deg": frame_value(channel(trial, clean_labels, "RShoulderAngles", 1), rel),
         "shoulder_rotation_release_deg": frame_value(channel(trial, clean_labels, "RShoulderAngles", 2), rel),
         "elbow_flex_release_deg": frame_value(channel(trial, clean_labels, "RElbowAngles", 0), rel),
@@ -756,14 +760,6 @@ def coach_comparison_pills(metric: dict[str, object], bundles: list[TrialBundle]
     )
 
 
-def player_coach_reference(metric: dict[str, object], coach: TrialBundle) -> str:
-    key, unit = str(metric["key"]), str(metric["unit"])
-    return (
-        '<div class="pitch-coach-reference"><b>阿楽教练</b>'
-        f'<span>{esc(fmt(coach.values.get(key, float("nan")), unit))}</span></div>'
-    )
-
-
 def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
     """Rebind every template card to active Vicon values and fresh peer tracks."""
     player = next(bundle for bundle in bundles if bundle.key == PLAYER_KEY)
@@ -820,12 +816,6 @@ def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
             card = replace_balanced_div(card, "peer-range-with-legend", f'<div class="peer-range-with-legend">{range_html(metric, bundles, show_all=True)}</div>')
         else:
             card = replace_balanced_div(card, "pitch-compare-pills", "")
-            card = re.sub(
-                r'(<div class="metric-value">[^<]*</div>)',
-                rf'\1{player_coach_reference(metric, coach)}',
-                card,
-                count=1,
-            )
             card = replace_balanced_div(card, "peer-range", range_html(metric, bundles, show_all=False))
         return card
 
@@ -1213,12 +1203,13 @@ def inject_pitch_card_styles(html_text: str) -> str:
     /* Height-ratio endpoints need extra room.  Tighten the summary/illustration
        columns and side padding so the visual and explanatory copy sit left of
        the card edge instead of being clipped on narrower report canvases. */
-    .two-column-metrics .metric-card {{ grid-template-columns:minmax(94px,110px) minmax(94px,116px) minmax(0,1fr); min-height:304px; padding:18px 16px; gap:8px; overflow:hidden; }}
+    .two-column-metrics .metric-card {{ grid-template-columns:minmax(100px,126px) minmax(104px,132px) minmax(0,1fr); min-height:304px; padding:20px; gap:12px; overflow:hidden; }}
     .two-column-metrics .metric-card h4 {{ font-size:17px; line-height:22px; }}
     .two-column-metrics .metric-value {{ font-size:34px; }}
     .two-column-metrics .metric-detail {{ gap:8px; }}
-    .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:20px; }}
-    .two-column-metrics .peer-range {{ grid-template-columns:max-content 34px minmax(52px,76px) 34px; gap:6px; max-width:100%; justify-self:start; }}
+    .two-column-metrics .metric-detail-cn {{ font-size:13px; line-height:19px; }}
+    .two-column-metrics .metric-detail-en {{ font-size:11px; line-height:16px; }}
+    .two-column-metrics .peer-range {{ grid-template-columns:max-content 28px minmax(90px,1fr) 28px; gap:7px; max-width:100%; justify-self:start; }}
     .peer-range.height-ratio-range,.peer-range:has(.unit-stack) {{ grid-template-columns:max-content minmax(48px,max-content) minmax(72px,1fr) minmax(48px,max-content); align-items:center; }}
     .peer-range.height-ratio-range .peer-min,.peer-range.height-ratio-range .peer-max,.peer-range:has(.unit-stack) .peer-min,.peer-range:has(.unit-stack) .peer-max {{ min-width:48px; white-space:normal; }}
     .peer-range.height-ratio-range .unit-stack,.peer-range:has(.unit-stack) .unit-stack {{ display:inline-grid; gap:2px; line-height:1.05; justify-items:center; text-align:center; }}
@@ -1234,7 +1225,15 @@ def inject_pitch_card_styles(html_text: str) -> str:
     .coach-issue-card .peer-dot.current-player {{ z-index:4 !important; width:16px !important; height:16px !important; border:3px solid #fff !important; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15) !important; }}
     @media (max-width:640px) {{ .pitch-compare-pills span {{ min-width:0; flex:1 1 110px; }} }}
     """
-    html_text = re.sub(rf"\s*/\* {re.escape(marker[3:-3])} \*/.*?(?=\s*</style>)", "", html_text, flags=re.DOTALL)
+    # Reports may be regenerated in place.  Remove the complete prior injected
+    # block before adding the current contract, otherwise an older trailing CSS
+    # rule wins by source order and silently preserves the old card layout.
+    html_text = re.sub(
+        r"\s*/\* pitching-card-alignment \*/.*?(?=\s*</style>)",
+        "",
+        html_text,
+        flags=re.DOTALL,
+    )
     return html_text.replace("</style>", css + "\n  </style>", 1)
 
 
@@ -1537,6 +1536,20 @@ def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -
             html_text,
         )
     html_text = refresh_template_cards(html_text, bundles)
+    # The reference template predates the batting-style player cards and ships
+    # a standalone coach-reference pill inside each player card.  Player cards
+    # now express the comparison in their copy and peer range, just like the
+    # batting section; retain the separate coach issue cards unchanged.
+    coach_heading = '<div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>'
+    if coach_heading in html_text:
+        player_html, coach_html = html_text.split(coach_heading, 1)
+        player_html = re.sub(
+            r'\s*<div class="pitch-coach-reference">.*?</div>',
+            "",
+            player_html,
+            flags=re.DOTALL,
+        )
+        html_text = player_html + coach_heading + coach_html
     html_text = replace_balanced_div(html_text, "coach-legend", fresh_peer_legend(bundles))
     html_text = refresh_researcher_copy(html_text, bundles)
     html_text = apply_peer_display_mapping(html_text)
@@ -1549,13 +1562,7 @@ def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -
         "球 marker": "球的位置", "同组区间": "乐风U9同组表现",
     }.items():
         html_text = html_text.replace(old, new)
-    player_reference_css = """
-    .pitch-coach-reference { display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }
-    .pitch-coach-reference b { color:#101828; font-size:12px; line-height:16px; font-weight:800; }
-    .pitch-coach-reference span { color:#667085; font-size:12px; line-height:15px; font-weight:800; }
-    """
-    html_text = html_text.replace("</style>", player_reference_css + "\n</style>", 1)
-    return html_text
+    return inject_pitch_card_styles(html_text)
 
 
 def validate_template_contract(template_html: str, report_html: str) -> None:
@@ -1580,9 +1587,8 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
         mismatches.append("malformed card markup: " + ", ".join(malformed_tokens))
     player_section = report_html.split("教练视角：专项问题", 1)[0]
     player_cards = len(re.findall(r'class="[^"]*\bmetric-card\b', player_section))
-    player_references = len(re.findall(r'class="pitch-coach-reference"', player_section))
-    if player_references != player_cards:
-        mismatches.append(f"player coach-reference boxes: expected {player_cards}, got {player_references}")
+    if 'class="pitch-coach-reference"' in player_section:
+        mismatches.append("player cards retain coach-reference boxes")
     if 'class="pitch-compare-pills"' in player_section:
         mismatches.append("player cards retain three-way comparison pills")
     legend_match = re.search(r'<aside class="peer-legend coach-legend".*?</aside>', report_html, flags=re.DOTALL)
