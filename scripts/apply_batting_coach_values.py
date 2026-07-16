@@ -820,6 +820,12 @@ def main() -> None:
 
     regenerate_research_assets()
     html = HTML_PATH.read_text(encoding="utf-8")
+    pitch_heading = '<div class="section-title"><span class="mark"></span><h3>投球</h3></div>'
+    if pitch_heading not in html:
+        raise RuntimeError("Combined report is missing the player pitching section.")
+    pitch_references_before = html[html.index(pitch_heading) :].count('class="pitch-coach-reference"')
+    if pitch_references_before == 0:
+        raise RuntimeError("Combined report player pitching section has no coach-reference boxes.")
     html = apply_css(html)
     html = update_player_batting_cards(html, coach_values())
     html = update_legend_names(html)
@@ -833,6 +839,12 @@ def main() -> None:
     html = normalize_angle_axis_units(html)
     html = update_research_section(html)
     html = update_bat_speed_copy(html)
+    pitch_references_after = html[html.index(pitch_heading) :].count('class="pitch-coach-reference"')
+    if pitch_references_after != pitch_references_before:
+        raise RuntimeError(
+            "Final batting polish changed imported pitching coach-reference boxes: "
+            f"before={pitch_references_before}, after={pitch_references_after}."
+        )
     HTML_PATH.write_text(html, encoding="utf-8")
     print(HTML_PATH)
 
