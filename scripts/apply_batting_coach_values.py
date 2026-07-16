@@ -7,6 +7,12 @@ import re
 import sys
 from pathlib import Path
 
+from pitching.player_card_contract import (
+    extract_combined_player_pitch,
+    pitch_reference_count,
+    validate_pitch_player_cards,
+)
+
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPORT_DIR = PROJECT_DIR / "reports" / "vicon_2026_julian_coach"
@@ -353,14 +359,14 @@ def apply_css(html: str) -> str:
             ),
         )
     html = re.sub(r"\n\s*\.batting-coach-reference[^\n]*", "", html)
-    if "    .pitch-coach-reference {" not in html:
+    if "    .batting-coach-reference {" not in html:
         html = html.replace(
             "    .metric-value { font-size:38px; line-height:1; font-weight:800; margin:0; color:#000; overflow-wrap:anywhere; }\n",
             (
                 "    .metric-value { font-size:38px; line-height:1; font-weight:800; margin:0; color:#000; overflow-wrap:anywhere; }\n"
-                "    .pitch-coach-reference { display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }\n"
-                "    .pitch-coach-reference b { color:#101828; font-size:12px; line-height:16px; font-weight:800; }\n"
-                "    .pitch-coach-reference span { color:#667085; font-size:12px; line-height:15px; font-weight:800; }\n"
+                "    .batting-coach-reference { display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }\n"
+                "    .batting-coach-reference b { color:#101828; font-size:12px; line-height:16px; font-weight:800; }\n"
+                "    .batting-coach-reference span { color:#667085; font-size:12px; line-height:15px; font-weight:800; }\n"
             ),
         )
     html = html.replace(
@@ -386,7 +392,7 @@ def update_article(article: str, value: str) -> str:
         "",
         article,
     )
-    reference = f'<div class="pitch-coach-reference"><b>阿楽教练</b><span>{value}</span></div>'
+    reference = f'<div class="batting-coach-reference"><b>阿楽教练</b><span>{value}</span></div>'
     return re.sub(r'(<div class="peer-range[^"]*">)', rf"      {reference}\n      \1", article, count=1)
 
 
@@ -820,37 +826,9 @@ def main() -> None:
 
     regenerate_research_assets()
     html = HTML_PATH.read_text(encoding="utf-8")
-    pitch_heading = '<div class="section-title"><span class="mark"></span><h3>投球</h3></div>'
-    if pitch_heading not in html:
-        raise RuntimeError("Combined report is missing the player pitching section.")
-    pitch_references_before = html[html.index(pitch_heading) :].count('class="pitch-coach-reference"')
-    if pitch_references_before == 0:
-        raise RuntimeError("Combined report player pitching section has no coach-reference boxes.")
-    coach_view_heading = '<div class="section-title"><span class="mark"></span><h2>教练视角</h2></div>'
-
-    def misplaced_pitch_references(document: str) -> list[int]:
-        player_pitch = document[
-            document.index(pitch_heading) : document.index(coach_view_heading, document.index(pitch_heading))
-        ]
-        cards = re.findall(
-            r'<article class="metric-card\b[^>]*>.*?</article>',
-            player_pitch,
-            flags=re.DOTALL,
-        )
-        return [
-            index
-            for index, card in enumerate(cards, start=1)
-            if not (
-                0
-                <= card.find('<div class="metric-detail">')
-                < card.find('<div class="pitch-coach-reference">')
-                < card.find('<div class="peer-range')
-            )
-        ]
-
-    misplaced_before = misplaced_pitch_references(html)
-    if misplaced_before:
-        raise RuntimeError(f"Combined report has misplaced pitching coach-reference boxes: {misplaced_before}.")
+    player_pitch_before = extract_combined_player_pitch(html)
+    validate_pitch_player_cards(player_pitch_before, "pre-polish combined report")
+    pitch_references_before = pitch_reference_count(player_pitch_before)
     html = apply_css(html)
     html = update_player_batting_cards(html, coach_values())
     html = update_legend_names(html)
@@ -864,15 +842,14 @@ def main() -> None:
     html = normalize_angle_axis_units(html)
     html = update_research_section(html)
     html = update_bat_speed_copy(html)
-    pitch_references_after = html[html.index(pitch_heading) :].count('class="pitch-coach-reference"')
+    player_pitch_after = extract_combined_player_pitch(html)
+    validate_pitch_player_cards(player_pitch_after, "post-polish combined report")
+    pitch_references_after = pitch_reference_count(player_pitch_after)
     if pitch_references_after != pitch_references_before:
         raise RuntimeError(
             "Final batting polish changed imported pitching coach-reference boxes: "
             f"before={pitch_references_before}, after={pitch_references_after}."
         )
-    misplaced_after = misplaced_pitch_references(html)
-    if misplaced_after:
-        raise RuntimeError(f"Final batting polish misplaced pitching coach-reference boxes: {misplaced_after}.")
     HTML_PATH.write_text(html, encoding="utf-8")
     print(HTML_PATH)
 

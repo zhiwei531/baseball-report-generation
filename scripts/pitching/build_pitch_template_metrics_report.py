@@ -39,6 +39,7 @@ PLAYER_SLUG = "julian"
 C3D_FILES: list[tuple[str, str, str, Path]] = []
 
 from build_vicon_2026_metrics import clean_label, read_c3d, safe_nanmean  # noqa: E402
+from pitching.player_card_contract import validate_pitch_player_cards  # noqa: E402
 import render_vicon_reconstruction_images as recon  # noqa: E402
 
 
@@ -1600,20 +1601,14 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
         mismatches.append("malformed card markup: " + ", ".join(malformed_tokens))
     player_section = report_html.split("教练视角：专项问题", 1)[0]
     player_cards = len(re.findall(r'class="[^"]*\bmetric-card\b', player_section))
-    player_references = len(re.findall(r'class="pitch-coach-reference"', player_section))
-    if player_references != player_cards:
-        mismatches.append(f"player coach-reference boxes: expected {player_cards}, got {player_references}")
-    for index, card in enumerate(
-        re.findall(r'<article class="metric-card\b[^>]*>.*?</article>', player_section, flags=re.DOTALL),
-        start=1,
-    ):
-        detail_at = card.find('<div class="metric-detail">')
-        reference_at = card.find('<div class="pitch-coach-reference">')
-        range_at = card.find('<div class="peer-range')
-        if not (0 <= detail_at < reference_at < range_at):
+    try:
+        validated_player_cards = validate_pitch_player_cards(player_section, "pitching builder output")
+        if validated_player_cards != player_cards:
             mismatches.append(
-                f"player card {index} coach-reference placement: expected metric-detail before reference before peer-range"
+                f"player card contract count: expected {player_cards}, validated {validated_player_cards}"
             )
+    except RuntimeError as exc:
+        mismatches.append(str(exc))
     if 'class="pitch-compare-pills"' in player_section:
         mismatches.append("player cards retain three-way comparison pills")
     legend_match = re.search(r'<aside class="peer-legend coach-legend".*?</aside>', report_html, flags=re.DOTALL)

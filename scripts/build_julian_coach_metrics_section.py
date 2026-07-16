@@ -14,6 +14,8 @@ from xml.etree import ElementTree as ET
 
 from PIL import Image, ImageDraw, ImageFont
 
+from pitching.player_card_contract import validate_pitch_player_cards
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_METRICS = ROOT / "reports" / "vicon_2026_julian_coach" / "batting_dashboard_metrics.csv"
@@ -1154,7 +1156,7 @@ def metric_card(
     coach_reference = ""
     if key not in ISSUE_BACKEND_KEYS:
         coach_reference = (
-            f'<div class="pitch-coach-reference"><b>阿楽教练</b>'
+            f'<div class="batting-coach-reference"><b>阿楽教练</b>'
             f'<span>{esc(coach_value)}</span></div>'
         )
     return f"""
@@ -1939,34 +1941,7 @@ def load_pitch_report_parts(pitch_report: Path, out_dir: Path) -> tuple[str, dic
             groups["researcher"].append(section)
         else:
             groups["player"].append(section)
-    player_html = "\n".join(groups["player"])
-    player_card_html = re.findall(
-        r'<article class="metric-card\b[^>]*>.*?</article>',
-        player_html,
-        flags=re.DOTALL,
-    )
-    player_cards = len(player_card_html)
-    player_references = len(re.findall(r'class="pitch-coach-reference"', player_html))
-    if player_cards == 0 or player_references != player_cards:
-        raise RuntimeError(
-            "Imported pitching player-card contract mismatch: "
-            f"expected one coach-reference box for each of {player_cards} cards, got {player_references}."
-        )
-    misplaced = [
-        index
-        for index, card in enumerate(player_card_html, start=1)
-        if not (
-            0
-            <= card.find('<div class="metric-detail">')
-            < card.find('<div class="pitch-coach-reference">')
-            < card.find('<div class="peer-range')
-        )
-    ]
-    if misplaced:
-        raise RuntimeError(
-            "Imported pitching coach-reference boxes must be inside metric-detail immediately before the peer range; "
-            f"misplaced cards: {misplaced}."
-        )
+    validate_pitch_player_cards("\n".join(groups["player"]), "combined-report pitch import")
     return pitch_css, groups
 
 
@@ -2272,9 +2247,9 @@ def render(
     .badge.review {{ background:#fff7ed; color:#9a3412; }}
     .badge.risk {{ background:#fef2f2; color:#b91c1c; }}
     .metric-value {{ font-size:38px; line-height:1; font-weight:800; margin:0; color:#000; overflow-wrap:anywhere; }}
-    .pitch-coach-reference {{ display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
-    .pitch-coach-reference b {{ color:#101828; font-size:12px; line-height:16px; font-weight:800; }}
-    .pitch-coach-reference span {{ color:#667085; font-size:12px; line-height:15px; font-weight:800; }}
+    .batting-coach-reference {{ display:inline-grid; gap:2px; justify-self:start; min-width:92px; border:1px solid #d0d5dd; border-radius:10px; padding:7px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }}
+    .batting-coach-reference b {{ color:#101828; font-size:12px; line-height:16px; font-weight:800; }}
+    .batting-coach-reference span {{ color:#667085; font-size:12px; line-height:15px; font-weight:800; }}
     .compact-metrics {{ grid-template-columns:1fr; gap:18px; }}
     .compact-metrics .metric-card {{ padding:22px 26px; }}
     .compact-metrics .metric-card h4 {{ font-size:18px; line-height:23px; font-weight:800; }}
