@@ -826,6 +826,31 @@ def main() -> None:
     pitch_references_before = html[html.index(pitch_heading) :].count('class="pitch-coach-reference"')
     if pitch_references_before == 0:
         raise RuntimeError("Combined report player pitching section has no coach-reference boxes.")
+    coach_view_heading = '<div class="section-title"><span class="mark"></span><h2>教练视角</h2></div>'
+
+    def misplaced_pitch_references(document: str) -> list[int]:
+        player_pitch = document[
+            document.index(pitch_heading) : document.index(coach_view_heading, document.index(pitch_heading))
+        ]
+        cards = re.findall(
+            r'<article class="metric-card\b[^>]*>.*?</article>',
+            player_pitch,
+            flags=re.DOTALL,
+        )
+        return [
+            index
+            for index, card in enumerate(cards, start=1)
+            if not (
+                0
+                <= card.find('<div class="metric-detail">')
+                < card.find('<div class="pitch-coach-reference">')
+                < card.find('<div class="peer-range')
+            )
+        ]
+
+    misplaced_before = misplaced_pitch_references(html)
+    if misplaced_before:
+        raise RuntimeError(f"Combined report has misplaced pitching coach-reference boxes: {misplaced_before}.")
     html = apply_css(html)
     html = update_player_batting_cards(html, coach_values())
     html = update_legend_names(html)
@@ -845,6 +870,9 @@ def main() -> None:
             "Final batting polish changed imported pitching coach-reference boxes: "
             f"before={pitch_references_before}, after={pitch_references_after}."
         )
+    misplaced_after = misplaced_pitch_references(html)
+    if misplaced_after:
+        raise RuntimeError(f"Final batting polish misplaced pitching coach-reference boxes: {misplaced_after}.")
     HTML_PATH.write_text(html, encoding="utf-8")
     print(HTML_PATH)
 

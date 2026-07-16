@@ -1940,12 +1940,32 @@ def load_pitch_report_parts(pitch_report: Path, out_dir: Path) -> tuple[str, dic
         else:
             groups["player"].append(section)
     player_html = "\n".join(groups["player"])
-    player_cards = len(re.findall(r'class="[^"]*\bmetric-card\b', player_html))
+    player_card_html = re.findall(
+        r'<article class="metric-card\b[^>]*>.*?</article>',
+        player_html,
+        flags=re.DOTALL,
+    )
+    player_cards = len(player_card_html)
     player_references = len(re.findall(r'class="pitch-coach-reference"', player_html))
     if player_cards == 0 or player_references != player_cards:
         raise RuntimeError(
             "Imported pitching player-card contract mismatch: "
             f"expected one coach-reference box for each of {player_cards} cards, got {player_references}."
+        )
+    misplaced = [
+        index
+        for index, card in enumerate(player_card_html, start=1)
+        if not (
+            0
+            <= card.find('<div class="metric-detail">')
+            < card.find('<div class="pitch-coach-reference">')
+            < card.find('<div class="peer-range')
+        )
+    ]
+    if misplaced:
+        raise RuntimeError(
+            "Imported pitching coach-reference boxes must be inside metric-detail immediately before the peer range; "
+            f"misplaced cards: {misplaced}."
         )
     return pitch_css, groups
 

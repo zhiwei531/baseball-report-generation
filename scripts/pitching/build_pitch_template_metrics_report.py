@@ -830,13 +830,11 @@ def refresh_template_cards(html_text: str, bundles: list[TrialBundle]) -> str:
                 card,
                 flags=re.DOTALL,
             )
-            card = re.sub(
-                r'(<div class="metric-value">[^<]*</div>)',
-                rf'\1{player_coach_reference(metric, coach)}',
+            card = replace_balanced_div(
                 card,
-                count=1,
+                "peer-range",
+                player_coach_reference(metric, coach) + range_html(metric, bundles, show_all=False),
             )
-            card = replace_balanced_div(card, "peer-range", range_html(metric, bundles, show_all=False))
         return card
 
     return re.sub(
@@ -1605,6 +1603,17 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
     player_references = len(re.findall(r'class="pitch-coach-reference"', player_section))
     if player_references != player_cards:
         mismatches.append(f"player coach-reference boxes: expected {player_cards}, got {player_references}")
+    for index, card in enumerate(
+        re.findall(r'<article class="metric-card\b[^>]*>.*?</article>', player_section, flags=re.DOTALL),
+        start=1,
+    ):
+        detail_at = card.find('<div class="metric-detail">')
+        reference_at = card.find('<div class="pitch-coach-reference">')
+        range_at = card.find('<div class="peer-range')
+        if not (0 <= detail_at < reference_at < range_at):
+            mismatches.append(
+                f"player card {index} coach-reference placement: expected metric-detail before reference before peer-range"
+            )
     if 'class="pitch-compare-pills"' in player_section:
         mismatches.append("player cards retain three-way comparison pills")
     legend_match = re.search(r'<aside class="peer-legend coach-legend".*?</aside>', report_html, flags=re.DOTALL)
