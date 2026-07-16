@@ -1,0 +1,1229 @@
+<!doctype html>
+
+<html lang="zh-CN">
+
+<head>
+
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>球员投球表现报告</title>
+
+  <style>
+
+    :root {
+
+      --primary:#2563eb; --ink:#101828; --body:#344054; --mid:#667085; --mute:#98a2b3;
+
+      --line:#d0d5dd; --canvas:#f5f7fb; --soft:#eef6ff; --card:#fff; --dusk:#101828;
+
+      --orange:#f97316; --green:#16a34a; --red:#ef4444; --review:#e89918;
+
+    }
+
+    * { box-sizing:border-box; }
+
+    body { margin:0; background:var(--canvas); color:var(--ink); font-family:STHeiti,"PingFang SC","Microsoft YaHei",system-ui,sans-serif; line-height:1.5; letter-spacing:0; }
+
+    main { max-width:1180px; margin:auto; padding:32px 24px 72px; }
+
+    h1 { font-size:42px; line-height:52px; font-weight:500; margin:0 0 12px; }
+
+    h2 { font-size:30px; line-height:40px; font-weight:500; margin:0; }
+
+    h4 { font-size:20px; line-height:30px; margin:0; }
+
+    p { margin:0; color:var(--body); font-size:18px; overflow-wrap:anywhere; }
+
+    .section { margin-top:34px; min-width:0; }
+
+    .section-title { display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+
+    .mark { width:12px; height:40px; background:var(--primary); border-radius:999px; flex:0 0 auto; }
+
+    .module-note { background:var(--soft); border:1px solid #bfdbfe; border-radius:12px; padding:16px 18px; margin-bottom:18px; }
+
+    .module-note-cn { color:#344054; font-size:15px; line-height:22px; font-weight:700; }
+
+    .module-note-en { color:#7a8494; font-size:12px; line-height:18px; font-weight:600; margin-top:6px; }
+
+    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+
+    .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+
+    .compact-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+
+    .card,.metric-card,.visual-card { background:var(--card); border:2px solid #e4e7ec; border-radius:24px; padding:24px; min-width:0; }
+
+    .card.good,.metric-card.good,.coach-issue-card.good,
+    .card.review,.metric-card.review,.coach-issue-card.review,
+    .card.risk,.metric-card.risk,.coach-issue-card.risk { background:#fff; }
+
+    .metric-card { display:grid; grid-template-columns:minmax(132px,.72fr) minmax(215px,275px); grid-template-areas:"summary visual" "detail detail"; gap:18px 20px; align-items:center; min-height:374px; border-color:#d2ccc7; border-radius:26px; background:#fff; }
+
+    .metric-summary { grid-area:summary; min-width:0; display:grid; align-content:center; gap:14px; }
+
+    .metric-en { color:#667085; font-size:13px; line-height:17px; font-weight:700; margin-top:0; }
+
+    .metric-detail { grid-area:detail; min-width:0; display:grid; gap:12px; padding-top:2px; }
+
+    .metric-detail-cn,.copy-cn,.caption-cn { color:#344054; font-size:15px; line-height:22px; font-weight:700; }
+
+    .metric-detail-en,.copy-en,.caption-en { color:#7a8494; font-size:12px; line-height:18px; font-weight:600; }
+
+    .badge { display:inline-flex; align-items:center; justify-content:center; width:max-content; min-width:70px; border-radius:999px; padding:4px 12px; font-size:14px; line-height:20px; font-weight:700; white-space:nowrap; }
+
+    .badge.good { background:#dcfce7; color:#166534; }
+
+    .badge.review { background:#fff7ed; color:#9a3412; }
+
+    .badge.risk { background:#fef2f2; color:#b91c1c; }
+
+    .metric-value { font-size:38px; line-height:1; font-weight:800; margin:0; color:#000; overflow-wrap:anywhere; }
+
+    .metric-illustration { grid-area:visual; margin:0; width:100%; max-width:275px; justify-self:center; aspect-ratio:1; border-radius:16px; overflow:hidden; background:#fff; }
+
+    .metric-illustration img { width:100%; height:100%; object-fit:contain; display:block; }
+
+    .peer-range { display:grid; grid-template-columns:max-content 58px minmax(90px,1fr) 58px; gap:7px; align-items:center; margin-top:0; }
+
+    .peer-label { color:#000; font-size:12px; line-height:15px; font-weight:800; }
+
+    .peer-min,.peer-max { color:#344054; font-size:12px; line-height:16px; font-weight:800; text-align:center; }
+
+    .peer-track { position:relative; height:28px; border-radius:999px; background:linear-gradient(180deg,transparent 0 11px,#eef2f7 11px 17px,transparent 17px); }
+
+    .peer-span { position:absolute; top:11px; height:6px; border-radius:999px; background:linear-gradient(90deg,#dcfce7,#bae6fd); }
+
+    .peer-dot { position:absolute; top:50%; width:10px; height:10px; background:#98a2b3; border:2px solid #fff; border-radius:999px; transform:translate(-50%,-50%); box-shadow:0 0 0 1px rgba(16,24,40,.12); }
+
+    .peer-dot.julian { width:16px; height:16px; background:#ef4444; box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(239,68,68,.2); }
+
+    .visual-card p,.metric-card p,.card p { margin-top:8px; }
+
+    .reconstruction-annotated { position:relative; margin:0; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; }
+
+    .reconstruction-annotated img { width:100%; aspect-ratio:16/10; object-fit:contain; display:block; background:#fff; }
+
+    .reconstruction-annotated figcaption { display:grid; gap:4px; padding:12px 14px; border-top:1px solid #e4e7ec; }
+
+    .reconstruction-annotated figcaption b { color:var(--ink); font-size:15px; line-height:20px; }
+
+    .video-alignment img { aspect-ratio:1800/2520; }
+
+    .section-annotation { width:calc((100% - 18px) / 1.46); margin:0 0 18px; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff; }
+
+    .section-annotation img { width:100%; aspect-ratio:16/9; object-fit:contain; display:block; background:#fff; }
+
+    .section-annotation figcaption { display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border-top:1px solid #e4e7ec; }
+
+    .section-annotation b { color:var(--ink); font-size:14px; }
+
+    .section-annotation span { color:var(--mid); font-size:13px; text-align:right; }
+
+    .motion-stage-list { display:grid; gap:22px; }
+
+    .motion-stage-card { display:grid; grid-template-columns:minmax(210px,280px) minmax(0,1fr); gap:26px; align-items:center; padding:22px 0; min-width:0; }
+
+    .motion-3d-panel,.motion-2d-panel { margin:0; min-width:0; }
+
+    .motion-3d-panel { min-height:250px; padding:24px 18px; border-radius:14px; background:#fff; display:grid; justify-items:center; align-content:center; gap:18px; }
+
+    .motion-3d-panel h4 { text-align:center; font-size:18px; line-height:24px; margin:0; }
+
+    .motion-3d-panel h4 span { display:block; color:#667085; font-size:16px; line-height:20px; font-weight:700; }
+
+    .motion-3d-panel img { width:100%; max-width:210px; aspect-ratio:1; object-fit:contain; display:block; }
+
+    .motion-2d-panel { border-radius:10px; overflow:hidden; background:#fff; }
+
+    .motion-2d-panel img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
+
+    .kinetic-chain-card { padding:22px; }
+
+    .kinetic-chain-card p { max-width:920px; }
+
+    .kinetic-chain-figure { margin:14px 0 0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff; }
+
+    .kinetic-chain-figure img { width:100%; aspect-ratio:1600/760; object-fit:contain; display:block; background:#fff; }
+
+
+    .kinetic-node-notes { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin-top:16px; }
+    .kinetic-node-note { border:1px solid #d0d5dd; border-radius:14px; padding:12px 12px 14px; background:#fff; min-width:0; }
+    .kinetic-node-note b { display:block; color:#101828; font-size:15px; line-height:20px; margin-bottom:5px; }
+    .kinetic-node-note span { display:block; color:#667085; font-size:12px; line-height:18px; font-weight:700; }
+    .kinetic-curves { margin:22px 0 0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff; }
+    .kinetic-curves img { width:100%; aspect-ratio:1680/760; object-fit:contain; display:block; background:#fff; }
+    .kinetic-curves figcaption { border-top:1px solid #e4e7ec; padding:12px 14px; color:#667085; font-size:13px; line-height:20px; font-weight:700; }
+    .kinetic-timeline { margin-top:22px; border:1px solid #bfdbfe; border-radius:18px; background:#eff6ff; padding:18px; }
+    .kinetic-timeline h4,.kinetic-analysis h4,.kinetic-table-block h4,.keyframe-strip h4 { font-size:20px; line-height:28px; margin:0 0 12px; }
+    .timeline-track { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; align-items:stretch; }
+    .timeline-point { background:#fff; border:1px solid #bfdbfe; border-radius:14px; padding:12px; }
+    .timeline-point b { display:block; color:#101828; font-size:18px; line-height:24px; }
+    .timeline-point span { display:block; color:#667085; font-size:12px; line-height:18px; font-weight:700; }
+    .release-window-chip { display:inline-flex; align-items:center; width:max-content; max-width:100%; margin-top:14px; padding:8px 14px; border-radius:999px; background:#2563eb; color:#fff; font-weight:800; font-size:16px; line-height:22px; }
+    .kinetic-timeline p { margin-top:12px; max-width:980px; }
+    .keyframe-strip { margin-top:22px; }
+    .keyframe-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+    .keyframe-card { margin:0; border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#fff; min-width:0; }
+    .keyframe-card img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; background:#fff; }
+    .keyframe-card figcaption { padding:10px 12px 12px; display:grid; gap:4px; }
+    .keyframe-card b { color:#101828; font-size:14px; line-height:20px; }
+    .keyframe-card span { color:#667085; font-size:12px; line-height:18px; font-weight:700; }
+    .kinetic-analysis { margin-top:22px; display:grid; gap:12px; padding:18px; border:1px solid #e4e7ec; border-radius:18px; background:#f9fafb; }
+    .kinetic-analysis p { max-width:980px; }
+    .kinetic-table-block { margin-top:22px; }
+    .kinetic-table-block table { min-width:1040px; }
+    .kinetic-table-block td:first-child,.kinetic-table-block th:first-child { font-weight:800; color:#101828; }
+    @media (max-width:960px) { .kinetic-node-notes,.timeline-track,.keyframe-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:640px) { .kinetic-node-notes,.timeline-track,.keyframe-grid { grid-template-columns:1fr; } .release-window-chip { width:100%; justify-content:center; } }
+    .coach-issue-list { display:grid; gap:18px; }
+
+    .coach-issue-card { display:grid; grid-template-columns:minmax(170px,.72fr) minmax(220px,320px) minmax(320px,1.35fr); gap:22px; align-items:center; background:var(--card); border:2px solid #d2ccc7; border-radius:26px; padding:22px; min-width:0; }
+
+    .coach-issue-card.good,.coach-issue-card.review,.coach-issue-card.risk { background:#fff; }
+
+    .coach-issue-summary,.coach-issue-detail { min-width:0; display:grid; gap:14px; }
+
+    .coach-issue-visual { margin:0; width:100%; aspect-ratio:1; border-radius:18px; overflow:hidden; background:#fff; }
+
+    .coach-issue-visual img { width:100%; height:100%; object-fit:contain; display:block; }
+
+    .compare-pills { display:flex; flex-wrap:wrap; gap:8px; }
+
+    .compare-pill { display:inline-grid; gap:2px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }
+
+    .compare-pill b { color:#667085; font-size:11px; line-height:14px; }
+
+    .peer-range-with-legend { display:grid; grid-template-columns:minmax(0,1fr) minmax(126px,156px); gap:12px; align-items:center; }
+
+    .peer-legend { display:grid; gap:5px; padding:8px 10px; border:1px solid #d0d5dd; border-radius:12px; background:#fff; }
+
+    .peer-legend-title { color:#667085; font-size:11px; line-height:14px; font-weight:800; }
+
+    .peer-legend-item { display:flex; align-items:center; gap:6px; min-width:0; color:#344054; font-size:11px; line-height:14px; font-weight:800; white-space:nowrap; }
+
+    .peer-legend-dot { width:8px; height:8px; border-radius:999px; box-shadow:0 0 0 1px rgba(16,24,40,.12); flex:0 0 auto; }
+
+
+    .analyst-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+    .analyst-chart-card { display:grid; gap:14px; padding:22px; }
+    .analyst-chart-figure { margin:0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff; }
+    .analyst-chart-figure img { width:100%; aspect-ratio:1600/760; object-fit:contain; display:block; background:#fff; }
+    .analyst-chart-copy { color:#667085; font-size:15px; line-height:24px; font-weight:700; }
+    @media (max-width:960px) { .analyst-chart-grid { grid-template-columns:1fr; } }
+
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; background:#fff; }
+
+    table { border-collapse:collapse; min-width:980px; width:100%; }
+
+    th,td { border-bottom:1px solid #e4e7ec; padding:11px 12px; text-align:left; vertical-align:top; font-size:13px; color:#344054; }
+
+    th { background:#eef6ff; color:#101828; font-weight:800; }
+
+    @media (max-width:1100px) { .metric-card { grid-template-columns:minmax(126px,.72fr) minmax(190px,250px); gap:16px; min-height:356px; } .metric-detail-cn,.copy-cn,.caption-cn { font-size:14px; line-height:21px; } .metric-detail-en,.copy-en,.caption-en { font-size:11px; line-height:17px; } }
+
+    @media (max-width:960px) { .grid-2 { grid-template-columns:1fr; } .grid,.compact-metrics { grid-template-columns:1fr; } .section-annotation { width:100%; } h1 { font-size:36px; line-height:44px; } .metric-card { grid-template-columns:minmax(150px,.75fr) minmax(215px,275px); } .coach-issue-card { grid-template-columns:180px minmax(180px,240px); } .coach-issue-detail { grid-column:1 / -1; } .peer-range-with-legend { grid-template-columns:1fr; } .peer-legend { grid-template-columns:repeat(3,minmax(0,1fr)); } .peer-legend-title { grid-column:1 / -1; } .motion-stage-card { grid-template-columns:1fr; } .motion-3d-panel { min-height:0; } }
+
+    @media (max-width:640px) { main { padding-left:16px; padding-right:16px; } .metric-card,.coach-issue-card { grid-template-columns:1fr; grid-template-areas:"summary" "visual" "detail"; min-height:0; gap:18px; } .metric-illustration,.coach-issue-visual { max-width:300px; justify-self:center; } .peer-range { grid-template-columns:1fr 52px minmax(100px,1fr) 52px; } .peer-legend { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+
+    /* Teammate-format alignment: event media first, compact bilingual metric cards, researcher visuals at the end. */
+    .card,.metric-card,.visual-card { background:#fffefa; border:2px solid #d2d2d2; border-radius:24px; padding:24px; min-width:0; }
+    .card.good,.metric-card.good,.coach-issue-card.good,
+    .card.review,.metric-card.review,.coach-issue-card.review,
+    .card.risk,.metric-card.risk,.coach-issue-card.risk { background:#fffefa; }
+    .metric-card { display:grid; grid-template-columns:minmax(110px,145px) minmax(130px,165px) minmax(0,1fr); grid-template-areas:none; gap:18px; align-items:center; min-height:236px; border-color:#d2d2d2; border-radius:26px; background:#fffefa; }
+    .metric-summary,.metric-detail,.metric-illustration { grid-area:auto; }
+    .metric-summary { min-width:0; display:grid; align-content:center; gap:14px; }
+    .metric-detail { min-width:0; display:grid; gap:12px; padding-top:0; }
+    .metric-illustration { margin:0; width:100%; max-width:none; justify-self:auto; aspect-ratio:1; border-radius:16px; overflow:hidden; background:transparent; }
+    .compact-metrics { grid-template-columns:1fr; gap:18px; }
+    .compact-metrics .metric-card { padding:22px 26px; }
+    .compact-metrics .metric-card h4 { font-size:18px; line-height:23px; font-weight:800; }
+    .compact-metrics.two-column-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .two-column-metrics .metric-card { min-height:256px; padding:20px; grid-template-columns:minmax(82px,106px) minmax(96px,122px) minmax(0,1fr); gap:12px; overflow:hidden; }
+    .two-column-metrics .metric-card h4 { font-size:17px; line-height:22px; }
+    .two-column-metrics .metric-value { font-size:34px; }
+    .two-column-metrics .metric-detail { gap:8px; }
+    .two-column-metrics .metric-detail-cn { font-size:13px; line-height:19px; }
+    .two-column-metrics .metric-detail-en { font-size:11px; line-height:16px; }
+    .two-column-metrics .metric-detail p,
+    .two-column-metrics .metric-summary,
+    .two-column-metrics .metric-en { max-width:100%; overflow-wrap:anywhere; word-break:break-word; }
+    .two-column-metrics .peer-range { grid-template-columns:max-content 46px minmax(58px,1fr) 46px; gap:5px; }
+    .two-column-metrics .peer-label,
+    .two-column-metrics .peer-min,
+    .two-column-metrics .peer-max { font-size:10.5px; line-height:14px; }
+    .event-comparison { display:grid; grid-template-columns:minmax(260px,.9fr) minmax(0,1.8fr); gap:18px; align-items:stretch; margin:0 0 18px; }
+    .event-comparison .visual-card { display:grid; align-content:start; }
+    .event-comparison .visual-card p { font-size:13px; line-height:18px; }
+    .event-gifs { position:static; }
+    .event-gif-figure { margin:12px 0 0; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#fff; }
+    .event-gif-figure img { width:100%; aspect-ratio:16/10; object-fit:contain; display:block; background:#fff; }
+    .event-gif-figure figcaption { display:flex; justify-content:space-between; gap:8px; padding:8px 10px; border-top:1px solid #e4e7ec; }
+    .event-gif-figure b { color:var(--ink); font-size:13px; }
+    .event-gif-figure span { color:var(--mid); font-size:12px; text-align:right; }
+    .event-comparison .section-annotation { width:100%; margin:0; }
+    .researcher-stack { display:grid; gap:18px; }
+    .researcher-stack .kinetic-chain-card { margin:0; }
+    @media (max-width:1100px) { .metric-card { grid-template-columns:minmax(100px,130px) minmax(120px,150px) minmax(0,1fr); gap:14px; } .compact-metrics .metric-card { padding:20px 22px; } }
+    @media (max-width:960px) { .event-comparison,.compact-metrics.two-column-metrics,.analyst-chart-grid { grid-template-columns:1fr; } .metric-card { grid-template-columns:170px minmax(160px,210px); } .metric-detail { grid-column:1 / -1; } }
+    @media (max-width:640px) { .metric-card { grid-template-columns:1fr; min-height:0; gap:18px; } .compact-metrics .metric-card { padding:22px 18px; } .metric-illustration { max-width:260px; justify-self:center; } }
+
+    .coach-issues-layout { display:grid; grid-template-columns:minmax(0,1fr) 156px; gap:16px; align-items:start; }
+    .coach-issues-layout .peer-range-with-legend { display:block; }
+    .coach-legend { position:sticky; top:20px; align-self:start; display:grid; gap:8px; padding:14px 16px; border:1px solid #d0d5dd; border-radius:16px; background:#fff; }
+    .coach-legend .peer-legend-title { color:#101828; font-size:16px; line-height:22px; font-weight:800; }
+    .coach-legend .peer-legend-item { color:#344054; font-size:14px; line-height:22px; font-weight:800; gap:8px; }
+    .coach-legend .peer-legend-dot { width:12px; height:12px; }
+    @media (max-width:960px) { .coach-issues-layout { grid-template-columns:1fr; } .coach-legend { position:static; grid-template-columns:repeat(4,minmax(0,1fr)); } .coach-legend .peer-legend-title { grid-column:1 / -1; } }
+    @media (max-width:640px) { .coach-legend { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+
+    /* pitching-card-alignment */
+    .compact-metrics.two-column-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    /* Height-ratio endpoints need extra room.  Tighten the summary/illustration
+       columns and side padding so the visual and explanatory copy sit left of
+       the card edge instead of being clipped on narrower report canvases. */
+    .two-column-metrics .metric-card { grid-template-columns:minmax(94px,110px) minmax(94px,116px) minmax(0,1fr); min-height:304px; padding:18px 16px; gap:8px; overflow:hidden; }
+    .two-column-metrics .metric-card h4 { font-size:17px; line-height:22px; }
+    .two-column-metrics .metric-value { font-size:34px; }
+    .two-column-metrics .metric-detail { gap:8px; }
+    .two-column-metrics .metric-detail-cn { font-size:13px; line-height:20px; }
+    .two-column-metrics .peer-range { grid-template-columns:max-content 34px minmax(52px,76px) 34px; gap:6px; max-width:100%; justify-self:start; }
+    .peer-range.height-ratio-range,.peer-range:has(.unit-stack) { grid-template-columns:max-content minmax(48px,max-content) minmax(72px,1fr) minmax(48px,max-content); align-items:center; }
+    .peer-range.height-ratio-range .peer-min,.peer-range.height-ratio-range .peer-max,.peer-range:has(.unit-stack) .peer-min,.peer-range:has(.unit-stack) .peer-max { min-width:48px; white-space:normal; }
+    .peer-range.height-ratio-range .unit-stack,.peer-range:has(.unit-stack) .unit-stack { display:inline-grid; gap:2px; line-height:1.05; justify-items:center; text-align:center; }
+    .peer-range.height-ratio-range .unit-number,.peer-range.height-ratio-range .unit-label,.peer-range:has(.unit-stack) .unit-number,.peer-range:has(.unit-stack) .unit-label { display:block; white-space:nowrap; }
+    .coach-issue-card { grid-template-columns:minmax(148px,.62fr) minmax(176px,270px) minmax(0,1.2fr); gap:16px; padding:20px 16px; }
+    .analyst-chart-grid { grid-template-columns:1fr; }
+    /* The pitching flow now shares batting's compact five-node layout. */
+    .kinetic-chain-figure img { aspect-ratio:1600/360; }
+    .pitch-compare-pills { display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 4px; }
+    .pitch-compare-pills span { display:inline-grid; gap:2px; min-width:112px; border:1px solid #d0d5dd; border-radius:12px; padding:8px 10px; background:#fff; color:#344054; font-size:12px; line-height:16px; font-weight:800; }
+    .pitch-compare-pills span b { color:#667085; font-size:11px; line-height:14px; }
+    .peer-dot.current-player { z-index:4; width:16px; height:16px; background:#ef4444; border:3px solid #fff; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15); }
+    .coach-issue-card .peer-dot.current-player { z-index:4 !important; width:16px !important; height:16px !important; border:3px solid #fff !important; box-shadow:0 0 0 2px #fff,0 0 0 6px color-mix(in srgb, var(--marker-color,#ef4444) 20%, transparent),0 0 0 1px rgba(16,24,40,.15) !important; }
+    @media (max-width:640px) { .pitch-compare-pills span { min-width:0; flex:1 1 110px; } }
+
+  </style>
+
+</head>
+
+<body>
+
+  <main>
+
+    <section class="section" id="julian-pitching-metrics">
+
+      <div class="section-title"><span class="mark"></span><h1>球员投球表现报告</h1></div>
+
+    </section>
+
+
+
+    <section class="section">
+      <div class="section-title"><span class="mark"></span><h2>投球动作与教练对照</h2></div>
+      <div class="grid-2">
+        <article class="visual-card">
+          <h4>球员Bryan 出手点动作对照</h4>
+          <figure class="reconstruction-annotated">
+            <img src="assets/vicon_reconstruction_events/bryan_player_movement.gif?v=1784175262880000000" alt="球员Bryan 投球出手点动作重建" loading="lazy">
+            <figcaption>
+              <b>球员Bryan 投球动作出手点</b>
+              <span class="caption-cn">当前出手点主要看前腿支撑、肩外展、肘屈曲、出手手臂角度和出手手速。该球员的动作链已经具备基础，重点是让前脚落地后的身体传力更清楚。</span>
+              <span class="caption-en">This view keeps the key release positions visible: front-leg support, shoulder abduction, elbow flexion, arm slot, and hand speed.</span>
+            </figcaption>
+          </figure>
+        </article>
+        <article class="visual-card">
+          <h4>阿楽教练 动作参考</h4>
+          <figure class="reconstruction-annotated">
+            <img src="assets/vicon_reconstruction_events/coach_player_movement.gif?v=1784175268600000000" alt="阿楽教练 投球出手点动作重建" loading="lazy">
+            <figcaption>
+              <b>阿楽教练 投球动作参考</b>
+              <span class="caption-cn">教练画面用于理解目标动作节奏，不作为硬性复制标准。报告里的教练数值会在教练视角里作为参考列展示。</span>
+              <span class="caption-en">The coach view is a timing reference, not a rigid copy target; coach values are used as context in the comparison cards.</span>
+            </figcaption>
+          </figure>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+
+      <div class="section-title"><span class="mark"></span><h2>抬腿最高点</h2></div>
+      <div class="event-comparison">
+        <article class="visual-card event-gifs">
+          <h4>抬腿最高点动作片段</h4>
+          <figure class="event-gif-figure">
+            <img src="assets/vicon_reconstruction_events/bryan_peak_knee.gif" alt="抬腿最高点动作片段" loading="lazy">
+            <figcaption><b>球员Bryan</b><span>代表动作片段</span></figcaption>
+          </figure>
+          <p class="copy-cn">这个画面展示该球员抬腿最高点，用来观察准备姿态、重心和前腿收紧是否稳定。</p>
+          <p class="copy-en">This view shows the player at peak knee lift, helping families compare balance, posture, and whether the front leg is collected before moving forward.</p>
+        </article>
+        <figure class="section-annotation">
+          <img src="assets/video_2d_alignment/bryan_pitch_peak_knee_2d_overlay.png" alt="球员抬腿最高点 2D 几何标注" loading="lazy">
+          <figcaption><b>抬腿最高点动作参考</b><span>准备阶段关键画面</span></figcaption>
+        </figure>
+      </div>
+      <div class="grid compact-metrics two-column-metrics">
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>抬腿高度</h4><p class="metric-en">Knee Lift Height</p></div>
+
+        <div class="metric-value">53.6%身高比</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/knee_height_pct.png?v=20260707h" alt="抬腿高度 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">抬腿高度接近身高一半，说明准备阶段有足够的节奏和空间；这个位置如果能够稳定停住，后续跨步和骨盆启动会更容易连贯。</p>
+        <p class="metric-detail-en">Player: 50.7%. Read this peak-knee-lift value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>66.8%身高比</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min"><span class="unit-stack"><span class="unit-number">48.8%</span><span class="unit-label">身高比</span></span></div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:14.28%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 50.7%"></span></div>
+        <div class="peer-max"><span class="unit-stack"><span class="unit-number">61.6%</span><span class="unit-label">身高比</span></span></div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>前腿收紧</h4><p class="metric-en">Lead-Knee Tuck</p></div>
+
+        <div class="metric-value">106.1°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/front_knee_peak_deg.png?v=20260707h" alt="前腿收紧 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">前膝角用来判断抬腿时前腿是否真正收住，而不是松散地向前摆；前腿收得清楚，通常能帮助身体在准备阶段保持平衡和节奏。</p>
+        <p class="metric-detail-en">Player: 141.9°. Read this peak-knee-lift value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>106.3°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-78.6°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:100.00%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 141.9°"></span></div>
+        <div class="peer-max">141.9°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>后腿蓄力</h4><p class="metric-en">Rear-Leg Load</p></div>
+
+        <div class="metric-value">22.6°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/rear_knee_peak_deg.png?v=20260707h" alt="后腿蓄力 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">后腿在抬腿最高点承担支撑任务，重点不是追求某个绝对角度，而是看重心是否稳、髋部是否能为下一步推进保留力量。</p>
+        <p class="metric-detail-en">Player: 3.4°. Read this peak-knee-lift value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>10.0°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-5.0°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:16.70%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 3.4°"></span></div>
+        <div class="peer-max">45.4°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+    </div>
+
+    </section>
+
+
+
+
+
+    <section class="section">
+
+      <div class="section-title"><span class="mark"></span><h2>前脚落地</h2></div>
+      <div class="event-comparison">
+        <article class="visual-card event-gifs">
+          <h4>前脚落地动作片段</h4>
+          <figure class="event-gif-figure">
+            <img src="assets/vicon_reconstruction_events/bryan_foot_plant.gif" alt="前脚落地动作片段" loading="lazy">
+            <figcaption><b>球员Bryan</b><span>代表动作片段</span></figcaption>
+          </figure>
+          <p class="copy-cn">这个画面展示前脚落地瞬间，用来观察跨步方向、前腿支撑和手臂是否及时进入准备位置。</p>
+          <p class="copy-en">This view shows foot plant, helping readers connect stride direction, front-leg support, and whether the throwing arm arrives on time.</p>
+        </article>
+        <figure class="section-annotation">
+          <img src="assets/video_2d_alignment/bryan_pitch_foot_plant_2d_overlay.png" alt="球员前脚落地 2D 几何标注" loading="lazy">
+          <figcaption><b>前脚落地动作参考</b><span>落脚质量、支撑和手臂到位</span></figcaption>
+        </figure>
+      </div>
+      <div class="grid compact-metrics two-column-metrics">
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>跨步距离</h4><p class="metric-en">Stride Distance</p></div>
+
+        <div class="metric-value">52.8%身高比</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/stride_distance_pct.png?v=20260707h" alt="跨步距离 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">跨步距离用身高归一化，帮助判断身体向本垒方向的推进是否足够；距离合适时，前脚落地后更容易建立支撑并承接身体传力。</p>
+        <p class="metric-detail-en">Player: 52.7%. Read this stride and foot-plant quality value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>57.1%身高比</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min"><span class="unit-stack"><span class="unit-number">29.5%</span><span class="unit-label">身高比</span></span></div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:63.33%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 52.7%"></span></div>
+        <div class="peer-max"><span class="unit-stack"><span class="unit-number">66.2%</span><span class="unit-label">身高比</span></span></div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card review">
+
+      <div class="metric-summary">
+
+        <span class="badge review">良好</span>
+
+        <div><h4>跨步方向</h4><p class="metric-en">Stride Direction</p></div>
+
+        <div class="metric-value">-72.6°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/stride_direction_deg.png?v=20260707h" alt="跨步方向 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">跨步方向越接近目标线，身体越容易把力量送向投球方向；如果方向偏离较多，后续躯干和手臂可能需要额外调整来找回出手线路。</p>
+        <p class="metric-detail-en">Player: -19.9°. Read this stride and foot-plant quality value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>-16.0°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-158.4°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:63.79%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: -19.9°"></span></div>
+        <div class="peer-max">58.8°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>前膝屈曲</h4><p class="metric-en">Lead-Knee Flexion</p></div>
+
+        <div class="metric-value">17.5°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/front_knee_plant_deg.png?v=20260707h" alt="前膝屈曲 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">前脚落地后的前膝角代表前腿支撑质量，观察重点是能否在落地后迅速稳定；过软或过硬都可能影响骨盆和躯干向上肢传力。</p>
+        <p class="metric-detail-en">Player: 53.4°. Read this foot-plant support value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>20.4°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">17.5°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:97.69%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 53.4°"></span></div>
+        <div class="peer-max">54.2°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>后膝屈曲</h4><p class="metric-en">Rear-Knee Flexion</p></div>
+
+        <div class="metric-value">35.4°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/rear_knee_plant_deg.png?v=20260707h" alt="后膝屈曲 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">后膝角反映后腿是否还在参与推进，而不是提前失去下肢连接；它需要和跨步方向、前脚落地位置一起看，才能判断下肢传力是否顺。</p>
+        <p class="metric-detail-en">Player: 52.4°. Read this foot-plant support value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>45.5°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">27.3°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:65.71%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 52.4°"></span></div>
+        <div class="peer-max">65.4°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card review">
+
+      <div class="metric-summary">
+
+        <span class="badge review">良好</span>
+
+        <div><h4>投球肘相对肩线</h4><p class="metric-en">Throwing-Elbow Height</p></div>
+
+        <div class="metric-value">-0.3 cm</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/elbow_vs_shoulder_cm.png?v=20260707h" alt="投球肘相对肩线 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">负值表示肘低于肩线，前脚落地时肘的位置会影响后续出手路径；这里更适合看手臂是否按时进入准备位置，而不是单独用一个数值判断好坏。</p>
+        <p class="metric-detail-en">Player: -13.3 cm. Read this arm-positioning value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>-10.2 cm</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-24.5 cm</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:46.23%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: -13.3 cm"></span></div>
+        <div class="peer-max">-0.3 cm</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>肩外展</h4><p class="metric-en">Shoulder Abduction</p></div>
+
+        <div class="metric-value">111.7°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/shoulder_abduction_plant_deg.png?v=20260707h" alt="肩外展 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">肩外展帮助判断投球手臂是否在落地时及时进入准备位置；它需要和肘高、躯干角度一起观察，确认手臂是否跟上身体节奏。</p>
+        <p class="metric-detail-en">Player: 78.2°. Read this arm-positioning value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>89.3°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">57.3°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:38.48%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 78.2°"></span></div>
+        <div class="peer-max">111.7°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+    </div>
+
+    </section>
+
+
+
+
+
+    <section class="section">
+
+      <div class="section-title"><span class="mark"></span><h2>出手点</h2></div>
+      <div class="event-comparison">
+        <article class="visual-card event-gifs">
+          <h4>出手点动作片段</h4>
+          <figure class="event-gif-figure">
+            <img src="assets/vicon_reconstruction_events/bryan_release.gif" alt="出手点动作片段" loading="lazy">
+            <figcaption><b>球员Bryan</b><span>代表动作片段</span></figcaption>
+          </figure>
+          <p class="copy-cn">这个画面展示出手点附近，用来观察前腿制动、肩外展、肘屈曲、出手手臂角度和出手手速之间的关系。</p>
+          <p class="copy-en">This view shows the release window, helping compare front-leg block, shoulder abduction, elbow flexion, arm slot, and hand speed.</p>
+        </article>
+        <figure class="section-annotation">
+          <img src="assets/video_2d_alignment/bryan_pitch_release_2d_overlay.png" alt="球员出手点 2D 几何标注" loading="lazy">
+          <figcaption><b>出手点动作参考</b><span>前腿制动、出手角度和出手点</span></figcaption>
+        </figure>
+      </div>
+      <div class="grid compact-metrics two-column-metrics">
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>出手前膝角</h4><p class="metric-en">Release Lead-Knee Angle</p></div>
+
+        <div class="metric-value">21.1°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/front_knee_release_deg.png?v=20260707h" alt="出手前膝角 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">出手时前腿能否稳住，是身体传力到手臂的重要前提；前腿支撑越清楚，骨盆和躯干的力量越容易传到手臂，而不是在落地后散掉。</p>
+        <p class="metric-detail-en">Player: 49.9°. Read this front-leg block value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>58.4°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-8.4°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:100.00%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 49.9°"></span></div>
+        <div class="peer-max">49.9°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>落地到出手前膝变化</h4><p class="metric-en">Lead-Knee Change: Plant to Release</p></div>
+
+        <div class="metric-value">3.6°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/front_knee_change_plant_to_release_deg.png?v=20260707h" alt="落地到出手前膝变化 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">这个变化量越小，说明前腿在落地后越能保持支撑；它可以用来观察前脚落地到出手这段时间内，前腿有没有明显塌陷或过度伸直。</p>
+        <p class="metric-detail-en">Player: -3.4°. Read this front-leg block value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>38.0°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-33.5°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:51.33%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: -3.4°"></span></div>
+        <div class="peer-max">25.1°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>出手肩外展</h4><p class="metric-en">Release Shoulder Abduction</p></div>
+
+        <div class="metric-value">101.5°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/shoulder_abduction_release_deg.png?v=20260707h" alt="出手肩外展 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">出手时上臂抬起角度会影响手臂路径和出手槽位；这个指标本身没有绝对好坏，关键是多次投球中是否稳定。</p>
+        <p class="metric-detail-en">Player: 89.3°. Read this release-angle value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>105.9°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">87.9°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:10.29%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 89.3°"></span></div>
+        <div class="peer-max">101.5°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>出手肘屈曲</h4><p class="metric-en">Release Elbow Flexion</p></div>
+
+        <div class="metric-value">64.7°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/elbow_flex_release_deg.png?v=20260707h" alt="出手肘屈曲 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">肘屈曲角用于观察出手时手臂是否有足够延展和控制；它要结合肩外展、出手手臂角度和出手点一起判断，避免只看单个角度。</p>
+        <p class="metric-detail-en">Player: 74.3°. Read this release-angle value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>57.6°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">39.0°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:58.04%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 74.3°"></span></div>
+        <div class="peer-max">99.8°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>出手手臂角度</h4><p class="metric-en">Release Arm Angle</p></div>
+
+        <div class="metric-value">2.5°</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/arm_slot_deg.png?v=20260707h" alt="出手手臂角度 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">出手手臂角度描述前臂抬升方向，是观察投球手臂出手路径的核心指标；槽位没有固定唯一答案，更重要的是是否和身体姿态、肩肘角度保持一致。</p>
+        <p class="metric-detail-en">Player: 52.5°. Read this release-angle value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>22.2°</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-32.5°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:93.72%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 52.5°"></span></div>
+        <div class="peer-max">58.2°</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card good">
+
+      <div class="metric-summary">
+
+        <span class="badge good">优秀</span>
+
+        <div><h4>出手高度</h4><p class="metric-en">Release Height</p></div>
+
+        <div class="metric-value">80.9%身高比</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/release_height_pct.png?v=20260707h" alt="出手高度 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">用右手手指标记点近似出手点高度，后续有球标记点时可再校准；当前数值可帮助观察出手位置是否稳定，以及身体是否把手带到足够高的位置。</p>
+        <p class="metric-detail-en">Player: 92.6%. Read this release-point value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>92.7%身高比</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min"><span class="unit-stack"><span class="unit-number">57.6%</span><span class="unit-label">身高比</span></span></div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:75.49%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 92.6%"></span></div>
+        <div class="peer-max"><span class="unit-stack"><span class="unit-number">103.9%</span><span class="unit-label">身高比</span></span></div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+
+
+
+
+    <article class="metric-card review">
+
+      <div class="metric-summary">
+
+        <span class="badge review">良好</span>
+
+        <div><h4>出手手速</h4><p class="metric-en">Release Hand Speed</p></div>
+
+        <div class="metric-value">33.3 km/h</div>
+
+      </div>
+
+      <figure class="metric-illustration"><img src="assets/frontend_metric_illustrations_pitch/hand_speed_kmh.png?v=20260707h" alt="出手手速 指标示意图" loading="lazy"></figure>
+
+      <div class="metric-detail">
+
+        <p class="metric-detail-cn">出手手速不是球速，但能作为同一套 Vicon 数据中的出手强度参考；它是下肢、躯干、手臂连续传递后的输出结果，不应只理解成手臂单独发力。</p>
+        <p class="metric-detail-en">Player: 31.8 km/h. Read this release-point value with the 2D frame and Vicon 3D reference, focusing on timing, support, and movement sequence rather than a single isolated number.</p><div class="pitch-compare-pills"><span><b>阿楽教练参考</b>59.0 km/h</span></div><div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">10.6 km/h</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot current-player" style="left:64.57%; background:#ef4444; --marker-color:#ef4444" title="Bryan陈柏谚: 31.8 km/h"></span></div>
+        <div class="peer-max">43.4 km/h</div>
+      </div>
+
+
+
+
+      </div>
+
+    </article>
+
+    </div>
+
+    </section>
+
+
+
+
+
+
+    <section class="section">
+      <div class="section-title"><span class="mark"></span><h2>教练视角：专项问题</h2></div>
+      <div class="coach-issues-layout">
+      <div class="coach-issue-list">
+
+    <article class="coach-issue-card review">
+      <div class="coach-issue-summary">
+        <span class="badge review">良好</span>
+        <div>
+          <h4>抬腿平稳过渡</h4>
+          <p class="metric-en">Knee-Lift Transition</p>
+        </div>
+        <div class="metric-value">50.7%身高比</div>
+      </div>
+      <figure class="coach-issue-visual">
+        <img src="assets/frontend_metric_illustrations_pitch/knee_height_pct.png?v=20260707d" alt="抬腿平稳过渡 指标示意图" loading="lazy">
+      </figure>
+      <div class="coach-issue-detail">
+        <p class="metric-detail-cn">抬左腿不是单纯追高度，而是给身体从右脚蓄力过渡到向前伸踏留出节奏。该球员抬腿高度约为身高 50.7%，说明准备动作已经有空间，后续重点看抬腿时右脚重心能否稳住。</p>
+        <p class="metric-detail-en">Player: 50.7%. This coach-view item summarizes stable knee-lift transition for comparison with the group and coach reference, so it should be read as a movement cue rather than a strict pass/fail standard.</p>
+        <div class="compare-pills"><span class="compare-pill"><b>乐风U9均值</b>54.1%身高比</span><span class="compare-pill"><b>阿楽教练参考</b>66.8%身高比</span><span class="compare-pill"><b>球员Bryan</b>50.7%身高比</span></div>
+
+        <div class="peer-range-with-legend">
+      <div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min"><span class="unit-stack"><span class="unit-number">48.8%</span><span class="unit-label">身高比</span></span></div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot" style="left:37.59%; background:#2563eb" title="Bryan陈柏谚: 53.6%"></span><span class="peer-dot" style="left:59.90%; background:#16a34a" title="席启源: 56.5%"></span><span class="peer-dot" style="left:100.00%; background:#f97316" title="姚槿宏: 61.6%"></span><span class="peer-dot" style="left:52.34%; background:#a855f7" title="杜子墨: 55.5%"></span><span class="peer-dot current-player" style="left:14.28%; background:#2563eb; --marker-color:#2563eb" title="Bryan陈柏谚: 50.7%"></span><span class="peer-dot" style="left:1.52%; background:#0891b2" title="费怡然: 49.0%"></span><span class="peer-dot" style="left:0.00%; background:#ca8a04" title="桑禹诚: 48.8%"></span><span class="peer-dot" style="left:67.35%; background:#db2777" title="缪炜昱: 57.4%"></span></div>
+        <div class="peer-max"><span class="unit-stack"><span class="unit-number">61.6%</span><span class="unit-label">身高比</span></span></div>
+      </div>
+
+        </div>
+
+      </div>
+    </article>
+
+
+    <article class="coach-issue-card good">
+      <div class="coach-issue-summary">
+        <span class="badge good">优秀</span>
+        <div>
+          <h4>跨步距离与稳定</h4>
+          <p class="metric-en">Stride Distance and Stability</p>
+        </div>
+        <div class="metric-value">52.7%身高比</div>
+      </div>
+      <figure class="coach-issue-visual">
+        <img src="assets/frontend_metric_illustrations_pitch/stride_distance_pct.png?v=20260707d" alt="跨步距离与稳定 指标示意图" loading="lazy">
+      </figure>
+      <div class="coach-issue-detail">
+        <p class="metric-detail-cn">教练说跨步越大越有力，但前提是落地能稳住。这个指标用身高归一化，该球员为 52.7%，接近同组节奏；后续不是盲目加大步子，而是让跨出去以后还能支撑身体。</p>
+        <p class="metric-detail-en">Player: 52.7%. This coach-view item summarizes stride length and stability for comparison with the group and coach reference, so it should be read as a movement cue rather than a strict pass/fail standard.</p>
+        <div class="compare-pills"><span class="compare-pill"><b>乐风U9均值</b>50.2%身高比</span><span class="compare-pill"><b>阿楽教练参考</b>57.1%身高比</span><span class="compare-pill"><b>球员Bryan</b>52.7%身高比</span></div>
+
+        <div class="peer-range-with-legend">
+      <div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min"><span class="unit-stack"><span class="unit-number">29.5%</span><span class="unit-label">身高比</span></span></div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot" style="left:63.49%; background:#2563eb" title="Bryan陈柏谚: 52.8%"></span><span class="peer-dot" style="left:43.53%; background:#16a34a" title="席启源: 45.5%"></span><span class="peer-dot" style="left:100.00%; background:#f97316" title="姚槿宏: 66.2%"></span><span class="peer-dot" style="left:38.22%; background:#a855f7" title="杜子墨: 43.5%"></span><span class="peer-dot current-player" style="left:63.33%; background:#2563eb; --marker-color:#2563eb" title="Bryan陈柏谚: 52.7%"></span><span class="peer-dot" style="left:47.97%; background:#0891b2" title="费怡然: 47.1%"></span><span class="peer-dot" style="left:0.00%; background:#ca8a04" title="桑禹诚: 29.5%"></span><span class="peer-dot" style="left:94.90%; background:#db2777" title="缪炜昱: 64.3%"></span></div>
+        <div class="peer-max"><span class="unit-stack"><span class="unit-number">66.2%</span><span class="unit-label">身高比</span></span></div>
+      </div>
+
+        </div>
+
+      </div>
+    </article>
+
+
+    <article class="coach-issue-card review">
+      <div class="coach-issue-summary">
+        <span class="badge review">良好</span>
+        <div>
+          <h4>拉弓式髋肩分离</h4>
+          <p class="metric-en">Hip-Shoulder Separation</p>
+        </div>
+        <div class="metric-value">19.8°</div>
+      </div>
+      <figure class="coach-issue-visual">
+        <img src="assets/frontend_metric_illustrations_pitch/max_hss_deg.png?v=20260707h" alt="拉弓式髋肩分离 指标示意图" loading="lazy">
+      </figure>
+      <div class="coach-issue-detail">
+        <p class="metric-detail-cn">这项最接近教练说的“拉弓射箭”：骨盆先走、肩膀晚一点跟上，身体才有鞭打空间。该球员最大髋肩分离 19.8°，已经有先后顺序，但和教练参考相比还可以更清楚。</p>
+        <p class="metric-detail-en">Player: 19.8°. This coach-view item summarizes hip-shoulder separation for comparison with the group and coach reference, so it should be read as a movement cue rather than a strict pass/fail standard.</p>
+        <div class="compare-pills"><span class="compare-pill"><b>乐风U9均值</b>26.5°</span><span class="compare-pill"><b>阿楽教练参考</b>32.1°</span><span class="compare-pill"><b>球员Bryan</b>19.8°</span></div>
+
+        <div class="peer-range-with-legend">
+      <div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">13.7°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot" style="left:59.90%; background:#2563eb" title="Bryan陈柏谚: 31.3°"></span><span class="peer-dot" style="left:59.17%; background:#16a34a" title="席启源: 31.1°"></span><span class="peer-dot" style="left:100.00%; background:#f97316" title="姚槿宏: 43.1°"></span><span class="peer-dot" style="left:49.59%; background:#a855f7" title="杜子墨: 28.2°"></span><span class="peer-dot current-player" style="left:20.77%; background:#2563eb; --marker-color:#2563eb" title="Bryan陈柏谚: 19.8°"></span><span class="peer-dot" style="left:36.32%; background:#0891b2" title="费怡然: 24.3°"></span><span class="peer-dot" style="left:0.00%; background:#ca8a04" title="桑禹诚: 13.7°"></span><span class="peer-dot" style="left:24.14%; background:#db2777" title="缪炜昱: 20.8°"></span></div>
+        <div class="peer-max">43.1°</div>
+      </div>
+
+        </div>
+
+      </div>
+    </article>
+
+
+    <article class="coach-issue-card risk">
+      <div class="coach-issue-summary">
+        <span class="badge risk">需关注</span>
+        <div>
+          <h4>右腿蹬伸推进</h4>
+          <p class="metric-en">Rear-Leg Drive</p>
+        </div>
+        <div class="metric-value">+3.5°</div>
+      </div>
+      <figure class="coach-issue-visual">
+        <img src="assets/frontend_metric_illustrations_pitch/rear_knee_drive_extension_deg.png?v=20260707d" alt="右腿蹬伸推进 指标示意图" loading="lazy">
+      </figure>
+      <div class="coach-issue-detail">
+        <p class="metric-detail-cn">没有力板，不能直接说蹬地力量大小；这里用后膝从前脚落地到出手的伸展变化做线索。该球员约 +3.5°，变化偏小，和教练说的“右腿蹬地不够明显”是同一类观察方向。</p>
+        <p class="metric-detail-en">Player: +3.5°. This coach-view item summarizes back-leg drive and extension cue for comparison with the group and coach reference, so it should be read as a movement cue rather than a strict pass/fail standard.</p>
+        <div class="compare-pills"><span class="compare-pill"><b>乐风U9均值</b>3.1°</span><span class="compare-pill"><b>阿楽教练参考</b>29.2°</span><span class="compare-pill"><b>球员Bryan</b>3.5°</span></div>
+
+        <div class="peer-range-with-legend">
+      <div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-21.2°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot" style="left:12.73%; background:#2563eb" title="Bryan陈柏谚: -13.8°"></span><span class="peer-dot" style="left:69.84%; background:#16a34a" title="席启源: 19.6°"></span><span class="peer-dot" style="left:75.56%; background:#f97316" title="姚槿宏: 22.9°"></span><span class="peer-dot" style="left:14.43%; background:#a855f7" title="杜子墨: -12.8°"></span><span class="peer-dot current-player" style="left:42.35%; background:#2563eb; --marker-color:#2563eb" title="Bryan陈柏谚: 3.5°"></span><span class="peer-dot" style="left:0.00%; background:#0891b2" title="费怡然: -21.2°"></span><span class="peer-dot" style="left:18.20%; background:#ca8a04" title="桑禹诚: -10.6°"></span><span class="peer-dot" style="left:100.00%; background:#db2777" title="缪炜昱: 37.2°"></span></div>
+        <div class="peer-max">37.2°</div>
+      </div>
+
+        </div>
+
+      </div>
+    </article>
+
+
+    <article class="coach-issue-card review">
+      <div class="coach-issue-summary">
+        <span class="badge review">良好</span>
+        <div>
+          <h4>出手手臂角度</h4>
+          <p class="metric-en">Release Arm Angle</p>
+        </div>
+        <div class="metric-value">2.5°</div>
+      </div>
+      <figure class="coach-issue-visual">
+        <img src="assets/frontend_metric_illustrations_pitch/arm_slot_deg.png?v=20260707d" alt="出手手臂角度 指标示意图" loading="lazy">
+      </figure>
+      <div class="coach-issue-detail">
+        <p class="metric-detail-cn">这项不是越大越好，而是看躯干转出来以后，上臂、肘、手腕是否沿稳定通道完成鞭打。该球员出手手臂角度 52.5°，后续更适合用多次投球的一致性来判断。</p>
+        <p class="metric-detail-en">Player: 52.5°. This coach-view item summarizes arm-chain slot for comparison with the group and coach reference, so it should be read as a movement cue rather than a strict pass/fail standard.</p>
+        <div class="compare-pills"><span class="compare-pill"><b>乐风U9均值</b>23.8°</span><span class="compare-pill"><b>阿楽教练参考</b>22.2°</span><span class="compare-pill"><b>球员Bryan</b>52.5°</span></div>
+
+        <div class="peer-range-with-legend">
+      <div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">-32.5°</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot" style="left:38.54%; background:#2563eb" title="Bryan陈柏谚: 2.5°"></span><span class="peer-dot" style="left:100.00%; background:#16a34a" title="席启源: 58.2°"></span><span class="peer-dot" style="left:0.00%; background:#f97316" title="姚槿宏: -32.5°"></span><span class="peer-dot" style="left:54.76%; background:#a855f7" title="杜子墨: 17.2°"></span><span class="peer-dot current-player" style="left:93.72%; background:#2563eb; --marker-color:#2563eb" title="Bryan陈柏谚: 52.5°"></span><span class="peer-dot" style="left:70.84%; background:#0891b2" title="费怡然: 31.8°"></span><span class="peer-dot" style="left:57.20%; background:#ca8a04" title="桑禹诚: 19.4°"></span><span class="peer-dot" style="left:81.16%; background:#db2777" title="缪炜昱: 41.1°"></span></div>
+        <div class="peer-max">58.2°</div>
+      </div>
+
+        </div>
+
+      </div>
+    </article>
+
+
+    <article class="coach-issue-card review">
+      <div class="coach-issue-summary">
+        <span class="badge review">良好</span>
+        <div>
+          <h4>出手手速</h4>
+          <p class="metric-en">Release Hand Speed</p>
+        </div>
+        <div class="metric-value">33.3 km/h</div>
+      </div>
+      <figure class="coach-issue-visual">
+        <img src="assets/frontend_metric_illustrations_pitch/hand_speed_kmh.png?v=20260707d" alt="出手手速 指标示意图" loading="lazy">
+      </figure>
+      <div class="coach-issue-detail">
+        <p class="metric-detail-cn">出手手速指的是投球手手部位置 在出手点附近的运动速度，不等同于球速。该球员本次为 31.8 km/h，可理解为脚步、躯干和身体动力链共同传递后的最终输出。</p>
+        <p class="metric-detail-en">Player: 31.8 km/h. This coach-view item summarizes release hand speed for comparison with the group and coach reference, so it should be read as a movement cue rather than a strict pass/fail standard.</p>
+        <div class="compare-pills"><span class="compare-pill"><b>乐风U9均值</b>30.1 km/h</span><span class="compare-pill"><b>阿楽教练参考</b>59.0 km/h</span><span class="compare-pill"><b>球员Bryan</b>31.8 km/h</span></div>
+
+        <div class="peer-range-with-legend">
+      <div class="peer-range">
+        <div class="peer-label">乐风U9同组表现</div>
+        <div class="peer-min">10.6 km/h</div>
+        <div class="peer-track"><span class="peer-span" style="left:0%; width:100%"></span><span class="peer-dot" style="left:69.26%; background:#2563eb" title="Bryan陈柏谚: 33.3 km/h"></span><span class="peer-dot" style="left:29.00%; background:#16a34a" title="席启源: 20.1 km/h"></span><span class="peer-dot" style="left:39.80%; background:#f97316" title="姚槿宏: 23.7 km/h"></span><span class="peer-dot" style="left:100.00%; background:#a855f7" title="杜子墨: 43.4 km/h"></span><span class="peer-dot current-player" style="left:64.57%; background:#2563eb; --marker-color:#2563eb" title="Bryan陈柏谚: 31.8 km/h"></span><span class="peer-dot" style="left:80.57%; background:#0891b2" title="费怡然: 37.0 km/h"></span><span class="peer-dot" style="left:0.00%; background:#ca8a04" title="桑禹诚: 10.6 km/h"></span><span class="peer-dot" style="left:90.56%; background:#db2777" title="缪炜昱: 40.3 km/h"></span></div>
+        <div class="peer-max">43.4 km/h</div>
+      </div>
+
+        </div>
+
+      </div>
+    </article>
+
+      </div>
+      <aside class="peer-legend coach-legend" aria-label="颜色图例"><span class="peer-legend-title">颜色图例</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#16a34a"></i>席启源</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#db2777"></i>缪炜昱</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#2563eb"></i>Bryan陈柏谚</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#a855f7"></i>杜子墨</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#ca8a04"></i>桑禹诚</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#ef4444"></i>Bryan</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#f97316"></i>姚槿宏</span><span class="peer-legend-item"><i class="peer-legend-dot" style="background:#0891b2"></i>费怡然</span></aside>
+      </div>
+    </section>
+
+    <section class="section" id="pitching-c3d-curves">
+      <div class="section-title"><span class="mark"></span><h2>研究者视角：动力链与时间曲线</h2></div>
+      <div class="researcher-stack">
+      <article class="visual-card kinetic-chain-card">
+        <h4>后腿 -> 骨盆 -> 躯干 -> 手臂 -> 手</h4>
+        <figure class="kinetic-chain-figure">
+          <img src="assets/kinetic_chain/bryan_pitch_kinetic_chain_flow.png" alt="球员投球动力链图" loading="lazy">
+        </figure>
+        <div class="kinetic-node-notes">
+          <div class="kinetic-node-note"><b>后腿</b><span>支撑、重心准备和蓄力阶段，先把身体稳定住。</span></div>
+          <div class="kinetic-node-note"><b>骨盆</b><span>跨步推进开始把下肢力量传向躯干。</span></div>
+          <div class="kinetic-node-note"><b>躯干</b><span>髋肩分离代表骨盆和肩膀之间的延迟释放。</span></div>
+          <div class="kinetic-node-note"><b>手臂</b><span>出手手臂角度没有绝对好坏，重点看是否稳定。</span></div>
+          <div class="kinetic-node-note"><b>手部</b><span>出手手速是动力链最终输出，不是单纯手臂发力。</span></div>
+        </div>
+        <figure class="kinetic-curves">
+          <img src="assets/kinetic_chain/bryan_kinetic_chain_time_curves.png" alt="球员投球动力链五指标时间曲线" loading="lazy">
+          <figcaption>曲线按本次动作窗口标准化到 0-100，只用于观察节奏和先后关系；五个指标单位不同，不作为绝对大小比较。</figcaption>
+        </figure>
+        <div class="kinetic-analysis">
+          <h4>详细解读</h4>
+          <p class="copy-cn">该球员本次投球已经形成“后腿准备 -> 骨盆推进 -> 躯干延迟 -> 手臂/手部输出”的基本顺序。2.25s 抬腿最高点、3.39s 前脚落地、3.59s 出手，前脚落地到出手约 0.20s，是力量释放最集中的窗口。</p>
+          <p class="copy-en">The player already shows a basic lower-body to trunk to arm sequence. Peak knee lift occurs at 2.25s, foot plant at 3.39s, and release at 3.59s, leaving about 0.20s for the main release window.</p>
+          <p class="copy-cn">从数据看，最大髋肩分离 19.8°、髋肩分离释放量 7.9°，说明躯干有一定储能并在出手前释放。出手手臂角度 52.5° 和出手手速 31.8 km/h 建议继续结合多次投球稳定性观察，重点是让前脚落地后的骨盆、躯干和手臂衔接更清楚。</p>
+          <p class="copy-en">The data suggests some trunk storage and release, with 19.8° maximum hip-shoulder separation and 7.9° release amount. Arm slot and hand speed should be checked across more throws for stability.</p>
+        </div>
+      </article>
+      <div class="analyst-chart-grid">
+        <article class="visual-card analyst-chart-card">
+          <figure class="analyst-chart-figure"><img src="assets/analyst_charts/bryan_pitch_angle_time_curve.png" alt="球员投球角度时间曲线" loading="eager"></figure>
+          <p class="analyst-chart-copy">怎么看：曲线来自 该球员本次投球 本次动作变化 和模型角度逐帧计算。观察重点不是单帧最大值，而是前脚落地后，前腿支撑、躯干倾斜、肘角和髋肩分离是否在出手前按顺序变化。</p>
+          <p class="analyst-chart-copy">How to read it: use the curves to check whether support, trunk angle, elbow angle, and hip-shoulder separation change in sequence before release.</p>
+        </article>
+        <article class="visual-card analyst-chart-card">
+          <figure class="analyst-chart-figure"><img src="assets/analyst_charts/bryan_pitch_speed_time_curve.png" alt="球员投球速度时间曲线" loading="eager"></figure>
+          <p class="analyst-chart-copy">怎么看：速度曲线用于观察峰值顺序。通常希望髋部和躯干先带动，手部在出手窗口最后加速；如果手部过早冲高，说明手臂可能抢先。</p>
+          <p class="analyst-chart-copy">How to read it: the preferred sequence is body first, hand last. An early hand-speed peak may mean the arm is rushing ahead.</p>
+        </article>
+      </div>
+      </div>
+    </section>
+
+  </main>
+
+</body>
+
+</html>
