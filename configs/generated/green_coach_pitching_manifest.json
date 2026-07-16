@@ -1,0 +1,16 @@
+{
+  "athletes": [
+    {
+      "key": "green",
+      "name": "Green",
+      "role": "student",
+      "c3d": "../../../vicon_2026/green/006 Pitch 09.c3d"
+    },
+    {
+      "key": "coach",
+      "name": "Coach reference",
+      "role": "coach",
+      "c3d": "../../../vicon_2026/coach/008-coach Cal 03 Pitch 07.c3d"
+    }
+  ]
+}

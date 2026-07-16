@@ -9,6 +9,15 @@ Use `scripts/report_cli.py` as the only report-generation entry. Read
 `references/report-format.md` before changing a report contract, report inputs,
 researcher assets, or validation rules.
 
+## Canonical workspace
+
+Run report generation **only** from the maintained
+`baseball-report-generation/` directory. Never use a dated snapshot directory
+such as `baseball-report-generation-YYYYMMDD`: those folders can contain stale
+configs, templates, and outputs. Before creating configs, running the CLI, or
+validating a delivery, confirm the working directory ends in
+`baseball-report-generation`.
+
 ## Scope and safety
 
 - Keep each non-reference athlete in `reports/vicon_2026_<player_slug>_coach/`; never overwrite another athlete’s report directory.
@@ -21,9 +30,12 @@ researcher assets, or validation rules.
 
 1. Copy `configs/final_report.example.json` and its referenced batting config to player-specific JSON files.
 2. In the batting config, set `report_dir`, player/coach sample names, batting C3D/video/model paths, reviewed video timing, and `xlsx_out_dir`.
-3. Create a pitching manifest containing one `role: student` and one `key: coach`; C3D paths resolve relative to that manifest.
+3. Create a pitching manifest with the report subject as the first `role: student`, every available same-group peer as additional `role: student` rows, and exactly one `key: coach`; C3D paths resolve relative to that manifest. Peer rows are required when the report displays `乐风U9同组表现`: without them, group mean/range/comparison dots are not a valid team benchmark.
 4. In the final config, reference the batting config and set pitching `manifest`, `template_dir`, and a separate `out_dir`. Add `pitching.alignment` only with matching raw pitch video/C3D/model plus reviewed FPS and release frame.
 5. Confirm all paths resolve and that the two output directories are distinct before a full run.
+
+For batting group comparisons, ensure every peer's batting metrics are present
+in `outputs/batting_metrics_excel/all_players` before the final run.
 
 The Bryan trio is a working example:
 

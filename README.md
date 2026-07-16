@@ -4,6 +4,12 @@ Generate one Vicon baseball deliverable containing pitching and batting. The
 only supported report entry is `scripts/report_cli.py`; it always builds
 pitching before embedding its assets in the batting report.
 
+> **Canonical workspace:** Run every report-generation command from this
+> `baseball-report-generation/` directory. Do **not** run from dated snapshot
+> folders such as `baseball-report-generation-YYYYMMDD`; they are not the
+> maintained report-generation workspace and may contain stale configs,
+> templates, or outputs.
+
 ## Run a report
 
 From this repository, use the project virtual environment and the
@@ -47,6 +53,19 @@ The batting config requires reviewed `video_capture_fps` and
 `video_event_frame`. Configure `pitching.alignment` in the final config when
 matching pitching video, C3D, model, and reviewed release frame are available.
 Do not infer these timing inputs during report generation.
+
+### Required peer configuration for team comparisons
+
+The pitching manifest must include every available same-group player when the
+report displays `乐风U9同组表现` (group mean, range, or comparison dots). Put
+the report subject first with `role: "student"`, then add each peer as another
+`role: "student"` row, and include exactly one `role: "coach"` row. Each row
+must point to that person's matching pitching C3D. With only the report
+subject and coach configured, a report can run, but its group-comparison
+results are not a valid team benchmark.
+
+The batting peer comparison has the same requirement: make sure all players'
+batting metrics are present in `outputs/batting_metrics_excel/all_players`.
 
 ## Retry scopes
 
