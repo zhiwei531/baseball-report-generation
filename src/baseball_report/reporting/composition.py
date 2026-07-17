@@ -29,6 +29,8 @@ def compose_report_view(report: ReportData) -> dict[str, object]:
             "report_id": report.report_id,
             "subject": report.subject,
             "sections": sections,
+            "charts": report.charts,
+            "assets": report.assets,
             "warnings": report.warnings,
             "provenance": report.provenance,
         }

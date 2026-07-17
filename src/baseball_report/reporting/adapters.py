@@ -12,6 +12,7 @@ from baseball_report.legacy.models import LegacyAdaptedReport, LegacyAnalysisBun
 from .models import (
     CURRENT_REPORT_SCHEMA_VERSION,
     MotionMetadata,
+    ReportAsset,
     ReportData,
     ReportSection,
     SubjectMetadata,
@@ -72,6 +73,7 @@ def build_report_data_from_legacy(
     subject_display_name: str,
     subject_role: SubjectRole = SubjectRole.STUDENT,
     subject_keys: Iterable[str] | None = None,
+    assets: Sequence[ReportAsset] = (),
 ) -> ReportData:
     all_bundles = tuple(bundle for report in adapted_reports for bundle in report.bundles)
     bundles = all_bundles
@@ -129,7 +131,7 @@ def build_report_data_from_legacy(
         metrics=metrics,
         comparisons=comparisons,
         charts=(),
-        assets=(),
+        assets=tuple(assets),
         sections=tuple(sections),
         warnings=tuple(warnings),
         provenance=Provenance(

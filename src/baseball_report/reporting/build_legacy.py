@@ -6,6 +6,7 @@ from pathlib import Path
 
 from baseball_report.legacy.batting_csv import adapt_batting_metrics_csv
 from baseball_report.legacy.pitching_summary import adapt_pitching_summary_json
+from baseball_report.visualization.manifest import discover_report_assets
 
 from .adapters import build_report_data_from_legacy, write_report_data
 from .composition import compose_report_view
@@ -21,6 +22,7 @@ def main() -> None:
     parser.add_argument("--pitching", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--view-output", type=Path)
+    parser.add_argument("--asset-root", type=Path)
     parser.add_argument("--report-id", required=True)
     parser.add_argument("--subject-id", required=True)
     parser.add_argument("--subject-label", required=True)
@@ -41,6 +43,7 @@ def main() -> None:
         subject_id=args.subject_id,
         subject_display_name=args.subject_label,
         subject_keys=args.subject_key or (args.subject_id,),
+        assets=discover_report_assets(args.asset_root) if args.asset_root is not None else (),
     )
     output = write_report_data(args.output, report)
     load_report_payload(output)

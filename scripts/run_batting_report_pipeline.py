@@ -360,6 +360,8 @@ def report_data_stage(args: argparse.Namespace, metrics: Path) -> Path:
         output,
         "--view-output",
         view_output,
+        "--asset-root",
+        args.report_dir,
         "--report-id",
         f"{args.player_slug}-combined-report",
         "--subject-id",
