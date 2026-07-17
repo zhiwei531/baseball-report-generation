@@ -256,6 +256,26 @@ No core producer migration starts until at least one batting and one pitching
 fixed case pass characterization tests and all current public inputs have a
 documented fixture strategy.
 
+### Implementation record — 2026-07-17
+
+Status: complete on `refactor/systematic-engineering`.
+
+- Added synthetic C3D, motion, event, metric, pose, HTML, XLSX, and artifact
+  characterization fixtures/tests without changing a production producer.
+- Locked all 17 current batting report metrics and the four pitching events,
+  41 generated pitching values, and 18 report-facing pitching metrics.
+- Added opt-in protected baselines for one real batting C3D, one real pitching
+  C3D, and one generated report artifact set. Golden files contain anonymized
+  hashes and aggregate metadata, not raw personal media or absolute paths.
+- Verified the Git-tracked `reports/pitching_bryan_coach/index.html` contract
+  and current report/workbook consumer shapes.
+- Ran 34 tests with all protected integrations enabled; all passed.
+- Confirmed and recorded existing reader, frame-identity, RTMPose, workbook,
+  and missing-asset limitations instead of changing them during baseline work.
+
+The Phase 4 exit gate is satisfied. Completion evidence and known issues are
+recorded in `docs/phase4_characterization.md`.
+
 ## 7. Stage 1 — configuration and path boundary
 
 ### Scope
