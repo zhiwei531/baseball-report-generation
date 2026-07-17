@@ -29,6 +29,7 @@ from baseball_report.legacy.pitching_summary import (
 )
 from baseball_report.reporting.models import ReportAsset, ReportData, SubjectMetadata
 from baseball_report.reporting.adapters import build_report_data_from_legacy, write_report_data
+from baseball_report.reporting.composition import compose_report_view
 
 
 class CoreModelTests(unittest.TestCase):
@@ -267,6 +268,7 @@ class LegacyAdapterTests(unittest.TestCase):
             subject_display_name="Bryan",
         )
         self.assertEqual(report.sections[0].section_id, "pitching_analysis")
+        self.assertEqual(report.sections[0].metric_ids, ("knee_height_pct", "hand_speed_kmh"))
         self.assertEqual(report.motions[0].frame_count, 662)
 
     def test_report_adapter_filters_legacy_peer_bundles_by_subject(self) -> None:
@@ -303,6 +305,20 @@ class LegacyAdapterTests(unittest.TestCase):
         )
         self.assertEqual([motion.sequence_id for motion in report.motions], ["player"])
         self.assertEqual({metric.sequence_id for metric in report.metrics}, {"player"})
+        self.assertEqual(len(report.comparisons), 1)
+        comparison = report.comparisons[0]
+        self.assertEqual(comparison.reference_value, 60.0)
+        self.assertEqual(comparison.group_mean, 50.0)
+        self.assertEqual(comparison.group_min, 50.0)
+        self.assertEqual(comparison.group_max, 50.0)
+        self.assertEqual(comparison.difference, -10.0)
+        self.assertEqual(comparison.included_subject_ids, ("player",))
+        view = compose_report_view(report)
+        self.assertEqual(view["schema_version"], "report_view.v1")
+        section = view["sections"][0]
+        self.assertEqual(section["section_id"], "pitching_analysis")
+        self.assertEqual(len(section["metrics"]), 1)
+        self.assertEqual(section["metrics"][0]["comparison"]["reference_value"], 60.0)
         with self.assertRaisesRegex(ValueError, "no motion bundle"):
             build_report_data_from_legacy(
                 [adapted],

@@ -340,6 +340,7 @@ def xlsx_stage(args: argparse.Namespace, metrics: Path) -> None:
 
 def report_data_stage(args: argparse.Namespace, metrics: Path) -> Path:
     output = args.report_dir / "analysis_report_data.json"
+    view_output = args.report_dir / "analysis_report_view.json"
     pitch_summary = args.pitch_report.parent / "pitch_metrics_summary.json"
     env = os.environ.copy()
     source_root = str(ROOT / "src")
@@ -355,6 +356,8 @@ def report_data_stage(args: argparse.Namespace, metrics: Path) -> Path:
         metrics,
         "--output",
         output,
+        "--view-output",
+        view_output,
         "--report-id",
         f"{args.player_slug}-combined-report",
         "--subject-id",
@@ -369,7 +372,7 @@ def report_data_stage(args: argparse.Namespace, metrics: Path) -> Path:
     if pitch_summary.is_file():
         command.extend(["--pitching", pitch_summary])
     run(command, env=env)
-    require_paths([output], "ReportData serialization")
+    require_paths([output, view_output], "ReportData serialization")
     return output
 
 

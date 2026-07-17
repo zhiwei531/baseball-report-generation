@@ -40,11 +40,13 @@ class ProtectedBaselineIntegrationTests(unittest.TestCase):
             created_at="2026-07-17T12:00:00+08:00",
             subject_id="protected-subject",
             subject_display_name="Protected Subject",
+            subject_keys=("bryan",),
         )
         payload = validate_report_payload(report.to_dict())
         self.assertEqual(payload["schema_version"], "1.0.0")
         self.assertGreater(len(payload["motions"]), 0)
         self.assertGreater(len(payload["metrics"]), 0)
+        self.assertEqual(len(payload["comparisons"]), len(payload["metrics"]))
         self.assertEqual([section["order"] for section in payload["sections"]], [0, 1])
 
     @unittest.skipUnless(

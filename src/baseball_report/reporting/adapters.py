@@ -5,6 +5,8 @@ from typing import Iterable, Sequence
 
 from baseball_report.core.enums import MotionType, SubjectRole
 from baseball_report.core.provenance import AnalysisWarning, Provenance
+from baseball_report.comparison.legacy_rules import summarize_peer_values
+from baseball_report.comparison.models import ComparisonResult
 from baseball_report.legacy.models import LegacyAdaptedReport, LegacyAnalysisBundle
 
 from .models import (
@@ -71,7 +73,8 @@ def build_report_data_from_legacy(
     subject_role: SubjectRole = SubjectRole.STUDENT,
     subject_keys: Iterable[str] | None = None,
 ) -> ReportData:
-    bundles = tuple(bundle for report in adapted_reports for bundle in report.bundles)
+    all_bundles = tuple(bundle for report in adapted_reports for bundle in report.bundles)
+    bundles = all_bundles
     selected_keys = {str(value).strip().casefold() for value in subject_keys or () if str(value).strip()}
     if selected_keys:
         bundles = tuple(bundle for bundle in bundles if _bundle_matches(bundle, selected_keys))
@@ -83,6 +86,7 @@ def build_report_data_from_legacy(
     motions = tuple(_motion_metadata(bundle) for bundle in bundles)
     events = tuple(event for bundle in bundles for event in bundle.events.events.values())
     metrics = tuple(metric for bundle in bundles for metric in bundle.metrics)
+    comparisons = _build_comparisons(bundles, all_bundles)
     warnings: list[AnalysisWarning] = []
     for report in adapted_reports:
         warnings.extend(report.warnings)
@@ -103,7 +107,12 @@ def build_report_data_from_legacy(
                 title_zh=title_zh,
                 title_en=title_en,
                 status="available",
-                metric_ids=_unique(metric.metric_id for bundle in selected for metric in bundle.metrics),
+                metric_ids=_unique(
+                    metric.metric_id
+                    for bundle in selected
+                    for metric in bundle.metrics
+                    if metric.components.get("contract_scope") != "auxiliary"
+                ),
                 event_ids=_unique(event.event_id for bundle in selected for event in bundle.events.events.values()),
                 metadata={"sequence_ids": [bundle.sequence_id for bundle in selected]},
             )
@@ -118,7 +127,7 @@ def build_report_data_from_legacy(
         motions=motions,
         events=events,
         metrics=metrics,
-        comparisons=(),
+        comparisons=comparisons,
         charts=(),
         assets=(),
         sections=tuple(sections),
@@ -141,6 +150,70 @@ def _bundle_matches(bundle: LegacyAnalysisBundle, selected_keys: set[str]) -> bo
         str(bundle.metadata.get("name") or ""),
     }
     return any(candidate.strip().casefold() in selected_keys for candidate in candidates if candidate.strip())
+
+
+def _bundle_role(bundle: LegacyAnalysisBundle) -> str:
+    role = str(bundle.metadata.get("role") or "").strip().casefold()
+    if role:
+        return role
+    identifiers = {
+        bundle.context.subject_id.casefold(),
+        str(bundle.metadata.get("sample_name") or "").strip().casefold(),
+        str(bundle.metadata.get("athlete") or "").strip().casefold(),
+    }
+    return "coach" if "coach" in identifiers else "student"
+
+
+def _metrics_by_id(bundle: LegacyAnalysisBundle) -> dict[str, object]:
+    return {metric.metric_id: metric for metric in bundle.metrics}
+
+
+def _build_comparisons(
+    subject_bundles: Sequence[LegacyAnalysisBundle],
+    all_bundles: Sequence[LegacyAnalysisBundle],
+) -> tuple[ComparisonResult, ...]:
+    results: list[ComparisonResult] = []
+    for subject_bundle in subject_bundles:
+        related = [
+            bundle
+            for bundle in all_bundles
+            if bundle.context.motion_type == subject_bundle.context.motion_type
+        ]
+        coaches = [bundle for bundle in related if _bundle_role(bundle) == "coach"]
+        students = [bundle for bundle in related if _bundle_role(bundle) == "student"]
+        student_metrics = [(bundle, _metrics_by_id(bundle)) for bundle in students]
+        coach_metrics = _metrics_by_id(coaches[0]) if coaches else {}
+        for metric in subject_bundle.metrics:
+            stats = summarize_peer_values(
+                (
+                    bundle.context.subject_id,
+                    by_id[metric.metric_id].value if metric.metric_id in by_id else None,
+                )
+                for bundle, by_id in student_metrics
+            )
+            reference_metric = coach_metrics.get(metric.metric_id)
+            reference_value = getattr(reference_metric, "value", None)
+            difference = (
+                metric.value - reference_value
+                if metric.value is not None and reference_value is not None
+                else None
+            )
+            results.append(
+                ComparisonResult(
+                    metric_id=metric.metric_id,
+                    sequence_id=subject_bundle.sequence_id,
+                    subject_value=metric.value,
+                    reference_value=reference_value,
+                    group_mean=stats.mean,
+                    group_min=stats.minimum,
+                    group_max=stats.maximum,
+                    difference=difference,
+                    score=None,
+                    status=metric.status,
+                    included_subject_ids=stats.included_subject_ids,
+                )
+            )
+    return tuple(results)
 
 
 def write_report_data(path: Path, report: ReportData) -> Path:

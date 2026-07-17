@@ -1,4 +1,5 @@
 from .adapters import build_report_data_from_legacy, write_report_data
+from .composition import REPORT_VIEW_SCHEMA_VERSION, compose_report_view
 from .models import (
     CURRENT_REPORT_SCHEMA_VERSION,
     MotionMetadata,
@@ -17,6 +18,8 @@ __all__ = [
     "ReportSection",
     "SubjectMetadata",
     "build_report_data_from_legacy",
+    "REPORT_VIEW_SCHEMA_VERSION",
+    "compose_report_view",
     "write_report_data",
     "load_report_payload",
     "validate_report_payload",

@@ -8,7 +8,9 @@ from baseball_report.legacy.batting_csv import adapt_batting_metrics_csv
 from baseball_report.legacy.pitching_summary import adapt_pitching_summary_json
 
 from .adapters import build_report_data_from_legacy, write_report_data
+from .composition import compose_report_view
 from .validation import load_report_payload
+from baseball_report.core.serialization import dumps_deterministic
 
 
 def main() -> None:
@@ -18,6 +20,7 @@ def main() -> None:
     parser.add_argument("--batting", type=Path)
     parser.add_argument("--pitching", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--view-output", type=Path)
     parser.add_argument("--report-id", required=True)
     parser.add_argument("--subject-id", required=True)
     parser.add_argument("--subject-label", required=True)
@@ -41,6 +44,12 @@ def main() -> None:
     )
     output = write_report_data(args.output, report)
     load_report_payload(output)
+    if args.view_output is not None:
+        view_output = args.view_output.resolve()
+        view_output.parent.mkdir(parents=True, exist_ok=True)
+        temporary = view_output.with_suffix(view_output.suffix + ".tmp")
+        temporary.write_text(dumps_deterministic(compose_report_view(report)), encoding="utf-8")
+        temporary.replace(view_output)
     print(output)
 
 
