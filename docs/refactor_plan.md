@@ -360,6 +360,23 @@ reader without changing its point arrays.
 All new event/metric code can receive an in-memory motion model without file
 paths, while legacy consumers still receive the same CSVs.
 
+### Implementation record — 2026-07-17
+
+Status: complete on `refactor/systematic-engineering`.
+
+- Added canonical C3D header inspection and a zero-copy-semantics adapter from
+  current legacy arrays into immutable `MotionSequence` point/validity series.
+- Added explicit loaded-index, source-frame, timestamp, unit, coordinate,
+  storage, scale, label, residual, and provenance metadata.
+- Added MediaPipe/RTMPose pose-row adaptation with explicit non-contiguous
+  source frames and backend capabilities.
+- Added an opt-in motion metadata manifest without changing default legacy CSV
+  output or public report execution.
+- Verified protected batting and pitching point arrays/NaN masks with zero
+  tolerance; the complete 51-test suite and report artifact baselines passed.
+
+Completion evidence is recorded in `docs/stage2_motion_io.md`.
+
 ## 9. Stage 3 — separate IO from geometry/time-series primitives
 
 ### Scope
