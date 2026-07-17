@@ -10,6 +10,18 @@ from pathlib import Path
 
 import numpy as np
 
+from kinematics import (
+    circular_difference_deg,
+    finite_mean as _finite_mean,
+    finite_scalar as _finite_scalar,
+    joint_angle_deg,
+    signed_angle_about_axis_deg,
+    speed_kmh_from_mm,
+    vector_angle_deg as _vector_angle_deg,
+    velocity_mm_s as _velocity_mm_s,
+    xy_angle_deg as _xy_angle_deg,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POINTS = ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_points_all.csv"
@@ -40,31 +52,11 @@ class TrialSeries:
 
 
 def finite_mean(values: np.ndarray, axis: int = 0) -> np.ndarray:
-    values = np.asarray(values, dtype=float)
-    valid = np.isfinite(values)
-    counts = valid.sum(axis=axis)
-    total = np.nansum(values, axis=axis)
-    return np.divide(total, counts, out=np.full_like(total, np.nan, dtype=float), where=counts > 0)
+    return _finite_mean(values, axis=axis)
 
 
 def finite_scalar(values: np.ndarray, fn: str = "mean") -> float:
-    finite = np.asarray(values, dtype=float)
-    finite = finite[np.isfinite(finite)]
-    if finite.size == 0:
-        return float("nan")
-    if fn == "max":
-        return float(np.nanmax(finite))
-    if fn == "min":
-        return float(np.nanmin(finite))
-    if fn == "std":
-        return float(np.nanstd(finite))
-    if fn == "sum":
-        return float(np.nansum(finite))
-    if fn == "p05":
-        return float(np.nanpercentile(finite, 5))
-    if fn == "p95":
-        return float(np.nanpercentile(finite, 95))
-    return float(np.nanmean(finite))
+    return _finite_scalar(values, fn)
 
 
 def load_trials(path: Path) -> list[TrialSeries]:
@@ -128,9 +120,7 @@ def point(trial: TrialSeries, *names: str) -> np.ndarray:
 
 
 def speed_kmh(series_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    diff_m = np.diff(series_mm, axis=0) / 1000.0
-    speed = np.linalg.norm(diff_m, axis=1) * rate_hz * 3.6
-    return np.concatenate([[np.nan], speed])
+    return speed_kmh_from_mm(series_mm, rate_hz)
 
 
 def smooth_nan(values: np.ndarray, radius: int = 2) -> np.ndarray:
@@ -143,18 +133,11 @@ def smooth_nan(values: np.ndarray, radius: int = 2) -> np.ndarray:
 
 
 def velocity_mm_s(series_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    return np.vstack([np.full(3, np.nan), np.diff(series_mm, axis=0) * rate_hz])
+    return _velocity_mm_s(series_mm, rate_hz)
 
 
 def angle_at(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    ba = a - b
-    bc = c - b
-    denom = np.linalg.norm(ba, axis=1) * np.linalg.norm(bc, axis=1)
-    dot = np.einsum("ij,ij->i", ba, bc)
-    cos_v = np.divide(dot, denom, out=np.full_like(dot, np.nan), where=denom > 0)
-    out = np.degrees(np.arccos(np.clip(cos_v, -1.0, 1.0)))
-    out[~np.isfinite(out)] = np.nan
-    return out
+    return joint_angle_deg(a, b, c)
 
 
 def flexion_angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
@@ -162,34 +145,19 @@ def flexion_angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
 
 
 def xy_angle_deg(vec: np.ndarray) -> np.ndarray:
-    return np.degrees(np.arctan2(vec[:, 1], vec[:, 0]))
+    return _xy_angle_deg(vec)
 
 
 def circular_diff_deg(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    return (a - b + 180.0) % 360.0 - 180.0
+    return circular_difference_deg(a, b)
 
 
 def vector_angle_deg(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    dot = np.einsum("ij,ij->i", a, b)
-    denom = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)
-    cos_v = np.divide(dot, denom, out=np.full_like(dot, np.nan), where=denom > 0)
-    return np.degrees(np.arccos(np.clip(cos_v, -1.0, 1.0)))
+    return _vector_angle_deg(a, b)
 
 
 def signed_angle_about_axis(radial: np.ndarray, axis: np.ndarray, reference: np.ndarray) -> np.ndarray:
-    axis_norm = np.linalg.norm(axis, axis=1, keepdims=True)
-    axis_unit = np.divide(axis, axis_norm, out=np.full_like(axis, np.nan), where=axis_norm > 0)
-    ref_proj = reference - axis_unit * np.einsum("ij,ij->i", reference, axis_unit)[:, None]
-    radial_proj = radial - axis_unit * np.einsum("ij,ij->i", radial, axis_unit)[:, None]
-    ref_norm = np.linalg.norm(ref_proj, axis=1, keepdims=True)
-    radial_norm = np.linalg.norm(radial_proj, axis=1, keepdims=True)
-    ref_unit = np.divide(ref_proj, ref_norm, out=np.full_like(ref_proj, np.nan), where=ref_norm > 0)
-    radial_unit = np.divide(
-        radial_proj, radial_norm, out=np.full_like(radial_proj, np.nan), where=radial_norm > 0
-    )
-    sin_v = np.einsum("ij,ij->i", np.cross(ref_unit, radial_unit), axis_unit)
-    cos_v = np.einsum("ij,ij->i", ref_unit, radial_unit)
-    return np.degrees(np.arctan2(sin_v, cos_v))
+    return signed_angle_about_axis_deg(radial, axis, reference)
 
 
 def curvature_1_per_mm(path: np.ndarray) -> np.ndarray:

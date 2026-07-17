@@ -10,6 +10,13 @@ from pathlib import Path
 
 import numpy as np
 
+from kinematics import (
+    finite_mean as _finite_mean,
+    finite_scalar as _finite_scalar,
+    joint_angle_deg_legacy_divide,
+    speed_kmh_from_mm,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = ROOT.parent
@@ -121,10 +128,7 @@ def clean_label(label: str) -> str:
 
 def safe_nanmean(arrays: list[np.ndarray] | np.ndarray, axis: int = 0) -> np.ndarray:
     stacked = np.stack(arrays) if isinstance(arrays, list) else arrays
-    valid = np.isfinite(stacked)
-    counts = valid.sum(axis=axis)
-    total = np.nansum(stacked, axis=axis)
-    return np.divide(total, counts, out=np.full_like(total, np.nan, dtype=float), where=counts > 0)
+    return _finite_mean(stacked, axis=axis)
 
 
 def marker(trial: C3DTrial, *names: str) -> np.ndarray:
@@ -139,20 +143,11 @@ def marker(trial: C3DTrial, *names: str) -> np.ndarray:
 
 
 def speed_kmh(points_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    diff_m = np.diff(points_mm, axis=0) / 1000.0
-    speed = np.linalg.norm(diff_m, axis=1) * rate_hz * 3.6
-    return np.concatenate([[np.nan], speed])
+    return speed_kmh_from_mm(points_mm, rate_hz)
 
 
 def angle_series(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    ba = a - b
-    bc = c - b
-    denom = np.linalg.norm(ba, axis=1) * np.linalg.norm(bc, axis=1)
-    dot = np.einsum("ij,ij->i", ba, bc)
-    cos_v = np.clip(dot / denom, -1.0, 1.0)
-    out = np.degrees(np.arccos(cos_v))
-    out[~np.isfinite(out)] = np.nan
-    return out
+    return joint_angle_deg_legacy_divide(a, b, c)
 
 
 def plane_angle(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -174,16 +169,7 @@ def trunk_tilt_deg(hip: np.ndarray, neck: np.ndarray) -> np.ndarray:
 
 
 def finite_stat(values: np.ndarray, fn: str) -> float:
-    finite = values[np.isfinite(values)]
-    if finite.size == 0:
-        return float("nan")
-    if fn == "max":
-        return float(np.nanmax(finite))
-    if fn == "median":
-        return float(np.nanmedian(finite))
-    if fn == "p95":
-        return float(np.nanpercentile(finite, 95))
-    return float(np.nanmean(finite))
+    return _finite_scalar(values, fn)
 
 
 def active_duration_sec(speed: np.ndarray, rate_hz: float) -> float:
