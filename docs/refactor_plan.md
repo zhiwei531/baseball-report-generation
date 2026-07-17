@@ -613,6 +613,22 @@ flowchart LR
 - only CLI returns process exit codes;
 - subprocesses remain only where isolation/external runtime is justified.
 
+### Implementation record — 2026-07-17
+
+Status: complete for current Vicon C3D, batting, pitching, and final report
+orchestrators on `refactor/systematic-engineering`.
+
+- Added shared stage execution, structured logging, artifact validation,
+  duration tracking, and atomic `pipeline_run.v1` manifests.
+- Wired current public and nested pipelines without changing their child
+  commands or removing any entry.
+- Added opt-in manifest path/log level flags and retained non-mutating dry-run.
+- Passed all 74 tests and CLI help smoke checks with numerical/report baselines
+  unchanged.
+
+Completion evidence and remaining subprocess/partial-failure boundaries are
+recorded in `docs/stage7_pipeline_runtime.md`.
+
 ### Compatibility
 
 Old scripts become progressively thinner wrappers preserving flags, output
