@@ -116,6 +116,57 @@ PITCHING_METRICS = tuple(
 )
 PITCHING_METRICS_BY_ID = MappingProxyType({item.metric_id: item for item in PITCHING_METRICS})
 
+PITCHING_AUXILIARY_UNITS = MappingProxyType(
+    {
+        "elbow_flex_plant_deg": "deg",
+        "foot_contact_time_s": "s",
+        "foot_plant_time_s": "s",
+        "front_hip_peak_deg": "deg",
+        "front_knee_change_contact_to_release_deg": "deg",
+        "front_toe_direction_deg": "deg",
+        "hss_peak_knee_deg": "deg",
+        "hss_plant_deg": "deg",
+        "hss_release_deg": "deg",
+        "knee_height_mm": "mm",
+        "max_hss_time_s": "s",
+        "peak_knee_time_s": "s",
+        "rear_ankle_peak_deg": "deg",
+        "rear_knee_drive_extension_deg": "deg",
+        "rear_knee_release_deg": "deg",
+        "release_forward_mm": "mm",
+        "release_height_mm": "mm",
+        "release_lateral_mm": "mm",
+        "release_time_s": "s",
+        "shoulder_rotation_release_deg": "deg",
+        "stride_distance_mm": "mm",
+        "wrist_flex_release_deg": "deg",
+        "wrist_vs_shoulder_cm": "cm",
+    }
+)
+
+PITCHING_ALL_UNITS = MappingProxyType(
+    {
+        **{definition.metric_id: definition.unit for definition in PITCHING_METRICS},
+        **PITCHING_AUXILIARY_UNITS,
+    }
+)
+
+GENERIC_VICON_METRIC_UNITS = MappingProxyType(
+    {
+        "hip_shoulder_sep_deg": "deg",
+        "lead_knee_angle_deg": "deg",
+        "right_elbow_angle_deg": "deg",
+        "left_elbow_angle_deg": "deg",
+        "trunk_tilt_deg": "deg",
+        "hand_speed_kmh": "km/h",
+        "trunk_speed_kmh": "km/h",
+        "hip_speed_kmh": "km/h",
+        "bat_speed_kmh": "km/h",
+        "swing_time_sec": "s",
+        "bat_angle_deg": "deg",
+    }
+)
+
 
 def pitching_metric_dicts() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []

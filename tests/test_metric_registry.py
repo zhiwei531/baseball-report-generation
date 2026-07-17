@@ -10,7 +10,7 @@ import build_batting_dashboard_metrics as batting
 import metric_calculations as calculations
 import metric_registry as registry
 import pitching.build_pitch_template_metrics_report as pitching
-from tests.fixtures.motion_factory import make_batting_trial
+from tests.fixtures.motion_factory import make_batting_trial, make_pitching_trial
 
 
 class MetricRegistryTests(unittest.TestCase):
@@ -54,6 +54,15 @@ class MetricRegistryTests(unittest.TestCase):
             registry.BATTING_METRICS_BY_ID["new"] = registry.BATTING_METRICS[0]  # type: ignore[index]
         with self.assertRaises(TypeError):
             registry.PITCHING_METRICS[0].report_options["ideal"] = 0  # type: ignore[index]
+
+    def test_all_pitching_outputs_and_generic_summary_units_are_declared(self) -> None:
+        trial, labels = make_pitching_trial()
+        detected = pitching.detect_events(trial, labels, 0.0)
+        values = pitching.compute_values(trial, labels, detected, 0.0, 1700.0)
+        self.assertEqual(set(values), set(registry.PITCHING_ALL_UNITS))
+        self.assertEqual(len(registry.PITCHING_METRICS), 18)
+        self.assertEqual(len(registry.PITCHING_AUXILIARY_UNITS), 23)
+        self.assertEqual(len(registry.GENERIC_VICON_METRIC_UNITS), 11)
 
     def test_pure_composite_and_geometry_calculations_keep_units(self) -> None:
         self.assertEqual(calculations.point_displacement_mm(np.zeros(3), np.array([3.0, 4.0, 0.0])), 5.0)

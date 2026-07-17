@@ -355,26 +355,7 @@ def status_from_score(score: float) -> tuple[str, str]:
     return "待提高", "risk"
 
 
-_LEGACY_METRICS_SNAPSHOT = [
-    {"key": "knee_height_pct", "event": "准备阶段", "section": "抬腿最高点", "name": "抬腿高度", "en": "Knee Lift Height", "unit": "pct", "image": "peak_knee", "ideal": 50, "spread": 18, "copy": "抬腿高度接近身高一半，说明准备阶段有足够的节奏和空间。"},
-    {"key": "front_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "前腿收紧", "en": "Lead-Knee Tuck", "unit": "deg", "image": "peak_knee", "lo": 115, "hi": 155, "copy": "前膝角用来判断抬腿时前腿是否真正收住，而不是松散地向前摆。"},
-    {"key": "rear_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "后腿蓄力", "en": "Rear-Leg Load", "unit": "deg", "image": "peak_knee", "lo": -10, "hi": 25, "copy": "后腿在抬腿最高点承担支撑任务，角度越稳定，后续跨步越容易受控。"},
-    {"key": "stride_distance_pct", "event": "前脚落地", "section": "落脚质量", "name": "跨步距离", "en": "Stride Distance", "unit": "pct", "image": "foot_plant", "ideal": 55, "spread": 22, "copy": "跨步距离用身高归一化，帮助判断身体推进是否足够。"},
-    {"key": "stride_direction_deg", "event": "前脚落地", "section": "落脚质量", "name": "跨步方向", "en": "Stride Direction", "unit": "deg", "image": "foot_plant", "ideal": 0, "spread": 35, "copy": "跨步方向越接近目标线，身体越容易把力量送向投球方向。"},
-    {"key": "front_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "前膝屈曲", "en": "Lead-Knee Flexion", "unit": "deg", "image": "foot_plant", "lo": 40, "hi": 70, "copy": "前脚落地后的前膝角代表前腿支撑质量，过软或过硬都会影响传力。"},
-    {"key": "rear_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "后膝屈曲", "en": "Rear-Knee Flexion", "unit": "deg", "image": "foot_plant", "lo": 35, "hi": 75, "copy": "后膝角反映后腿是否还在参与推进，而不是提前失去下肢连接。"},
-    {"key": "elbow_vs_shoulder_cm", "event": "前脚落地", "section": "手臂到位", "name": "投球肘相对肩线", "en": "Throwing-Elbow Height", "unit": "cm", "image": "foot_plant", "ideal": 0, "spread": 18, "copy": "负值表示肘低于肩线，前脚落地时肘的位置会影响后续出手路径。"},
-    {"key": "shoulder_abduction_plant_deg", "event": "前脚落地", "section": "手臂到位", "name": "肩外展", "en": "Shoulder Abduction", "unit": "deg", "image": "foot_plant", "lo": 70, "hi": 100, "copy": "肩外展帮助判断投球手臂是否在落地时及时进入准备位置。"},
-    {"key": "front_knee_release_deg", "event": "出手点", "section": "前腿制动", "name": "出手前膝角", "en": "Release Lead-Knee Angle", "unit": "deg", "image": "release", "lo": 40, "hi": 75, "copy": "出手时前腿能否稳住，是身体传力到手臂的重要前提。"},
-    {"key": "front_knee_change_plant_to_release_deg", "event": "出手点", "section": "前腿制动", "name": "落地到出手前膝变化", "en": "Lead-Knee Change: Plant to Release", "unit": "deg", "image": "release", "ideal": 0, "spread": 18, "copy": "这个变化量越小，说明前腿在落地后越能保持支撑。"},
-    {"key": "shoulder_abduction_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肩外展", "en": "Release Shoulder Abduction", "unit": "deg", "image": "release", "lo": 80, "hi": 105, "copy": "出手时上臂抬起角度决定手臂路径和出手槽位。"},
-    {"key": "elbow_flex_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肘屈曲", "en": "Release Elbow Flexion", "unit": "deg", "image": "release", "lo": 60, "hi": 95, "copy": "肘屈曲角用于观察出手时手臂是否有足够延展和控制。"},
-    {"key": "arm_slot_deg", "event": "出手点", "section": "出手角度", "name": "出手手臂角度", "en": "Release Arm Angle", "unit": "deg", "image": "release", "lo": 55, "hi": 85, "copy": "出手手臂角度描述前臂抬升方向，是观察投球手臂出手路径的核心指标。"},
-    {"key": "release_height_pct", "event": "出手点", "section": "出手点", "name": "出手高度", "en": "Release Height", "unit": "pct", "image": "release", "lo": 85, "hi": 105, "copy": "以投球手手部位置近似出手点高度；后续可结合实际出手位置继续校准。"},
-    {"key": "hand_speed_kmh", "event": "出手点", "section": "出手点", "name": "出手手速", "en": "Release Hand Speed", "unit": "kmh", "image": "release", "direction": "higher", "copy": "出手手速不是球速，但能作为同一套 Vicon 数据中的出手强度参考。"},
-    {"key": "max_hss_deg", "event": "专项问题", "section": "身体带动程度", "name": "最大髋肩分离", "en": "Maximum Hip-Shoulder Separation", "unit": "deg", "image": "release", "lo": 15, "hi": 35, "copy": "最大髋肩分离越清楚，说明身体有更明显的先后顺序。"},
-    {"key": "hss_release_amount_deg", "event": "专项问题", "section": "身体带动程度", "name": "髋肩分离释放量", "en": "Hip-Shoulder Separation Release", "unit": "deg", "image": "release", "lo": 8, "hi": 24, "copy": "释放量表示从最大分离到出手时释放了多少躯干旋转空间。"},
-]
+METRICS = pitching_metric_dicts()
 
 
 def write_metric_csv(bundles: list[TrialBundle]) -> None:
