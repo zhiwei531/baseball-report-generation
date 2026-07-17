@@ -762,6 +762,20 @@ This can overlap with metric migration only after shared series are stable.
 Chart data is numerically identical before comparing rendered pixels. Asset
 count/name/mime and report references match fixed baselines.
 
+### Implementation record — 2026-07-17
+
+Status: complete as an additive artifact boundary.
+
+- Added deterministic report-root artifact discovery and stable ReportAsset
+  metadata without changing any visualization producer.
+- Included assets in ReportData and `report_view.v1`; uncertain metric/event
+  associations remain explicitly empty.
+- Preserved every existing filename, relative reference, plot calculation,
+  image dimension, and codec.
+
+See `docs/stage10_visualization.md` for completion evidence and remaining
+series-extraction gates.
+
 ## 17. Stage 11 — CLI consolidation and exporter integration
 
 ### Supported command migration
