@@ -69,8 +69,17 @@ def build_report_data_from_legacy(
     subject_id: str,
     subject_display_name: str,
     subject_role: SubjectRole = SubjectRole.STUDENT,
+    subject_keys: Iterable[str] | None = None,
 ) -> ReportData:
     bundles = tuple(bundle for report in adapted_reports for bundle in report.bundles)
+    selected_keys = {str(value).strip().casefold() for value in subject_keys or () if str(value).strip()}
+    if selected_keys:
+        bundles = tuple(bundle for bundle in bundles if _bundle_matches(bundle, selected_keys))
+        if not bundles:
+            raise ValueError(
+                "legacy reports contain no motion bundle matching subject keys: "
+                + ", ".join(sorted(selected_keys))
+            )
     motions = tuple(_motion_metadata(bundle) for bundle in bundles)
     events = tuple(event for bundle in bundles for event in bundle.events.events.values())
     metrics = tuple(metric for bundle in bundles for metric in bundle.metrics)
@@ -121,6 +130,17 @@ def build_report_data_from_legacy(
             details={"source_paths": source_paths},
         ),
     )
+
+
+def _bundle_matches(bundle: LegacyAnalysisBundle, selected_keys: set[str]) -> bool:
+    candidates = {
+        bundle.sequence_id,
+        bundle.context.subject_id,
+        str(bundle.metadata.get("sample_name") or ""),
+        str(bundle.metadata.get("athlete") or ""),
+        str(bundle.metadata.get("name") or ""),
+    }
+    return any(candidate.strip().casefold() in selected_keys for candidate in candidates if candidate.strip())
 
 
 def write_report_data(path: Path, report: ReportData) -> Path:

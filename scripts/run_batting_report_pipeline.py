@@ -338,6 +338,41 @@ def xlsx_stage(args: argparse.Namespace, metrics: Path) -> None:
     run(["node", "scripts/build_batting_metrics_xlsx.mjs"], env=env)
 
 
+def report_data_stage(args: argparse.Namespace, metrics: Path) -> Path:
+    output = args.report_dir / "analysis_report_data.json"
+    pitch_summary = args.pitch_report.parent / "pitch_metrics_summary.json"
+    env = os.environ.copy()
+    source_root = str(ROOT / "src")
+    current_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        source_root if not current_pythonpath else os.pathsep.join((source_root, current_pythonpath))
+    )
+    command = [
+        PYTHON,
+        "-m",
+        "baseball_report.reporting.build_legacy",
+        "--batting",
+        metrics,
+        "--output",
+        output,
+        "--report-id",
+        f"{args.player_slug}-combined-report",
+        "--subject-id",
+        args.player_slug,
+        "--subject-label",
+        args.player_label,
+        "--subject-key",
+        args.sample_name,
+        "--subject-key",
+        args.player_slug,
+    ]
+    if pitch_summary.is_file():
+        command.extend(["--pitching", pitch_summary])
+    run(command, env=env)
+    require_paths([output], "ReportData serialization")
+    return output
+
+
 def apply_config_defaults(args: argparse.Namespace) -> None:
     config = load_pipeline_config(args.config)
     configurable = (
@@ -415,6 +450,7 @@ def main() -> None:
     html_stage(args, metrics)
     if not args.skip_xlsx:
         xlsx_stage(args, metrics)
+    report_data = report_data_stage(args, metrics)
 
     manifest_path = args.run_manifest or args.report_dir / "batting_pipeline_run.json"
     write_pipeline_manifest(
@@ -431,6 +467,7 @@ def main() -> None:
     print("Batting report pipeline outputs:")
     print(args.report_dir / f"{args.player_slug}_coach_metrics_section.html")
     print(metrics)
+    print(report_data)
     print(args.report_dir / "assets")
 
 

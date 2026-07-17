@@ -269,6 +269,50 @@ class LegacyAdapterTests(unittest.TestCase):
         self.assertEqual(report.sections[0].section_id, "pitching_analysis")
         self.assertEqual(report.motions[0].frame_count, 662)
 
+    def test_report_adapter_filters_legacy_peer_bundles_by_subject(self) -> None:
+        payload = {
+            "assumptions": {"lead_leg": "L", "drive_leg": "R", "throwing_arm": "R"},
+            "athletes": [
+                {
+                    "key": key,
+                    "name": name,
+                    "role": role,
+                    "source_file": f"{key}.c3d",
+                    "frames": 10,
+                    "rate_hz": 100.0,
+                    "events": {"release": 5},
+                    "values": {"hand_speed_kmh": value},
+                }
+                for key, name, role, value in (
+                    ("player", "Player", "student", 50.0),
+                    ("coach", "Coach", "coach", 60.0),
+                )
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "pitch_metrics_summary.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            adapted = adapt_pitching_summary_json(path)
+        report = build_report_data_from_legacy(
+            [adapted],
+            report_id="player-only",
+            created_at="2026-07-17T12:00:00+08:00",
+            subject_id="player",
+            subject_display_name="Player",
+            subject_keys=("player",),
+        )
+        self.assertEqual([motion.sequence_id for motion in report.motions], ["player"])
+        self.assertEqual({metric.sequence_id for metric in report.metrics}, {"player"})
+        with self.assertRaisesRegex(ValueError, "no motion bundle"):
+            build_report_data_from_legacy(
+                [adapted],
+                report_id="missing",
+                created_at="2026-07-17T12:00:00+08:00",
+                subject_id="missing",
+                subject_display_name="Missing",
+                subject_keys=("missing",),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
