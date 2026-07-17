@@ -10,6 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
+from event_detection import detect_key_action_event
+
 from kinematics import (
     finite_mean as _finite_mean,
     finite_scalar as _finite_scalar,
@@ -287,16 +289,18 @@ def key_action_frame(trial: C3DTrial) -> tuple[int, str, str]:
     bat5 = marker(trial, "Bat5")
     bat_mid = safe_nanmean([bat1, bat5], axis=0)
     bat_speed = speed_kmh(bat1 if np.isfinite(bat1).any() else bat_mid, trial.rate_hz)
-    if action == "batting" and np.isfinite(bat_speed).any():
-        return int(np.nanargmax(bat_speed)), "球棒峰值速度", "bat_speed_peak"
-    if finite_stat(right_speed, "max") >= finite_stat(left_speed, "max"):
-        idx = peak_index(right_speed)
-        if idx is not None:
-            return idx, "右手峰值速度", "right_hand_speed_peak"
-    idx = peak_index(left_speed)
-    if idx is not None:
-        return idx, "左手峰值速度", "left_hand_speed_peak"
-    return trial.points.shape[0] // 2, "动作中段兜底", "mid_frame_fallback"
+    detected = detect_key_action_event(
+        action_type=action,
+        right_hand_speed_kmh=right_speed,
+        left_hand_speed_kmh=left_speed,
+        bat_speed_kmh=bat_speed,
+        frame_count=trial.points.shape[0],
+    )
+    return (
+        int(detected.primary_index),
+        str(detected.metadata["display_name_zh"]),
+        detected.rule,
+    )
 
 
 def is_reconstruction_point(label: str) -> bool:

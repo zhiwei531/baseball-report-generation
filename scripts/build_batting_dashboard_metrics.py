@@ -10,6 +10,14 @@ from pathlib import Path
 
 import numpy as np
 
+from event_detection import (
+    detect_batting_contact,
+    detect_batting_ready,
+    detect_batting_swing_segment,
+    first_valid_indices,
+    lowest_z_indices,
+    primary_index,
+)
 from kinematics import (
     circular_difference_deg,
     finite_mean as _finite_mean,
@@ -186,23 +194,11 @@ def infer_height_mm(head: np.ndarray, foot: np.ndarray, event_indices: np.ndarra
 
 
 def first_valid_event_indices(series: list[np.ndarray], count: int, n: int) -> np.ndarray:
-    valid = np.ones(n, dtype=bool)
-    for values in series:
-        valid &= np.isfinite(values).all(axis=1)
-    indices = np.where(valid)[0][:count]
-    if indices.size:
-        return indices
-    return np.arange(min(count, n), dtype=int)
+    return first_valid_indices(series, count, n)
 
 
 def lowest_z_event_indices(series: np.ndarray, count: int, candidates: np.ndarray | None = None) -> np.ndarray:
-    if candidates is None:
-        candidates = np.arange(series.shape[0])
-    valid = np.array([idx for idx in candidates if np.isfinite(series[idx, 2])], dtype=int)
-    if valid.size == 0:
-        return np.array([], dtype=int)
-    lowest = valid[np.argsort(series[valid, 2])[:count]]
-    return np.array(sorted(lowest), dtype=int)
+    return lowest_z_indices(series, count, candidates)
 
 
 def detect_swing_segment(
@@ -213,26 +209,13 @@ def detect_swing_segment(
     min_threshold_kmh: float = 8.0,
     expansion_sec: float = 0.15,
 ) -> tuple[np.ndarray, np.ndarray, int, float, float]:
-    speed_smooth = smooth_nan(bat_speed_kmh, radius=2)
-    if not np.isfinite(speed_smooth).any():
-        fallback = np.arange(len(bat_speed_kmh), dtype=int)
-        return fallback, fallback, len(bat_speed_kmh) // 2, float("nan"), float("nan")
-    peak_idx = int(np.nanargmax(speed_smooth))
-    peak_speed = float(speed_smooth[peak_idx])
-    threshold = max(min_threshold_kmh, peak_speed * threshold_ratio)
-    active = np.isfinite(speed_smooth) & (speed_smooth >= threshold)
-    start = peak_idx
-    while start > 0 and active[start - 1]:
-        start -= 1
-    end = peak_idx
-    while end + 1 < len(active) and active[end + 1]:
-        end += 1
-    margin = max(1, round(expansion_sec * rate_hz))
-    expanded_start = max(0, start - margin)
-    expanded_end = min(len(active) - 1, end + margin)
-    raw = np.arange(start, end + 1, dtype=int)
-    expanded = np.arange(expanded_start, expanded_end + 1, dtype=int)
-    return raw, expanded, peak_idx, peak_speed, threshold
+    return detect_batting_swing_segment(
+        bat_speed_kmh,
+        rate_hz,
+        threshold_ratio=threshold_ratio,
+        min_threshold_kmh=min_threshold_kmh,
+        expansion_sec=expansion_sec,
+    ).as_legacy_tuple()
 
 
 def detect_ready_event(
@@ -247,50 +230,18 @@ def detect_ready_event(
     lookback_sec: float,
     valid_start_frame: int | None,
 ) -> np.ndarray:
-    lookback = max(count, round(lookback_sec * rate_hz))
-    start = max(0, swing_start_idx - lookback)
-    if valid_start_frame is not None:
-        start = max(start, valid_start_frame)
-    stop = max(start, swing_start_idx)
-    candidates = np.arange(start, stop, dtype=int)
-    if candidates.size == 0:
-        return first_valid_event_indices([bat1, bat5, head], count, len(bat1))
-
-    valid = (
-        np.isfinite(bat1[candidates]).all(axis=1)
-        & np.isfinite(bat5[candidates]).all(axis=1)
-        & np.isfinite(head[candidates]).all(axis=1)
-        & np.isfinite(bat_speed_kmh[candidates])
-    )
-    valid_candidates = candidates[valid]
-    if valid_candidates.size == 0:
-        return first_valid_event_indices([bat1, bat5, head], count, len(bat1))
-
-    speed_limit = max(6.0, peak_speed_kmh * 0.12) if math.isfinite(peak_speed_kmh) else 6.0
-    low_speed = np.zeros(len(bat1), dtype=bool)
-    low_speed[valid_candidates] = bat_speed_kmh[valid_candidates] <= speed_limit
-
-    blocks: list[tuple[float, int, np.ndarray]] = []
-    for block_start in range(start, max(start, stop - count + 1)):
-        idx = np.arange(block_start, block_start + count, dtype=int)
-        if idx[-1] >= stop:
-            continue
-        if not np.all(np.isin(idx, valid_candidates)):
-            continue
-        if not np.all(low_speed[idx]):
-            continue
-        bat_height = finite_scalar(bat1[idx, 2], "mean")
-        mean_speed = finite_scalar(bat_speed_kmh[idx], "mean")
-        if math.isfinite(bat_height):
-            # Highest raised-bat block wins; slower blocks win ties.
-            blocks.append((bat_height - 0.02 * mean_speed, block_start, idx))
-    if blocks:
-        return max(blocks, key=lambda item: (item[0], -item[1]))[2]
-
-    low_speed_candidates = valid_candidates[bat_speed_kmh[valid_candidates] <= speed_limit]
-    if low_speed_candidates.size >= count:
-        return np.array(sorted(low_speed_candidates[:count]), dtype=int)
-    return np.array(sorted(valid_candidates[:count]), dtype=int)
+    return detect_batting_ready(
+        bat1,
+        bat5,
+        head,
+        bat_speed_kmh,
+        swing_start_idx,
+        rate_hz,
+        count,
+        peak_speed_kmh,
+        lookback_sec,
+        valid_start_frame,
+    ).as_legacy_indices()
 
 
 def indices_label(indices: np.ndarray) -> str:
@@ -298,9 +249,7 @@ def indices_label(indices: np.ndarray) -> str:
 
 
 def event_frame(indices: np.ndarray) -> int | None:
-    if indices.size == 0:
-        return None
-    return int(round(float(np.median(indices))))
+    return primary_index(tuple(int(index) for index in indices))
 
 
 def choose_batting_side() -> tuple[str, str]:
@@ -398,7 +347,11 @@ def compute_trial_metrics(
         ready_lookback_sec,
         ready_valid_start_frame,
     )
-    contact_event = lowest_z_event_indices(bat1, contact_event_frames, candidates=swing_segment)
+    contact_event = detect_batting_contact(
+        bat1,
+        contact_event_frames,
+        swing_segment,
+    ).as_legacy_indices()
     if contact_event.size == 0:
         contact_event = np.array([swing_peak_idx], dtype=int)
     ready_rule = (

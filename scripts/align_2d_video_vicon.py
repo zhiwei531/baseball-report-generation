@@ -16,6 +16,7 @@ from mediapipe.tasks.python import vision
 
 from pipeline_config import load_pipeline_config
 from point_mappings import MEDIAPIPE_LANDMARK_NAMES, RTMPOSE_COCO17_TO_REPORT
+from event_detection import detect_video_wrist_peak
 
 
 ROOT = Path(__file__).resolve().parent
@@ -246,12 +247,13 @@ def infer_video_event(rows: list[dict[str, Any]], fps: float) -> dict[str, Any]:
         fps,
     )
     combined = np.nanmax(np.vstack([left, right]), axis=0)
-    frame = finite_argmax(combined)
+    detected = detect_video_wrist_peak(combined, fps)
+    frame = int(detected.primary_index)
     return {
         "frame_index": frame,
         "time_sec": frame / fps,
-        "rule": "2d_wrist_peak_speed",
-        "peak_speed_px_s": float(combined[frame]) if math.isfinite(float(combined[frame])) else None,
+        "rule": detected.rule,
+        "peak_speed_px_s": detected.metadata["peak_speed_px_s"],
     }
 
 

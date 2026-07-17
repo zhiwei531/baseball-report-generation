@@ -39,6 +39,7 @@ PLAYER_SLUG = "julian"
 C3D_FILES: list[tuple[str, str, str, Path]] = []
 
 from build_vicon_2026_metrics import clean_label, read_c3d, safe_nanmean  # noqa: E402
+from event_detection import detect_pitching_events  # noqa: E402
 from pitching.player_card_contract import validate_pitch_player_cards  # noqa: E402
 import render_vicon_reconstruction_images as recon  # noqa: E402
 
@@ -201,27 +202,16 @@ def estimate_floor_height(trial, clean_labels: list[str]) -> tuple[float, float]
 
 
 def detect_events(trial, clean_labels: list[str], floor_mm: float) -> dict[str, int]:
-    lkne_z = smooth(marker(trial, clean_labels, "LKNE")[:, 2], 2)
-    peak = int(np.nanargmax(lkne_z))
+    lead_knee = marker(trial, clean_labels, "LKNE")
     lfoot = safe_nanmean([marker(trial, clean_labels, "LHEE"), marker(trial, clean_labels, "LTOE")], axis=0)
-    lfoot_z = smooth(lfoot[:, 2], 2)
-    foot_speed = smooth(speed_mps(lfoot, trial.rate_hz), 2)
-    contact_candidates = np.where((np.arange(len(lfoot_z)) > peak + 10) & (lfoot_z <= floor_mm + 70))[0]
-    contact = int(contact_candidates[0]) if contact_candidates.size else min(len(lfoot_z) - 1, peak + int(1.0 * trial.rate_hz))
-    plant = contact
-    search_end = min(len(lfoot_z), contact + int(0.28 * trial.rate_hz))
-    stable = np.where((np.arange(len(lfoot_z)) >= contact) & (np.arange(len(lfoot_z)) < search_end) & (foot_speed <= 0.75))[0]
-    if stable.size:
-        plant = int(stable[min(len(stable) - 1, 3)])
-    else:
-        plant = min(search_end - 1, contact + int(0.14 * trial.rate_hz))
     hand = safe_nanmean([marker(trial, clean_labels, "RWRA"), marker(trial, clean_labels, "RWRB"), marker(trial, clean_labels, "RFIN")], axis=0)
-    hand_speed = smooth(speed_mps(hand, trial.rate_hz), 2)
-    rel_start = plant
-    rel_end = min(len(hand_speed), plant + int(0.55 * trial.rate_hz))
-    window = hand_speed[rel_start:rel_end]
-    release = rel_start + int(np.nanargmax(window)) if np.isfinite(window).any() else min(len(hand_speed) - 1, plant + int(0.2 * trial.rate_hz))
-    return {"peak_knee": peak, "foot_contact": contact, "foot_plant": plant, "release": release}
+    return detect_pitching_events(
+        lead_knee=lead_knee,
+        lead_foot=lfoot,
+        throwing_hand=hand,
+        rate_hz=trial.rate_hz,
+        floor_mm=floor_mm,
+    ).as_legacy_frames()
 
 
 def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor_mm: float, height_mm: float) -> dict[str, float]:
