@@ -1,8 +1,9 @@
 # baseball-report-generation
 
 Generate one Vicon baseball deliverable containing pitching and batting. The
-only supported report entry is `scripts/report_cli.py`; it always builds
-pitching before embedding its assets in the batting report.
+preferred report entry is `python -m baseball_report`; the legacy
+`scripts/report_cli.py` command remains a supported compatibility wrapper.
+Both execute pitching before embedding its assets in the batting report.
 
 > **Canonical workspace:** Run every report-generation command from this
 > `baseball-report-generation/` directory. Do **not** run from dated snapshot
@@ -18,7 +19,7 @@ player-specific final config in `configs/generated/`:
 ```bash
 MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
 XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report final \
   --config configs/generated/<player_slug>_final_report.json
 ```
 
@@ -27,7 +28,7 @@ For example, the current 7zai deliverable is generated with:
 ```bash
 MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
 XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report final \
   --config configs/generated/7zai_final_report.json
 ```
 
@@ -35,7 +36,7 @@ Validate all configured inputs and resolved output paths without generating or
 modifying report artifacts:
 
 ```bash
-../baseball-analysis/.venv312/bin/python scripts/report_cli.py final \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report final \
   --config configs/generated/<player_slug>_final_report.json \
   --dry-run
 ```
@@ -153,3 +154,13 @@ hand off a combined report.
 
 See [scripts/README.md](scripts/README.md) for the public command contract and
 the packaged `skills/vicon-coach-report/` for the operational workflow.
+
+Validate the stable analysis/report contract independently:
+
+```bash
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report \
+  validate-report --input reports/<report>/analysis_report_data.json
+```
+
+Architecture, schemas, development, migration, and troubleshooting references
+are indexed in [docs/architecture.md](docs/architecture.md).

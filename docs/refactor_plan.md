@@ -805,6 +805,17 @@ Options are introduced only when implemented and tested:
 Legacy script commands remain wrappers and emit a deprecation notice only
 after the new command has been documented and used successfully.
 
+### Implementation record — 2026-07-17
+
+Status: complete with compatibility delegation.
+
+- Added package commands for implemented pitching, batting, final, and
+  ReportData validation workflows.
+- Preserved existing flags, execution order, environment, and exit codes.
+- Kept Node export commands separate and did not invent unsupported options.
+
+See `docs/stage11_cli.md`.
+
 ## 18. Stage 12 — documentation, packaging and dependency reproducibility
 
 ### Documentation outputs
@@ -831,6 +842,18 @@ after the new command has been documented and used successfully.
 - preserve external model/data configuration;
 - add lint/type/format tools only if selected explicitly and applied
   incrementally, not as an unrelated repository-wide rewrite.
+
+### Implementation record — 2026-07-17
+
+Status: complete.
+
+- Added the required architecture, flow, MediaPipe, C3D, events, metrics,
+  schema, static-builder, development, migration, and troubleshooting docs.
+- Updated README for package and compatibility commands.
+- Recorded verified Python/Node/npm versions and actual package, legacy, pose,
+  and export dependency boundaries without committing `node_modules` or data.
+- Kept formulas and field definitions tied to executable registries and tests
+  to prevent documentation drift.
 
 ## 19. Stage 13 — legacy deprecation and removal
 
