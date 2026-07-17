@@ -1,0 +1,178 @@
+{
+  "batting_schema": {
+    "columns": [
+      "trial_id",
+      "sample_name",
+      "athlete",
+      "action_type",
+      "source_file",
+      "module",
+      "metric_name_zh",
+      "metric_key",
+      "value",
+      "unit",
+      "aggregation",
+      "event_name",
+      "event_rule",
+      "event_frame",
+      "event_frames",
+      "points_used",
+      "formula",
+      "components_json",
+      "notes"
+    ],
+    "metric_ids": [
+      "coach_bat_loading_angle_to_catcher_deg",
+      "coach_high_com_risk_index",
+      "coach_hitting_zone_stability_score",
+      "coach_rear_elbow_height_diff_mm",
+      "coach_rollover_forearm_roll_velocity_deg_s",
+      "contact_attack_angle_deg",
+      "contact_bat_speed_kmh",
+      "contact_front_knee_flexion_deg",
+      "contact_pelvis_rotation_open_deg",
+      "contact_torso_rotation_open_deg",
+      "ready_bat_tilt_deg",
+      "ready_com_height_ratio",
+      "ready_hand_height_ratio",
+      "ready_hip_shoulder_separation_deg",
+      "ready_rear_hip_flexion_deg",
+      "ready_rear_knee_flexion_deg",
+      "ready_to_contact_head_displacement_mm"
+    ],
+    "row_count": 153,
+    "trial_count": 9
+  },
+  "case_id": "protected_report_case_a",
+  "combined_directory": {
+    "chart_artifact_count": 18,
+    "chart_artifacts_sha256": "0ea51652b917d9af192a994487612195770498ff96df70958b2d2b0d8fca0ebc",
+    "extension_counts": {
+      ".avi": 24,
+      ".csv": 7,
+      ".gif": 43,
+      ".html": 1,
+      ".jpg": 1,
+      ".json": 4,
+      ".md": 1,
+      ".mp4": 26,
+      ".obj": 18,
+      ".png": 120,
+      ".txt": 1
+    },
+    "file_count": 246,
+    "inventory_metadata_sha256": "bff979bfbd79e4550dbab65df6d6ca6b2bb9b1b3f5130f78cef57d5f2e1181f9",
+    "total_size_bytes": 1279571477
+  },
+  "combined_html": {
+    "coach_reference_count": 16,
+    "html_sha256": "f23cf39f17a506d76b5e3230e964466ef85d6641b1304177fd32f879170ae20d",
+    "image_count": 58,
+    "local_reference_count": 58,
+    "local_references_sha256": "9f9723b6fc09f3a63df5be6b159896d5d4ffc43b43d4b0fa751b986bf6d4ccb9",
+    "metric_card_count": 33,
+    "missing_local_references": [
+      "assets/vicon_2d_geometry_annotations/contact_position_vicon_geometry_on_2d.png",
+      "assets/vicon_2d_geometry_annotations/ready_position_vicon_geometry_on_2d.png"
+    ],
+    "peer_range_count": 45,
+    "section_count": 21,
+    "size_bytes": 145359
+  },
+  "pitching_directory": {
+    "chart_artifact_count": 6,
+    "chart_artifacts_sha256": "770c4854620a51a46ac5a8787dc0b094c5c8f81609b04298e69a55303dc07c73",
+    "extension_counts": {
+      ".csv": 1,
+      ".gif": 6,
+      ".html": 1,
+      ".json": 1,
+      ".md": 3,
+      ".png": 53,
+      ".py": 1,
+      ".txt": 3
+    },
+    "file_count": 69,
+    "inventory_metadata_sha256": "1cb2887dd464c0bd0222c811e647e63b52cad57ca2bc2320a07790ea9d0c08ad",
+    "total_size_bytes": 30962322
+  },
+  "pitching_html": {
+    "coach_reference_count": 16,
+    "html_sha256": "7f0736015c7f2a8dd9b5d00438ef9e62828e0462254e6a530577f4e8f7fd5987",
+    "image_count": 31,
+    "local_reference_count": 31,
+    "local_references_sha256": "413fc5a50d232ab4e4e5d4c66b0301fa48063f070ec8543f72d3a87841963c17",
+    "metric_card_count": 16,
+    "missing_local_references": [],
+    "peer_range_count": 28,
+    "section_count": 7,
+    "size_bytes": 69842
+  },
+  "pitching_schema": {
+    "athlete_count": 9,
+    "event_ids": [
+      "foot_contact",
+      "foot_plant",
+      "peak_knee",
+      "release"
+    ],
+    "top_level_keys": [
+      "assumptions",
+      "athletes",
+      "created_for"
+    ],
+    "value_ids": [
+      "arm_slot_deg",
+      "elbow_flex_plant_deg",
+      "elbow_flex_release_deg",
+      "elbow_vs_shoulder_cm",
+      "foot_contact_time_s",
+      "foot_plant_time_s",
+      "front_hip_peak_deg",
+      "front_knee_change_contact_to_release_deg",
+      "front_knee_change_plant_to_release_deg",
+      "front_knee_peak_deg",
+      "front_knee_plant_deg",
+      "front_knee_release_deg",
+      "front_toe_direction_deg",
+      "hand_speed_kmh",
+      "hss_peak_knee_deg",
+      "hss_plant_deg",
+      "hss_release_amount_deg",
+      "hss_release_deg",
+      "knee_height_mm",
+      "knee_height_pct",
+      "max_hss_deg",
+      "max_hss_time_s",
+      "peak_knee_time_s",
+      "rear_ankle_peak_deg",
+      "rear_knee_drive_extension_deg",
+      "rear_knee_peak_deg",
+      "rear_knee_plant_deg",
+      "rear_knee_release_deg",
+      "release_forward_mm",
+      "release_height_mm",
+      "release_height_pct",
+      "release_lateral_mm",
+      "release_time_s",
+      "shoulder_abduction_plant_deg",
+      "shoulder_abduction_release_deg",
+      "shoulder_rotation_release_deg",
+      "stride_direction_deg",
+      "stride_distance_mm",
+      "stride_distance_pct",
+      "wrist_flex_release_deg",
+      "wrist_vs_shoulder_cm"
+    ]
+  },
+  "schema_version": "characterization.v1",
+  "xlsx": {
+    "sha256": "630373c18b6a06d22d1fdae7d0bc00d02bfd8dd7eb1e34f38428da3204f5bac1",
+    "sheet_names": [
+      "报告指标",
+      "事件定位",
+      "说明"
+    ],
+    "size_bytes": 12522
+  }
+}
