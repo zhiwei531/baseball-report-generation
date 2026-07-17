@@ -726,6 +726,23 @@ One renderer pass produces the same report contract against the canonical
 tracked template, protects that template from generated-output overwrite, and
 drives missing data from schema status rather than ad-hoc exceptions.
 
+### Implementation record — 2026-07-17
+
+Status: compatibility migration complete on `refactor/systematic-engineering`;
+legacy polish removal remains gated.
+
+- Froze the authoritative Git template hash and DOM contract.
+- Extracted exact comparison/scoring rules and asset copy ownership.
+- Added typed comparisons and ordered `report_view.v1` composition.
+- Made the HTML builder validate ReportData subject/sections before retaining
+  legacy CSV value binding for output parity.
+- Preserved the second polish pass until two-subject DOM/screenshot/export
+  parity proves it removable.
+- Passed all 85 tests including protected baselines.
+
+Detailed evidence and remaining compatibility gates are in
+`docs/stage9_reporting.md`.
+
 ## 16. Stage 10 — visualization consolidation
 
 This can overlap with metric migration only after shared series are stable.
