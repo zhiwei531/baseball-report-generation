@@ -3,7 +3,6 @@ from __future__ import annotations
 """Public report executions: pitching, batting, and their final orchestration."""
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
@@ -15,14 +14,23 @@ from pipeline_config import (
     plot_environment,
     preflight_final_report,
 )
+from pipeline_runtime import (
+    StageExecutionResult,
+    configure_logging,
+    run_command_stage,
+    write_pipeline_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PIPELINE_STAGES: list[StageExecutionResult] = []
 
 
 def run(command: list[str], *, env: dict[str, str]) -> None:
-    print("+", " ".join(str(part) for part in command))
-    subprocess.run([str(part) for part in command], cwd=ROOT, check=True, env=env)
+    executable = Path(str(command[1] if len(command) > 1 else command[0])).stem
+    PIPELINE_STAGES.append(
+        run_command_stage(executable, command, cwd=ROOT, env=env)
+    )
 
 
 def load_config(path: Path) -> FinalReportConfig:
@@ -164,6 +172,8 @@ def main() -> None:
     ):
         child = sub.add_parser(name, help=help_text)
         child.add_argument("--config", required=True, type=Path, help="Combined final-report JSON config.")
+        child.add_argument("--log-level", default="INFO")
+        child.add_argument("--run-manifest", type=Path, default=None)
         child.add_argument(
             "--dry-run",
             action="store_true",
@@ -172,6 +182,8 @@ def main() -> None:
         if name in {"pitching", "final"}:
             child.add_argument("--skip-pitching-alignment", action="store_true")
     args = parser.parse_args()
+    configure_logging(args.log_level)
+    PIPELINE_STAGES.clear()
     config = load_config(args.config)
     result = preflight_final_report(
         config,
@@ -190,6 +202,18 @@ def main() -> None:
     else:
         execute_pitching(config, skip_alignment=args.skip_pitching_alignment)
         execute_batting(config)
+
+    if PIPELINE_STAGES:
+        manifest_path = args.run_manifest or config.pitching_out_dir / f"{args.execution}_pipeline_run.json"
+        write_pipeline_manifest(
+            manifest_path,
+            pipeline_name=f"report_{args.execution}",
+            stages=PIPELINE_STAGES,
+            metadata={
+                "config": str(config.config_path),
+                "pitching_out_dir": str(config.pitching_out_dir),
+            },
+        )
 
 
 if __name__ == "__main__":

@@ -4,21 +4,29 @@ import argparse
 import json
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 from pipeline_config import DEFAULT_CONFIG, load_pipeline_config, plot_environment
+from pipeline_runtime import (
+    StageExecutionResult,
+    configure_logging,
+    run_command_stage,
+    write_pipeline_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 BUNDLED_BATTING_ILLUSTRATIONS = ROOT / "assets" / "batting" / "frontend_metric_illustrations"
+PIPELINE_STAGES: list[StageExecutionResult] = []
 
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
-    print("+", " ".join(str(item) for item in cmd))
-    subprocess.run([str(item) for item in cmd], cwd=ROOT, check=True, env=env)
+    executable = Path(str(cmd[1] if len(cmd) > 1 else cmd[0])).stem
+    PIPELINE_STAGES.append(
+        run_command_stage(executable, cmd, cwd=ROOT, env=env)
+    )
 
 
 def require_paths(paths: list[Path], stage: str) -> None:
@@ -387,7 +395,11 @@ def main() -> None:
     parser.add_argument("--skip-xlsx", action="store_true")
     parser.add_argument("--require-2d", action="store_true")
     parser.add_argument("--require-static-assets", action="store_true")
+    parser.add_argument("--log-level", default="INFO")
+    parser.add_argument("--run-manifest", type=Path, default=None)
     args = parser.parse_args()
+    configure_logging(args.log_level)
+    PIPELINE_STAGES.clear()
     apply_config_defaults(args)
 
     args.report_dir.mkdir(parents=True, exist_ok=True)
@@ -403,6 +415,18 @@ def main() -> None:
     html_stage(args, metrics)
     if not args.skip_xlsx:
         xlsx_stage(args, metrics)
+
+    manifest_path = args.run_manifest or args.report_dir / "batting_pipeline_run.json"
+    write_pipeline_manifest(
+        manifest_path,
+        pipeline_name="batting_report",
+        stages=PIPELINE_STAGES,
+        metadata={
+            "player_slug": args.player_slug,
+            "sample_name": args.sample_name,
+            "report_dir": str(args.report_dir.resolve()),
+        },
+    )
 
     print("Batting report pipeline outputs:")
     print(args.report_dir / f"{args.player_slug}_coach_metrics_section.html")

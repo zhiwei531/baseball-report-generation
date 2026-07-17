@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
 from pipeline_config import plot_environment
+from pipeline_runtime import (
+    StageExecutionResult,
+    configure_logging,
+    run_command_stage,
+    write_pipeline_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,9 +19,20 @@ DEFAULT_REPORTS = ROOT / "reports"
 DEFAULT_ASSETS = DEFAULT_REPORTS / "assets"
 
 
-def run_step(args: list[str], *, env: dict[str, str] | None = None) -> None:
-    print(" ".join(args))
-    subprocess.run(args, cwd=ROOT, check=True, env=env)
+def run_step(
+    stage_name: str,
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    required_artifacts: tuple[Path, ...] = (),
+) -> StageExecutionResult:
+    return run_command_stage(
+        stage_name,
+        args,
+        cwd=ROOT,
+        env=env,
+        required_artifacts=required_artifacts,
+    )
 
 
 def main() -> None:
@@ -34,12 +50,15 @@ def main() -> None:
     parser.add_argument("--pitch-gif-before-sec", type=float, default=1.4)
     parser.add_argument("--gif-after-sec", type=float, default=0.4)
     parser.add_argument("--skip-render", action="store_true")
+    parser.add_argument("--log-level", default="INFO")
+    parser.add_argument("--run-manifest", type=Path, default=None)
     parser.add_argument(
         "--save-motion-manifest",
         action="store_true",
         help="Write additive canonical motion metadata without changing legacy CSV columns.",
     )
     args = parser.parse_args()
+    configure_logging(args.log_level)
 
     reports_dir = args.reports_dir
     reconstruction_dir = args.assets_dir / "vicon_reconstruction"
@@ -67,10 +86,17 @@ def main() -> None:
     ]
     if args.save_motion_manifest:
         metrics_command.extend(["--motion-manifest-out", str(motion_manifest)])
-    run_step(metrics_command)
+    stages = [
+        run_step(
+            "extract_c3d_artifacts",
+            metrics_command,
+            required_artifacts=(metrics, key_points, all_points, pose3d),
+        )
+    ]
 
     if not args.skip_render:
-        run_step(
+        stages.append(run_step(
+            "render_vicon_reconstruction",
             [
                 sys.executable,
                 "scripts/render_vicon_reconstruction_images.py",
@@ -94,7 +120,16 @@ def main() -> None:
                 str(args.gif_after_sec),
             ],
             env=plot_environment(),
-        )
+            required_artifacts=(reconstruction_dir, model_dir, model_manifest),
+        ))
+
+    manifest_path = args.run_manifest or reports_dir / "vicon_c3d_pipeline_run.json"
+    write_pipeline_manifest(
+        manifest_path,
+        pipeline_name="vicon_c3d",
+        stages=stages,
+        metadata={"input_dir": str(args.input_dir.resolve()), "skip_render": args.skip_render},
+    )
 
     print("Vicon C3D pipeline outputs:")
     for path in (
