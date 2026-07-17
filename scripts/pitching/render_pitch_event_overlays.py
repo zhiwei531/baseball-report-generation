@@ -2,17 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import cv2
 from PIL import Image, ImageDraw, ImageFont
 
-
-SCRIPTS_DIR = Path(__file__).resolve().parents[1]
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from render_aligned_2d_overlay import CONNECTIONS, load_pose  # noqa: E402
 

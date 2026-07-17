@@ -34,9 +34,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _package_environment() -> dict[str, str]:
     env = os.environ.copy()
-    source_root = str(REPO_ROOT / "src")
-    pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = source_root if not pythonpath else os.pathsep.join((source_root, pythonpath))
+    required_paths = (str(REPO_ROOT / "src"), str(REPO_ROOT / "scripts"))
+    existing = tuple(part for part in env.get("PYTHONPATH", "").split(os.pathsep) if part)
+    env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys((*required_paths, *existing)))
     return env
 
 

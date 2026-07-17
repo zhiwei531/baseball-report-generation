@@ -32,8 +32,6 @@ from baseball_report.comparison.legacy_rules import (
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = ROOT / "scripts"
 BUNDLED_LINEART_DIR = ROOT / "assets" / "pitching" / "lineart_actions"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 TEMPLATE_DIR: Path | None = None
 PREV_PITCH_ASSETS: Path | None = None
 OUT_DIR = ROOT / "reports" / "pitching"

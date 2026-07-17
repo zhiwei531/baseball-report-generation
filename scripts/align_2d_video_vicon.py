@@ -4,7 +4,6 @@ import argparse
 import csv
 import json
 import math
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +23,6 @@ PROJECT_ROOT = ROOT.parents[0]
 PIPELINE_DEFAULTS = load_pipeline_config()
 DEFAULT_MODEL = PIPELINE_DEFAULTS.mediapipe_model or PROJECT_ROOT / "models" / "pose_landmarker_heavy.task"
 DEFAULT_OUT = PIPELINE_DEFAULTS.report_dir / "alignment_2d"
-
-SCRIPTS_DIR = PROJECT_ROOT / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from build_vicon_2026_metrics import (  # noqa: E402
     all_point_rows,

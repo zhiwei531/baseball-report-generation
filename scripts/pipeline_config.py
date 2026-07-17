@@ -154,9 +154,9 @@ def plot_environment(environ: dict[str, str] | None = None) -> dict[str, str]:
     env = dict(os.environ if environ is None else environ)
     env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
     env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
-    source_root = str(REPO_ROOT / "src")
-    pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = source_root if not pythonpath else os.pathsep.join((source_root, pythonpath))
+    required_paths = (str(REPO_ROOT / "src"), str(REPO_ROOT / "scripts"))
+    existing = tuple(part for part in env.get("PYTHONPATH", "").split(os.pathsep) if part)
+    env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys((*required_paths, *existing)))
     return env
 
 
