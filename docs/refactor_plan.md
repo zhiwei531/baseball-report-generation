@@ -669,6 +669,26 @@ No TypeScript interface is added without an actual TypeScript consumer. If a
 frontend is later introduced, its types are generated or tested from the
 versioned schema.
 
+### Implementation record — 2026-07-17
+
+Status: complete on `refactor/systematic-engineering`.
+
+- Promoted the external contract to `ReportData 1.0.0` while retaining Python
+  compatibility for internal `0.x` payloads.
+- Added strict finite-value, ID, reference, section-order, subject, and portable
+  asset validation.
+- Added subject-filtered legacy CSV/JSON adapters and atomic generation of
+  `analysis_report_data.json` alongside current pipeline outputs.
+- Preserved all finite numerical values and represented legacy nested `NaN` as
+  `null` with explicit warnings.
+- Kept the static HTML/XLSX consumers unchanged pending the Stage 9 canonical
+  template and rendering parity gate.
+- Passed all 80 tests, including protected numerical and report artifact
+  baselines.
+
+Completion evidence and remaining builder/comparison boundaries are recorded
+in `docs/stage8_report_schema.md`.
+
 ## 15. Stage 9 — reporting and static HTML builder separation
 
 ### Scope
