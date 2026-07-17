@@ -9,38 +9,10 @@ from typing import Any
 
 import cv2
 
+from point_mappings import POSE_CORE_LANDMARKS, POSE_OVERLAY_CONNECTIONS
 
-CONNECTIONS = [
-    ("left_shoulder", "right_shoulder"),
-    ("left_hip", "right_hip"),
-    ("left_shoulder", "left_hip"),
-    ("right_shoulder", "right_hip"),
-    ("left_shoulder", "left_elbow"),
-    ("left_elbow", "left_wrist"),
-    ("right_shoulder", "right_elbow"),
-    ("right_elbow", "right_wrist"),
-    ("left_hip", "left_knee"),
-    ("left_knee", "left_ankle"),
-    ("right_hip", "right_knee"),
-    ("right_knee", "right_ankle"),
-    ("left_ankle", "left_heel"),
-    ("left_heel", "left_foot_index"),
-    ("right_ankle", "right_heel"),
-    ("right_heel", "right_foot_index"),
-    ("left_wrist", "left_index"),
-    ("right_wrist", "right_index"),
-]
-
-CORE = {
-    "left_shoulder",
-    "right_shoulder",
-    "left_hip",
-    "right_hip",
-    "left_knee",
-    "right_knee",
-    "left_ankle",
-    "right_ankle",
-}
+CONNECTIONS = list(POSE_OVERLAY_CONNECTIONS)
+CORE = set(POSE_CORE_LANDMARKS)
 
 
 def fnum(value: str) -> float | None:

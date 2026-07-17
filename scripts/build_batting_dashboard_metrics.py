@@ -21,6 +21,7 @@ from kinematics import (
     velocity_mm_s as _velocity_mm_s,
     xy_angle_deg as _xy_angle_deg,
 )
+from point_mappings import BATTING_POINT_ALIASES, RIGHT_HANDED_BATTING_PROFILE
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,6 +118,10 @@ def point(trial: TrialSeries, *names: str) -> np.ndarray:
     if not series:
         return np.full((len(trial.frames), 3), np.nan, dtype=float)
     return finite_mean(np.stack(series), axis=0)
+
+
+def mapped_point(trial: TrialSeries, point_name: str) -> np.ndarray:
+    return point(trial, *BATTING_POINT_ALIASES[point_name])
 
 
 def speed_kmh(series_mm: np.ndarray, rate_hz: float) -> np.ndarray:
@@ -300,7 +305,10 @@ def event_frame(indices: np.ndarray) -> int | None:
 
 def choose_batting_side() -> tuple[str, str]:
     # Current Vicon batting trials are treated as right-handed swings.
-    return "R", "L"
+    return (
+        RIGHT_HANDED_BATTING_PROFILE["rear_marker_prefix"],
+        RIGHT_HANDED_BATTING_PROFILE["front_marker_prefix"],
+    )
 
 
 def metric_row(
@@ -357,22 +365,22 @@ def compute_trial_metrics(
     rear_prefix = rear
     front_prefix = front
 
-    lhip = point(trial, "LASI", "LPSI")
-    rhip = point(trial, "RASI", "RPSI")
-    lsho = point(trial, "LSHO")
-    rsho = point(trial, "RSHO")
-    lkne = point(trial, "LKNE")
-    rkne = point(trial, "RKNE")
-    lank = point(trial, "LANK", "LHEE", "LTOE")
-    rank = point(trial, "RANK", "RHEE", "RTOE")
-    lelb = point(trial, "LELB")
-    relb = point(trial, "RELB")
-    lwrist = point(trial, "LWRA", "LWRB")
-    rwrist = point(trial, "RWRA", "RWRB")
-    head = point(trial, "LFHD", "RFHD", "LBHD", "RBHD")
-    trunk_mid = point(trial, "C7", "T10", "CLAV", "STRN", "RBAK")
-    bat1 = point(trial, "Bat1")
-    bat5 = point(trial, "Bat5")
+    lhip = mapped_point(trial, "left_hip")
+    rhip = mapped_point(trial, "right_hip")
+    lsho = mapped_point(trial, "left_shoulder")
+    rsho = mapped_point(trial, "right_shoulder")
+    lkne = mapped_point(trial, "left_knee")
+    rkne = mapped_point(trial, "right_knee")
+    lank = mapped_point(trial, "left_ankle")
+    rank = mapped_point(trial, "right_ankle")
+    lelb = mapped_point(trial, "left_elbow")
+    relb = mapped_point(trial, "right_elbow")
+    lwrist = mapped_point(trial, "left_wrist")
+    rwrist = mapped_point(trial, "right_wrist")
+    head = mapped_point(trial, "head")
+    trunk_mid = mapped_point(trial, "trunk_mid")
+    bat1 = mapped_point(trial, "bat_barrel")
+    bat5 = mapped_point(trial, "bat_handle")
     bat_axis = bat1 - bat5
     bat_speed = speed_kmh(bat1, rate_hz)
     swing_raw, swing_segment, swing_peak_idx, swing_peak_speed, swing_threshold = detect_swing_segment(
@@ -406,7 +414,7 @@ def compute_trial_metrics(
 
     hip_mid = finite_mean(np.stack([lhip, rhip]), axis=0)
     shoulder_mid = finite_mean(np.stack([lsho, rsho]), axis=0)
-    com = point(trial, "CentreOfMass")
+    com = mapped_point(trial, "center_of_mass")
     com_fallback = 0.6 * hip_mid + 0.4 * trunk_mid
     com_valid = np.isfinite(com).all(axis=1)
     com = np.where(com_valid[:, None], com, com_fallback)
@@ -418,8 +426,8 @@ def compute_trial_metrics(
     rear_ankle = rank if rear_prefix == "R" else lank
     rear_shoulder = rsho if rear_prefix == "R" else lsho
     rear_elbow = relb if rear_prefix == "R" else lelb
-    rear_wrist_a = point(trial, "RWRA") if rear_prefix == "R" else point(trial, "LWRA")
-    rear_wrist_b = point(trial, "RWRB") if rear_prefix == "R" else point(trial, "LWRB")
+    rear_wrist_a = mapped_point(trial, "right_wrist_a" if rear_prefix == "R" else "left_wrist_a")
+    rear_wrist_b = mapped_point(trial, "right_wrist_b" if rear_prefix == "R" else "left_wrist_b")
     front_hip = lhip if front_prefix == "L" else rhip
     front_knee = lkne if front_prefix == "L" else rkne
     front_ankle = lank if front_prefix == "L" else rank

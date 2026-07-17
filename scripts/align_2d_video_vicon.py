@@ -15,6 +15,7 @@ from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python import vision
 
 from pipeline_config import load_pipeline_config
+from point_mappings import MEDIAPIPE_LANDMARK_NAMES, RTMPOSE_COCO17_TO_REPORT
 
 
 ROOT = Path(__file__).resolve().parent
@@ -36,41 +37,7 @@ from build_vicon_2026_metrics import (  # noqa: E402
 )
 
 
-LANDMARK_NAMES = [
-    "nose",
-    "left_eye_inner",
-    "left_eye",
-    "left_eye_outer",
-    "right_eye_inner",
-    "right_eye",
-    "right_eye_outer",
-    "left_ear",
-    "right_ear",
-    "mouth_left",
-    "mouth_right",
-    "left_shoulder",
-    "right_shoulder",
-    "left_elbow",
-    "right_elbow",
-    "left_wrist",
-    "right_wrist",
-    "left_pinky",
-    "right_pinky",
-    "left_index",
-    "right_index",
-    "left_thumb",
-    "right_thumb",
-    "left_hip",
-    "right_hip",
-    "left_knee",
-    "right_knee",
-    "left_ankle",
-    "right_ankle",
-    "left_heel",
-    "right_heel",
-    "left_foot_index",
-    "right_foot_index",
-]
+LANDMARK_NAMES = list(MEDIAPIPE_LANDMARK_NAMES)
 
 
 def open_video(path: Path) -> tuple[cv2.VideoCapture, int, int, float, int]:
@@ -156,41 +123,7 @@ def detect_2d(
     return rows, meta
 
 
-RTMPOSE_COCO17 = {
-    "nose": 0,
-    "left_eye_inner": 1,
-    "left_eye": 1,
-    "left_eye_outer": 1,
-    "right_eye_inner": 2,
-    "right_eye": 2,
-    "right_eye_outer": 2,
-    "left_ear": 3,
-    "right_ear": 4,
-    "mouth_left": 0,
-    "mouth_right": 0,
-    "left_shoulder": 5,
-    "right_shoulder": 6,
-    "left_elbow": 7,
-    "right_elbow": 8,
-    "left_wrist": 9,
-    "right_wrist": 10,
-    "left_pinky": 9,
-    "right_pinky": 10,
-    "left_index": 9,
-    "right_index": 10,
-    "left_thumb": 9,
-    "right_thumb": 10,
-    "left_hip": 11,
-    "right_hip": 12,
-    "left_knee": 13,
-    "right_knee": 14,
-    "left_ankle": 15,
-    "right_ankle": 16,
-    "left_heel": 15,
-    "right_heel": 16,
-    "left_foot_index": 15,
-    "right_foot_index": 16,
-}
+RTMPOSE_COCO17 = dict(RTMPOSE_COCO17_TO_REPORT)
 
 
 def detect_2d_rtmpose(
