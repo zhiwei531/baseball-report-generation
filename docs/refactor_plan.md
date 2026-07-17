@@ -499,6 +499,22 @@ adapter. No old CLI changes its output field names during this stage.
 Every report-facing event has one registry owner, typed result, fixture and
 known consumers.
 
+### Implementation record — 2026-07-17
+
+Status: complete for all currently report-facing and alignment-anchor events
+on `refactor/systematic-engineering`.
+
+- Added immutable versioned event/window results and legacy adapters.
+- Centralized batting Swing, Ready, Contact proxy; pitching Peak Knee, Foot
+  Contact, Foot Plant, Release proxy; and Vicon/2D alignment anchors.
+- Preserved thresholds, smoothing, windows, primary-frame rounding, rule IDs,
+  user-reviewed video override behavior, and all fallbacks.
+- Passed all 66 tests including exact batting/pitching event golden frames and
+  complete downstream metric/report characterization.
+
+Completion evidence and proxy limitations are recorded in
+`docs/stage5_event_detection.md`.
+
 ## 12. Stage 6 — metric registry and calculators
 
 ### Migration groups
