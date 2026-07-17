@@ -870,6 +870,17 @@ No legacy code is removed until all conditions are true:
 
 Deletion is a separate reviewable change, not bundled with migration.
 
+### Implementation record — 2026-07-17
+
+Status: compatibility audit complete; removal intentionally deferred.
+
+- Repository searches confirm legacy scripts/builders still have documented
+  consumers and therefore fail the removal conditions.
+- No legacy script, template, notebook, data, command, or exporter was deleted.
+- The migration guide records every retained compatibility boundary.
+- Final static, numerical, schema, CLI, Node, report, and protected integration
+  gates passed; see `docs/final_verification.md`.
+
 ## 20. Old-to-new mapping
 
 | Old Entry or Module | Target Owner | Compatibility | Initial Status | Removal Condition |
