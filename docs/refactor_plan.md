@@ -447,6 +447,26 @@ Centralize current mappings as `legacy_v1` data.
 - all currently observed marker sets resolve the same derived trajectories;
 - no assumption is labeled generic if it is right-side-only.
 
+### Implementation record — 2026-07-17
+
+Status: complete for the currently exercised pose, batting, pitching-channel,
+and reconstruction mappings on `refactor/systematic-engineering`.
+
+- Added a versioned `legacy_v1` registry while retaining legacy module
+  constants and public script behavior.
+- Centralized 33 MediaPipe report landmarks, RTMPose adaptation, batting and
+  pitching aliases/channels, explicit right-handed profiles, Vicon marker
+  groups, and separate render-only topologies.
+- Switched current pose alignment/rendering, batting point lookup, and Vicon
+  reconstruction consumers without changing marker fallback order.
+- Locked pre-refactor reconstruction definitions at 44 body segments, 83
+  model edges, 39 raw markers, and seven part groups.
+- Passed all 60 tests, including protected event, metric, report, and artifact
+  characterization.
+
+Completion evidence and remaining right-side limitations are recorded in
+`docs/stage4_point_mappings.md`.
+
 ## 11. Stage 5 — event registry and detectors
 
 ### Order
