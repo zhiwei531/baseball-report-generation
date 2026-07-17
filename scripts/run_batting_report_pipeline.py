@@ -280,7 +280,7 @@ def illustration_stage(args: argparse.Namespace, metrics: Path) -> None:
     )
 
 
-def html_stage(args: argparse.Namespace, metrics: Path) -> None:
+def html_stage(args: argparse.Namespace, metrics: Path, report_data: Path) -> None:
     out_html = args.report_dir / f"{args.player_slug}_coach_metrics_section.html"
     run(
         [
@@ -302,6 +302,8 @@ def html_stage(args: argparse.Namespace, metrics: Path) -> None:
             args.player_slug,
             "--player-label",
             args.player_label,
+            "--report-data",
+            report_data,
         ]
     )
     if not args.skip_final_schema:
@@ -450,10 +452,10 @@ def main() -> None:
         geometry_stage(args, metrics, alignment_dir)
     if not args.skip_illustrations:
         illustration_stage(args, metrics)
-    html_stage(args, metrics)
+    report_data = report_data_stage(args, metrics)
+    html_stage(args, metrics, report_data)
     if not args.skip_xlsx:
         xlsx_stage(args, metrics)
-    report_data = report_data_stage(args, metrics)
 
     manifest_path = args.run_manifest or args.report_dir / "batting_pipeline_run.json"
     write_pipeline_manifest(

@@ -20,6 +20,7 @@ from baseball_report.comparison.legacy_rules import (
     summarize_peer_values,
 )
 from baseball_report.reporting.assets import copy_report_asset_tree
+from baseball_report.reporting.validation import load_report_payload
 
 from pitching.player_card_contract import validate_pitch_player_cards
 
@@ -2453,7 +2454,24 @@ def main() -> None:
     parser.add_argument("--coach-sample-name", default="coach")
     parser.add_argument("--player-slug", default=None)
     parser.add_argument("--player-label", default=None)
+    parser.add_argument(
+        "--report-data",
+        type=Path,
+        required=True,
+        help="Validated ReportData 1.0 contract for this rendering pass.",
+    )
     args = parser.parse_args()
+
+    report_payload = load_report_payload(args.report_data)
+    expected_subjects = {
+        str(args.player_sample_name).casefold(),
+        str(args.player_slug or args.player_sample_name).casefold(),
+    }
+    if str(report_payload["subject"]["subject_id"]).casefold() not in expected_subjects:
+        raise RuntimeError("ReportData subject does not match the configured HTML player.")
+    section_ids = {section["section_id"] for section in report_payload["sections"]}
+    if "batting_analysis" not in section_ids:
+        raise RuntimeError("ReportData is missing the batting_analysis section required by this builder.")
 
     rows = read_csv(args.metrics)
     peer_rows = read_peer_metrics(args.peers)
