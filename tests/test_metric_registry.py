@@ -33,6 +33,8 @@ class MetricRegistryTests(unittest.TestCase):
         rows = registry.pitching_metric_dicts()
         self.assertEqual(len(rows), 18)
         self.assertEqual(rows, pitching.METRICS)
+        self.assertTrue(all(item.formula for item in registry.PITCHING_METRICS))
+        self.assertTrue(all(item.required_points for item in registry.PITCHING_METRICS))
         digest = hashlib.sha256(
             json.dumps(
                 [

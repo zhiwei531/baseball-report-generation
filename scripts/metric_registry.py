@@ -98,6 +98,27 @@ _PITCHING_ROWS = (
     ("hss_release_amount_deg", "专项问题", "身体带动程度", "髋肩分离释放量", "Hip-Shoulder Separation Release", "deg", None, {"image": "release", "lo": 8, "hi": 24, "copy": "释放量表示从最大分离到出手时释放了多少躯干旋转空间。"}),
 )
 
+_PITCHING_REQUIREMENTS = {
+    "knee_height_pct": ("(LKNE_Z_peak_knee - floor_mm) / height_mm * 100", ("LKNE", "floor", "head")),
+    "front_knee_peak_deg": ("LKneeAngles[0] at peak_knee", ("LKneeAngles[0]",)),
+    "rear_knee_peak_deg": ("RKneeAngles[0] at peak_knee", ("RKneeAngles[0]",)),
+    "stride_distance_pct": ("norm_xy(LHEE_foot_plant - rear_foot_peak_knee) / height_mm * 100", ("LHEE", "RHEE", "RTOE", "head")),
+    "stride_direction_deg": ("atan2(stride_vector_Y, stride_vector_X)", ("LHEE", "RHEE", "RTOE")),
+    "front_knee_plant_deg": ("LKneeAngles[0] at foot_plant", ("LKneeAngles[0]",)),
+    "rear_knee_plant_deg": ("RKneeAngles[0] at foot_plant", ("RKneeAngles[0]",)),
+    "elbow_vs_shoulder_cm": ("(RELB_Z - RSHO_Z) at foot_plant / 10", ("RELB", "RSHO")),
+    "shoulder_abduction_plant_deg": ("RShoulderAngles[1] at foot_plant", ("RShoulderAngles[1]",)),
+    "front_knee_release_deg": ("LKneeAngles[0] at release", ("LKneeAngles[0]",)),
+    "front_knee_change_plant_to_release_deg": ("LKneeAngles[0]_release - LKneeAngles[0]_foot_plant", ("LKneeAngles[0]",)),
+    "shoulder_abduction_release_deg": ("RShoulderAngles[1] at release", ("RShoulderAngles[1]",)),
+    "elbow_flex_release_deg": ("RElbowAngles[0] at release", ("RElbowAngles[0]",)),
+    "arm_slot_deg": ("atan2((RWrist-RELB)_Z, norm_xy(RWrist-RELB)) at release", ("RWRA", "RWRB", "RELB")),
+    "release_height_pct": ("(RFIN_Z_release - floor_mm) / height_mm * 100", ("RFIN", "floor", "head")),
+    "hand_speed_kmh": ("smoothed norm(diff(mean(RWrist,RFIN))/dt) at release * 3.6", ("RWRA", "RWRB", "RFIN")),
+    "max_hss_deg": ("max(abs(wrap_to_180(shoulder_xy - pelvis_xy))) from peak_knee through release", ("LASI", "LPSI", "RASI", "RPSI", "LSHO", "RSHO")),
+    "hss_release_amount_deg": ("max_hss_deg - hss_deg_at_release", ("LASI", "LPSI", "RASI", "RPSI", "LSHO", "RSHO")),
+}
+
 PITCHING_METRICS = tuple(
     LegacyMetricDefinition(
         metric_id=metric_id,
@@ -107,8 +128,8 @@ PITCHING_METRICS = tuple(
         motion_type="pitching",
         event_id=event_id,
         section=section,
-        formula="legacy pitching calculation; detailed formula retained in compute_values",
-        required_points=(),
+        formula=_PITCHING_REQUIREMENTS[metric_id][0],
+        required_points=_PITCHING_REQUIREMENTS[metric_id][1],
         side_rule="right-handed legacy: lead=L, drive/throwing=R",
         report_options={"event": event, **options},
     )
