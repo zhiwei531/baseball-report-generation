@@ -7,6 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .enums import CoordinateProfile, Handedness, MotionType, Side, SourceType
+from .frames import FrameReference
 from .provenance import AnalysisWarning, Provenance
 from .validation import frozen_mapping, require_finite, require_text
 
@@ -69,6 +70,33 @@ class MotionSequence:
         object.__setattr__(self, "confidence", _readonly_arrays(self.confidence, self.frame_count, "confidence"))
         object.__setattr__(self, "metadata", frozen_mapping(self.metadata))
         object.__setattr__(self, "warnings", tuple(self.warnings))
+
+    @property
+    def last_source_frame(self) -> int | None:
+        if self.first_source_frame is None:
+            return None
+        return self.first_source_frame + self.frame_count - 1
+
+    def frame_reference(self, sequence_index: int) -> FrameReference:
+        if not isinstance(sequence_index, int) or isinstance(sequence_index, bool):
+            raise ValueError("sequence_index must be an integer")
+        if not 0 <= sequence_index < self.frame_count:
+            raise IndexError(f"sequence_index outside motion sequence: {sequence_index}")
+        explicit_source_frames = self.metadata.get("source_frame_numbers")
+        if isinstance(explicit_source_frames, tuple) and len(explicit_source_frames) == self.frame_count:
+            source_frame = int(explicit_source_frames[sequence_index])
+        else:
+            source_frame = (
+                None
+                if self.first_source_frame is None
+                else self.first_source_frame + sequence_index
+            )
+        return FrameReference(
+            sequence_index=sequence_index,
+            source_frame_number=source_frame,
+            timestamp_seconds=float(self.timestamps_seconds[sequence_index]),
+            source_clock=self.source_type.value,
+        )
 
 
 @dataclass(frozen=True)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 from pathlib import Path
+
+from pipeline_config import plot_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,11 @@ def main() -> None:
     parser.add_argument("--pitch-gif-before-sec", type=float, default=1.4)
     parser.add_argument("--gif-after-sec", type=float, default=0.4)
     parser.add_argument("--skip-render", action="store_true")
+    parser.add_argument(
+        "--save-motion-manifest",
+        action="store_true",
+        help="Write additive canonical motion metadata without changing legacy CSV columns.",
+    )
     args = parser.parse_args()
 
     reports_dir = args.reports_dir
@@ -43,28 +49,27 @@ def main() -> None:
     all_points = reports_dir / "vicon_2026_points_all.csv"
     pose3d = reports_dir / "vicon_2026_pose3d.csv"
     model_manifest = reports_dir / "vicon_2026_key_pose_models.csv"
+    motion_manifest = reports_dir / "vicon_2026_motion_manifest.json"
 
-    run_step(
-        [
-            sys.executable,
-            "scripts/build_vicon_2026_metrics.py",
-            "--input-dir",
-            str(args.input_dir),
-            "--metrics-out",
-            str(metrics),
-            "--points-out",
-            str(key_points),
-            "--all-points-out",
-            str(all_points),
-            "--pose3d-out",
-            str(pose3d),
-        ]
-    )
+    metrics_command = [
+        sys.executable,
+        "scripts/build_vicon_2026_metrics.py",
+        "--input-dir",
+        str(args.input_dir),
+        "--metrics-out",
+        str(metrics),
+        "--points-out",
+        str(key_points),
+        "--all-points-out",
+        str(all_points),
+        "--pose3d-out",
+        str(pose3d),
+    ]
+    if args.save_motion_manifest:
+        metrics_command.extend(["--motion-manifest-out", str(motion_manifest)])
+    run_step(metrics_command)
 
     if not args.skip_render:
-        env = os.environ.copy()
-        env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
-        env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
         run_step(
             [
                 sys.executable,
@@ -88,7 +93,7 @@ def main() -> None:
                 "--gif-after-sec",
                 str(args.gif_after_sec),
             ],
-            env=env,
+            env=plot_environment(),
         )
 
     print("Vicon C3D pipeline outputs:")
@@ -102,6 +107,8 @@ def main() -> None:
         model_dir,
     ):
         print(path)
+    if args.save_motion_manifest:
+        print(motion_manifest)
 
 
 if __name__ == "__main__":

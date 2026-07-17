@@ -46,7 +46,10 @@ class C3DReaderCharacterizationTests(unittest.TestCase):
         self.assertTrue(np.isnan(trial.points[1, 0, :3]).all())
         np.testing.assert_allclose(trial.points[1, 1, :3], [1, 2, 3])
 
-        self.assertFalse(hasattr(trial, "first_frame"))
+        self.assertEqual(trial.first_frame, 42)
+        self.assertEqual(trial.last_frame, 43)
+        self.assertEqual(trial.storage_type, "float32")
+        self.assertEqual(trial.scale_factor, -1.0)
         self.assertFalse(hasattr(trial, "analog"))
         self.assertFalse(hasattr(trial, "events"))
         self.assertEqual(sync.first_frame, 42)

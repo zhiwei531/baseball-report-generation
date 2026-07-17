@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import struct
 from dataclasses import dataclass
@@ -26,6 +27,10 @@ class C3DTrial:
     points: np.ndarray
     rate_hz: float
     units: str
+    first_frame: int = 0
+    last_frame: int | None = None
+    storage_type: str = "unknown"
+    scale_factor: float | None = None
 
 
 def _read_record_params(data: bytes, param_block: int) -> dict[tuple[str, str], bytes]:
@@ -97,7 +102,17 @@ def read_c3d(path: Path) -> C3DTrial:
         points[:, :, :3] *= scale
     invalid = (points[:, :, 3] < 0) | np.isclose(np.abs(points[:, :, :3]).sum(axis=2), 0)
     points[:, :, :3][invalid] = np.nan
-    return C3DTrial(path=path, labels=list(labels), points=points, rate_hz=rate_hz, units=str(units))
+    return C3DTrial(
+        path=path,
+        labels=list(labels),
+        points=points,
+        rate_hz=rate_hz,
+        units=str(units),
+        first_frame=first_frame,
+        last_frame=last_frame,
+        storage_type="float32" if scale < 0 else "int16_scaled",
+        scale_factor=float(scale),
+    )
 
 
 def clean_label(label: str) -> str:
@@ -439,6 +454,50 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
+def motion_manifest_entry(trial: C3DTrial) -> dict[str, object]:
+    frame_count, point_count = trial.points.shape[:2]
+    valid = np.isfinite(trial.points[:, :, :3]).all(axis=2)
+    last_frame = (
+        trial.last_frame
+        if trial.last_frame is not None
+        else trial.first_frame + frame_count - 1
+    )
+    return {
+        "schema_version": "motion_manifest.v0.1",
+        "sequence_id": trial_id(trial.path),
+        "source_type": "c3d",
+        "motion_type": infer_action(trial.path),
+        "source_file": source_file_label(trial.path),
+        "frame_rate_hz": trial.rate_hz,
+        "frame_count": frame_count,
+        "first_source_frame": trial.first_frame,
+        "last_source_frame": last_frame,
+        "frame_index_convention": "zero_based_loaded_array",
+        "source_frame_convention": "c3d_header_frame_number",
+        "coordinate_system": "legacy_vicon_z_up_mm" if trial.units.casefold() == "mm" else "unknown",
+        "length_unit": trial.units,
+        "point_count": point_count,
+        "raw_labels": list(trial.labels),
+        "clean_labels": [clean_label(label) for label in trial.labels],
+        "storage_type": trial.storage_type,
+        "scale_factor": trial.scale_factor,
+        "valid_sample_count": int(valid.sum()),
+        "sample_count": int(valid.size),
+    }
+
+
+def write_motion_manifest(path: Path, trials: list[C3DTrial]) -> None:
+    payload = {
+        "schema_version": "motion_manifest_collection.v0.1",
+        "sequences": [motion_manifest_entry(trial) for trial in trials],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build report-ready metrics from vicon_2026 C3D exports.")
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT)
@@ -447,14 +506,22 @@ def main() -> None:
     parser.add_argument("--all-points-out", type=Path, default=DEFAULT_ALL_POINTS)
     parser.add_argument("--pose3d-out", type=Path, default=DEFAULT_POSE3D)
     parser.add_argument("--pose3d-condition", default="vicon_c3d_raw")
+    parser.add_argument(
+        "--motion-manifest-out",
+        type=Path,
+        default=None,
+        help="Optional additive source-frame/unit/label metadata JSON; legacy CSVs are unchanged.",
+    )
     args = parser.parse_args()
     c3d_paths = sorted(path for path in args.input_dir.glob("*/*.c3d") if not path.name.startswith("._"))
     metric_rows: list[dict[str, object]] = []
     point_rows: list[dict[str, object]] = []
     all_rows: list[dict[str, object]] = []
     pose_rows: list[dict[str, object]] = []
+    trials: list[C3DTrial] = []
     for path in c3d_paths:
         trial = read_c3d(path)
+        trials.append(trial)
         metric_rows.append(compute_trial_metrics(trial))
         point_rows.extend(point_summary_rows(trial))
         trial_all_rows = all_point_rows(trial)
@@ -466,8 +533,12 @@ def main() -> None:
     write_csv(args.points_out, point_rows)
     write_csv(args.all_points_out, all_rows)
     write_csv(args.pose3d_out, pose_rows)
+    if args.motion_manifest_out is not None:
+        write_motion_manifest(args.motion_manifest_out, trials)
     print(args.metrics_out)
     print(args.points_out)
+    if args.motion_manifest_out is not None:
+        print(args.motion_manifest_out)
     print(args.all_points_out)
     print(args.pose3d_out)
 
