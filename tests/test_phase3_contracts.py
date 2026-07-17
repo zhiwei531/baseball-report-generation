@@ -28,6 +28,7 @@ from baseball_report.legacy.pitching_summary import (
     adapt_pitching_summary_json,
 )
 from baseball_report.reporting.models import ReportAsset, ReportData, SubjectMetadata
+from baseball_report.reporting.adapters import build_report_data_from_legacy, write_report_data
 
 
 class CoreModelTests(unittest.TestCase):
@@ -69,7 +70,7 @@ class CoreModelTests(unittest.TestCase):
         with self.assertRaises(ReportSchemaError):
             dumps_deterministic({"value": math.nan})
 
-    def test_report_data_uses_internal_schema_and_portable_assets(self) -> None:
+    def test_report_data_supports_legacy_and_stable_schema_with_portable_assets(self) -> None:
         provenance = Provenance("legacy_json", "sample", "adapter")
         subject = SubjectMetadata("bryan", "Bryan", SubjectRole.STUDENT)
         report = ReportData(
@@ -89,9 +90,25 @@ class CoreModelTests(unittest.TestCase):
         )
         self.assertEqual(report.to_dict()["schema_version"], "0.1.0")
         self.assertEqual(report.to_json(), report.to_json())
+        stable = ReportData(
+            schema_version="1.0.0",
+            report_id="stable",
+            created_at="2026-07-17T00:00:00Z",
+            subject=subject,
+            motions=(),
+            events=(),
+            metrics=(),
+            comparisons=(),
+            charts=(),
+            assets=(),
+            sections=(),
+            warnings=(),
+            provenance=provenance,
+        )
+        self.assertEqual(stable.schema_version, "1.0.0")
         with self.assertRaises(ReportSchemaError):
             ReportData(
-                schema_version="1.0.0",
+                schema_version="2.0.0",
                 report_id="bad",
                 created_at="2026-07-17T00:00:00Z",
                 subject=subject,
@@ -179,6 +196,21 @@ class LegacyAdapterTests(unittest.TestCase):
             "lowest Bat1_Z",
         )
         self.assertIn("batting.contact.proxy", [warning.code for warning in bundle.metrics[1].warnings])
+        report = build_report_data_from_legacy(
+            [adapted],
+            report_id="bryan-batting",
+            created_at="2026-07-17T12:00:00+08:00",
+            subject_id="bryan",
+            subject_display_name="Bryan",
+        )
+        self.assertEqual(report.schema_version, "1.0.0")
+        self.assertEqual([motion.sequence_id for motion in report.motions], ["bryan_bat_01"])
+        self.assertEqual(report.sections[0].section_id, "batting_analysis")
+        with tempfile.TemporaryDirectory() as output_dir:
+            output = write_report_data(Path(output_dir) / "analysis_report_data.json", report)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(payload["schema_version"], "1.0.0")
+        self.assertNotIn("NaN", json.dumps(payload))
 
     def test_batting_csv_rejects_missing_contract_columns(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -227,6 +259,15 @@ class LegacyAdapterTests(unittest.TestCase):
         self.assertIn("pitching.hand_speed.proxy", [warning.code for warning in by_id["hand_speed_kmh"].warnings])
         self.assertEqual(bundle.context.algorithm_profile, "legacy_pitching_right_v1")
         self.assertEqual(bundle.events.events["release"].primary_frame.timestamp_seconds, 4.19)
+        report = build_report_data_from_legacy(
+            [adapted],
+            report_id="bryan-pitching",
+            created_at="2026-07-17T12:00:00+08:00",
+            subject_id="bryan",
+            subject_display_name="Bryan",
+        )
+        self.assertEqual(report.sections[0].section_id, "pitching_analysis")
+        self.assertEqual(report.motions[0].frame_count, 662)
 
 
 if __name__ == "__main__":

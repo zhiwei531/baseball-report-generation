@@ -15,7 +15,8 @@ from baseball_report.events.models import MotionEvent
 from baseball_report.metrics.models import MetricResult
 from baseball_report.visualization.models import ChartArtifact
 
-_PHASE3_SCHEMA = re.compile(r"^0\.\d+\.\d+$")
+CURRENT_REPORT_SCHEMA_VERSION = "1.0.0"
+_SUPPORTED_SCHEMA = re.compile(r"^(?:0\.\d+\.\d+|1\.0\.\d+)$")
 
 
 @dataclass(frozen=True)
@@ -123,8 +124,8 @@ class ReportData:
     provenance: Provenance
 
     def __post_init__(self) -> None:
-        if not _PHASE3_SCHEMA.fullmatch(self.schema_version):
-            raise ReportSchemaError("Phase 3 schema_version must use internal 0.x.y form")
+        if not _SUPPORTED_SCHEMA.fullmatch(self.schema_version):
+            raise ReportSchemaError("schema_version must be a supported 0.x.y or 1.0.x version")
         require_text(self.report_id, "report_id")
         try:
             datetime.fromisoformat(self.created_at.replace("Z", "+00:00"))
@@ -154,10 +155,58 @@ class ReportData:
         if orders != tuple(sorted(orders)):
             raise ReportSchemaError("sections must be ordered by their order field")
         self._validate_unique("section order", orders)
+        sequence_ids = {item.sequence_id for item in self.motions}
+        for event in self.events:
+            if event.sequence_id not in sequence_ids:
+                raise ReportSchemaError(
+                    f"event {event.event_id!r} references unknown motion {event.sequence_id!r}"
+                )
+        for metric in self.metrics:
+            if metric.sequence_id not in sequence_ids:
+                raise ReportSchemaError(
+                    f"metric {metric.metric_id!r} references unknown motion {metric.sequence_id!r}"
+                )
+            if metric.event_id is not None and not any(
+                event.sequence_id == metric.sequence_id and event.event_id == metric.event_id
+                for event in self.events
+            ):
+                raise ReportSchemaError(
+                    f"metric {metric.metric_id!r} references unknown event {metric.event_id!r} "
+                    f"for motion {metric.sequence_id!r}"
+                )
+        metric_keys = {(item.sequence_id, item.metric_id) for item in self.metrics}
+        for comparison in self.comparisons:
+            key = (comparison.sequence_id, comparison.metric_id)
+            if comparison.sequence_id not in sequence_ids:
+                raise ReportSchemaError(
+                    f"comparison {comparison.metric_id!r} references unknown motion "
+                    f"{comparison.sequence_id!r}"
+                )
+            if key not in metric_keys:
+                raise ReportSchemaError(
+                    f"comparison references unknown metric {comparison.metric_id!r} "
+                    f"for motion {comparison.sequence_id!r}"
+                )
         metric_ids = {item.metric_id for item in self.metrics}
         event_ids = {item.event_id for item in self.events}
         chart_ids = {item.artifact_id for item in self.charts}
         asset_ids = {item.asset_id for item in self.assets}
+        for asset in self.assets:
+            unknown_sequences = sorted(set(asset.sequence_ids) - sequence_ids)
+            if unknown_sequences:
+                raise ReportSchemaError(
+                    f"asset {asset.asset_id!r} references unknown motions: {', '.join(unknown_sequences)}"
+                )
+            self._validate_references("metric", asset.metric_ids, metric_ids, asset.asset_id)
+            self._validate_references("event", asset.event_ids, event_ids, asset.asset_id)
+        for chart in self.charts:
+            unknown_sequences = sorted(set(chart.sequence_ids) - sequence_ids)
+            if unknown_sequences:
+                raise ReportSchemaError(
+                    f"chart {chart.artifact_id!r} references unknown motions: {', '.join(unknown_sequences)}"
+                )
+            self._validate_references("metric", chart.metric_ids, metric_ids, chart.artifact_id)
+            self._validate_references("event", chart.event_ids, event_ids, chart.artifact_id)
         for section in self.sections:
             self._validate_references("metric", section.metric_ids, metric_ids, section.section_id)
             self._validate_references("event", section.event_ids, event_ids, section.section_id)
@@ -176,7 +225,7 @@ class ReportData:
         missing = sorted(set(values) - available)
         if missing:
             raise ReportSchemaError(
-                f"section {section_id!r} references unknown {label} IDs: {', '.join(missing)}"
+                f"container {section_id!r} references unknown {label} IDs: {', '.join(missing)}"
             )
 
     def to_dict(self) -> dict[str, object]:

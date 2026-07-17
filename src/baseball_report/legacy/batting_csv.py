@@ -22,6 +22,7 @@ from baseball_report.events.models import EventCollection, MotionEvent
 from baseball_report.metrics.models import MetricResult
 
 from .models import LegacyAdaptedReport, LegacyAnalysisBundle
+from .json_values import normalize_legacy_json
 
 REQUIRED_COLUMNS = (
     "trial_id",
@@ -83,16 +84,29 @@ def _parse_value(value: str, metric_id: str) -> tuple[float | None, tuple[Analys
     return None, (warning,)
 
 
-def _parse_components(value: str, metric_id: str) -> dict[str, object]:
+def _parse_components(
+    value: str, metric_id: str
+) -> tuple[dict[str, object], tuple[AnalysisWarning, ...]]:
     if not value.strip():
-        return {}
+        return {}, ()
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError as exc:
         raise InputDataError(f"invalid components_json for {metric_id}: {exc}") from exc
     if not isinstance(parsed, dict):
         raise InputDataError(f"components_json for {metric_id} must contain an object")
-    return parsed
+    normalized, paths = normalize_legacy_json(parsed, "components")
+    assert isinstance(normalized, dict)
+    warnings = ()
+    if paths:
+        warnings = (
+            AnalysisWarning(
+                code="legacy.metadata.non_finite",
+                message=f"Legacy batting metric {metric_id} contained non-finite component values",
+                context={"replaced_with_null": list(paths)},
+            ),
+        )
+    return normalized, warnings
 
 
 def adapt_batting_metrics_csv(path: str | Path) -> LegacyAdaptedReport:
@@ -170,7 +184,8 @@ def adapt_batting_metrics_csv(path: str | Path) -> LegacyAdaptedReport:
                         severity=WarningSeverity.INFO,
                     )
                 )
-            components = _parse_components(row["components_json"], metric_id)
+            components, component_warnings = _parse_components(row["components_json"], metric_id)
+            metric_warnings.extend(component_warnings)
             components["legacy_fields"] = {
                 "module": row["module"],
                 "aggregation": row["aggregation"],

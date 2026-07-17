@@ -8,6 +8,10 @@ from pathlib import Path
 import numpy as np
 
 from baseball_report.io.c3d import adapt_legacy_c3d
+from baseball_report.legacy.batting_csv import adapt_batting_metrics_csv
+from baseball_report.legacy.pitching_summary import adapt_pitching_summary_json
+from baseball_report.reporting.adapters import build_report_data_from_legacy
+from baseball_report.reporting.validation import validate_report_payload
 from build_vicon_2026_metrics import read_c3d
 from tools.capture_characterization_baseline import capture_batting, capture_pitching
 from tools.capture_report_artifact_baseline import capture_report_artifacts
@@ -16,6 +20,33 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ProtectedBaselineIntegrationTests(unittest.TestCase):
+    @unittest.skipUnless(
+        all(
+            os.environ.get(name)
+            for name in ("BASEBALL_REPORT_PITCHING_DIR", "BASEBALL_REPORT_COMBINED_DIR")
+        ),
+        "set protected report directories to run the stable ReportData adapter check",
+    )
+    def test_legacy_report_artifacts_adapt_to_stable_report_data(self) -> None:
+        batting_path = Path(os.environ["BASEBALL_REPORT_COMBINED_DIR"]) / "batting_dashboard_metrics.csv"
+        pitching_path = Path(os.environ["BASEBALL_REPORT_PITCHING_DIR"]) / "pitch_metrics_summary.json"
+        adapted = (
+            adapt_batting_metrics_csv(batting_path),
+            adapt_pitching_summary_json(pitching_path),
+        )
+        report = build_report_data_from_legacy(
+            adapted,
+            report_id="protected-report-schema-check",
+            created_at="2026-07-17T12:00:00+08:00",
+            subject_id="protected-subject",
+            subject_display_name="Protected Subject",
+        )
+        payload = validate_report_payload(report.to_dict())
+        self.assertEqual(payload["schema_version"], "1.0.0")
+        self.assertGreater(len(payload["motions"]), 0)
+        self.assertGreater(len(payload["metrics"]), 0)
+        self.assertEqual([section["order"] for section in payload["sections"]], [0, 1])
+
     @unittest.skipUnless(
         all(
             os.environ.get(name)

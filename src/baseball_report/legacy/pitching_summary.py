@@ -13,6 +13,7 @@ from baseball_report.events.models import EventCollection, MotionEvent
 from baseball_report.metrics.models import MetricResult
 
 from .models import LegacyAdaptedReport, LegacyAnalysisBundle
+from .json_values import normalize_legacy_json
 
 # Exact report-facing registry metadata copied from the current pitching builder.
 PITCHING_REPORT_METRICS: dict[str, tuple[str, str, str, str, str | None]] = {
@@ -74,7 +75,7 @@ def _finite_value(raw: object, metric_id: str) -> tuple[float | None, tuple[Anal
         AnalysisWarning(
             code="legacy.metric.unavailable",
             message=f"Legacy pitching metric {metric_id} has no finite value",
-            context={"raw_value": raw},
+            context={"raw_value": repr(raw)},
         ),
     )
 
@@ -148,6 +149,17 @@ def adapt_pitching_summary_json(path: str | Path) -> LegacyAdaptedReport:
                 contract_scope = "report"
             value, warnings = _finite_value(raw_value, metric_id)
             metric_warnings = list(warnings)
+            normalized_raw, non_finite_paths = normalize_legacy_json(
+                raw_value, "legacy_raw_value"
+            )
+            if non_finite_paths:
+                metric_warnings.append(
+                    AnalysisWarning(
+                        code="legacy.metadata.non_finite",
+                        message=f"Legacy pitching metric {metric_id} contained a non-finite raw value",
+                        context={"replaced_with_null": list(non_finite_paths)},
+                    )
+                )
             if metric_id == "hand_speed_kmh":
                 metric_warnings.append(
                     AnalysisWarning(
@@ -178,7 +190,7 @@ def adapt_pitching_summary_json(path: str | Path) -> LegacyAdaptedReport:
                     components={
                         "legacy_event_name": legacy_event_name,
                         "contract_scope": contract_scope,
-                        "legacy_raw_value": raw_value,
+                        "legacy_raw_value": normalized_raw,
                     },
                     provenance=provenance,
                 )
