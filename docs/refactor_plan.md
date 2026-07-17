@@ -560,6 +560,25 @@ No final visualization or builder recalculates a migrated metric/time series.
 Generic/diagnostic metrics remain separately labeled until disposition is
 approved.
 
+### Implementation record — 2026-07-17
+
+Status: complete for all current batting report metrics, pitching report and
+auxiliary metrics, and generic Vicon summary units on
+`refactor/systematic-engineering`.
+
+- Added immutable `legacy_v1` registries for 17 batting and 18 pitching report
+  metrics, plus 23 pitching auxiliary and 11 generic summary unit contracts.
+- Declared formulas, required points/channels, events, sides, units, bilingual
+  names, missing-data behavior, and current report options.
+- Removed the report builder's duplicate pitching metadata table and added
+  batting registry drift validation.
+- Extracted parity-proven pure composite/geometry calculators while leaving
+  legacy orchestration and signatures intact.
+- Passed all 71 tests with all batting and pitching golden values unchanged.
+
+Completion evidence and intentionally retained compatibility boundaries are
+recorded in `docs/stage6_metric_registry.md`.
+
 ## 13. Stage 7 — explicit pipelines, stage results and logging
 
 ### Scope
