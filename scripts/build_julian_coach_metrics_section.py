@@ -6,7 +6,6 @@ import html
 import json
 import math
 import re
-import shutil
 import sys
 import zipfile
 from collections import defaultdict
@@ -14,6 +13,13 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from PIL import Image, ImageDraw, ImageFont
+
+from baseball_report.comparison.legacy_rules import (
+    batting_component_score,
+    batting_status,
+    summarize_peer_values,
+)
+from baseball_report.reporting.assets import copy_report_asset_tree
 
 from pitching.player_card_contract import validate_pitch_player_cards
 
@@ -237,10 +243,6 @@ def peer_color(name: object, fallback_index: int = 0) -> str:
 def peer_display_name(name: object) -> str:
     raw_name = str(name or "peer")
     return PEER_DISPLAY_BY_NAME.get(peer_key(raw_name), raw_name)
-
-BAT_SPEED_U8_U10_GOOD_MIN_KMH = 48.0
-BAT_SPEED_U8_U10_EXCELLENT_MIN_KMH = 72.0
-
 
 def pil_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     candidates = (
@@ -653,29 +655,8 @@ def delta_text(julian: dict[str, str], coach: dict[str, str] | None) -> str:
 
 def status_for(metric_key: str, julian: dict[str, str], coach: dict[str, str] | None) -> tuple[str, str]:
     jv = num(julian.get("value"))
-    if jv is None:
-        return "良好", "review"
-    if metric_key == "contact_bat_speed_kmh":
-        if jv >= BAT_SPEED_U8_U10_EXCELLENT_MIN_KMH:
-            return "优秀", "good"
-        if jv >= BAT_SPEED_U8_U10_GOOD_MIN_KMH:
-            return "良好", "review"
-        return "待提高", "risk"
     cv = num(coach.get("value")) if coach else None
-    if cv is None:
-        return "良好", "review"
-    diff = abs(jv - cv)
-    scale = max(abs(cv), 1.0)
-    ratio = diff / scale
-    if metric_key in {"coach_high_com_risk_index", "coach_rollover_forearm_roll_velocity_deg_s", "ready_to_contact_head_displacement_mm"}:
-        return ("优秀", "good") if jv <= cv else ("待提高", "risk")
-    if metric_key == "coach_hitting_zone_stability_score":
-        return ("优秀", "good") if jv >= cv else ("待提高", "risk")
-    if ratio <= 0.12:
-        return "优秀", "good"
-    if ratio <= 0.30:
-        return "良好", "review"
-    return "待提高", "risk"
+    return batting_status(metric_key, jv, cv)
 
 
 def score_for_status(klass: str) -> float:
@@ -729,35 +710,8 @@ def normalize_metric_name(metric_name: object) -> str:
     return str(metric_name or "").replace("（Attack Angle）", "")
 
 
-LOWER_IS_BETTER_KEYS = {
-    "coach_high_com_risk_index",
-    "coach_rollover_forearm_roll_velocity_deg_s",
-    "ready_to_contact_head_displacement_mm",
-}
-
-
 def component_score_against_standard(metric_key: str, value: float, standard: float) -> float:
-    if metric_key == "contact_bat_speed_kmh":
-        if value >= BAT_SPEED_U8_U10_EXCELLENT_MIN_KMH:
-            return 100.0
-        if value >= BAT_SPEED_U8_U10_GOOD_MIN_KMH:
-            ratio = (value - BAT_SPEED_U8_U10_GOOD_MIN_KMH) / (
-                BAT_SPEED_U8_U10_EXCELLENT_MIN_KMH - BAT_SPEED_U8_U10_GOOD_MIN_KMH
-            )
-            return 70.0 + ratio * 14.0
-        return max(20.0, 70.0 * max(value, 0.0) / BAT_SPEED_U8_U10_GOOD_MIN_KMH)
-    scale = max(abs(standard), 1.0)
-    if metric_key in LOWER_IS_BETTER_KEYS:
-        diff_ratio = max(0.0, (value - standard) / scale)
-    else:
-        diff_ratio = abs(value - standard) / scale
-    if diff_ratio <= 0.12:
-        return 100.0 - diff_ratio / 0.12 * 8.0
-    if diff_ratio <= 0.30:
-        return 92.0 - (diff_ratio - 0.12) / 0.18 * 22.0
-    if diff_ratio <= 0.60:
-        return 70.0 - (diff_ratio - 0.30) / 0.30 * 30.0
-    return max(20.0, 40.0 - (diff_ratio - 0.60) / 0.40 * 20.0)
+    return batting_component_score(metric_key, value, standard)
 
 
 def peer_scores_for(
@@ -988,10 +942,11 @@ def peer_metric_values_for(metric_key: str, peer_rows: list[dict[str, object]]) 
 
 
 def peer_metric_mean(metric_key: str, peer_rows: list[dict[str, object]]) -> float | None:
-    values = [float(item["value"]) for item in peer_metric_values_for(metric_key, peer_rows)]
-    if not values:
-        return None
-    return sum(values) / len(values)
+    stats = summarize_peer_values(
+        (str(item["name"]), item["value"])
+        for item in peer_metric_values_for(metric_key, peer_rows)
+    )
+    return stats.mean
 
 
 def issue_compare_pills(
@@ -1889,12 +1844,7 @@ def copy_pitch_assets(pitch_report: Path, out_dir: Path) -> None:
     if not src_assets.exists():
         return
     dst_assets = out_dir / PITCH_ASSET_PREFIX
-    shutil.copytree(
-        src_assets,
-        dst_assets,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns("._*", ".DS_Store"),
-    )
+    copy_report_asset_tree(src_assets, dst_assets)
 
 
 def sanitize_imported_pitch_copy(section_html: str) -> str:

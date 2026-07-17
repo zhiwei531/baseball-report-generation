@@ -22,6 +22,12 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.lines import Line2D
 from PIL import Image, ImageDraw, ImageFont
 
+from baseball_report.comparison.legacy_rules import (
+    pitching_score,
+    status_from_score as comparison_status_from_score,
+    summarize_peer_values,
+)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = ROOT / "scripts"
@@ -324,35 +330,11 @@ def fmt(value: float, unit: str) -> str:
 
 
 def score_metric(value: float, metric: dict[str, object], coach_value: float | None = None) -> float:
-    if not finite(value):
-        return 45
-    ideal = metric.get("ideal")
-    lo = metric.get("lo")
-    hi = metric.get("hi")
-    direction = metric.get("direction", "target")
-    if finite(ideal):
-        spread = float(metric.get("spread", max(abs(float(ideal)) * 0.35, 8)))
-        return max(0, min(100, 100 - abs(value - float(ideal)) / spread * 45))
-    if finite(lo) and finite(hi):
-        lo_f, hi_f = float(lo), float(hi)
-        if lo_f <= value <= hi_f:
-            return 88
-        dist = min(abs(value - lo_f), abs(value - hi_f))
-        return max(35, 88 - dist / max(abs(hi_f - lo_f), 1) * 60)
-    if direction == "higher":
-        target = float(metric.get("target", coach_value if finite(coach_value) else value))
-        return max(35, min(100, 60 + value / max(target, 1) * 35))
-    if direction == "lower_abs":
-        return max(35, min(100, 100 - abs(value) / float(metric.get("spread", 30)) * 60))
-    return 72
+    return pitching_score(value, metric, coach_value)
 
 
 def status_from_score(score: float) -> tuple[str, str]:
-    if score >= 82:
-        return "优秀", "good"
-    if score >= 66:
-        return "良好", "review"
-    return "待提高", "risk"
+    return comparison_status_from_score(score)
 
 
 METRICS = pitching_metric_dicts()
@@ -646,20 +628,25 @@ def make_kinetic_chain(bundles: list[TrialBundle]) -> None:
 
 
 def peer_stats(bundles: list[TrialBundle], metric_key: str) -> dict[str, float]:
-    students = [b for b in bundles if b.role == "student"]
-    values = [b.values.get(metric_key, float("nan")) for b in students]
-    values = [float(v) for v in values if finite(v)]
+    stats = summarize_peer_values(
+        (bundle.key, bundle.values.get(metric_key, float("nan")))
+        for bundle in bundles
+        if bundle.role == "student"
+    )
     return {
-        "min": min(values) if values else float("nan"),
-        "max": max(values) if values else float("nan"),
-        "mean": float(np.mean(values)) if values else float("nan"),
+        "min": stats.minimum if stats.minimum is not None else float("nan"),
+        "max": stats.maximum if stats.maximum is not None else float("nan"),
+        "mean": stats.mean if stats.mean is not None else float("nan"),
     }
 
 
 def group_mean_all(bundles: list[TrialBundle], metric_key: str) -> float:
-    vals = [b.values.get(metric_key, float("nan")) for b in bundles if b.role == "student"]
-    vals = [float(v) for v in vals if finite(v)]
-    return float(np.mean(vals)) if vals else float("nan")
+    stats = summarize_peer_values(
+        (bundle.key, bundle.values.get(metric_key, float("nan")))
+        for bundle in bundles
+        if bundle.role == "student"
+    )
+    return stats.mean if stats.mean is not None else float("nan")
 
 
 def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: bool = False) -> str:
