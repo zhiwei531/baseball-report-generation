@@ -29,6 +29,12 @@ from kinematics import (
     velocity_mm_s as _velocity_mm_s,
     xy_angle_deg as _xy_angle_deg,
 )
+from metric_registry import BATTING_METRICS_BY_ID
+from metric_calculations import (
+    high_com_risk_index,
+    hitting_zone_stability_score,
+    point_displacement_mm,
+)
 from point_mappings import BATTING_POINT_ALIASES, RIGHT_HANDED_BATTING_PROFILE
 
 
@@ -276,6 +282,9 @@ def metric_row(
     notes: str = "",
     components: dict[str, float | str] | None = None,
 ) -> dict[str, object]:
+    definition = BATTING_METRICS_BY_ID[key]
+    if definition.display_name_zh != name or definition.unit != unit or definition.event_id != event_name:
+        raise ValueError(f"metric registry drift for {key}")
     primary_event_frame = event_frame(event_indices)
     return {
         "trial_id": trial.trial_id,
@@ -284,10 +293,10 @@ def metric_row(
         "action_type": trial.action_type,
         "source_file": trial.source_file,
         "module": module,
-        "metric_name_zh": name,
+        "metric_name_zh": definition.display_name_zh,
         "metric_key": key,
         "value": value,
-        "unit": unit,
+        "unit": definition.unit,
         "aggregation": aggregation,
         "event_name": event_name,
         "event_rule": event_rule,
@@ -406,20 +415,12 @@ def compute_trial_metrics(
     )
     head_ready = finite_mean(head[ready_event], axis=0)
     head_contact = finite_mean(head[contact_event], axis=0)
-    head_displacement = float(np.linalg.norm(head_contact - head_ready))
+    head_displacement = point_displacement_mm(head_ready, head_contact)
 
     com_height_norm = finite_scalar(com[ready_event, 2], "mean") / height_mm
     rear_hip_ready = finite_scalar(rear_hip_flex[ready_event], "mean")
     rear_knee_ready = finite_scalar(rear_knee_flex[ready_event], "mean")
-    high_com_score = 100.0 * float(
-        np.nanmean(
-            [
-                np.clip((com_height_norm - 0.48) / 0.14, 0.0, 1.0),
-                np.clip((35.0 - rear_hip_ready) / 35.0, 0.0, 1.0),
-                np.clip((35.0 - rear_knee_ready) / 35.0, 0.0, 1.0),
-            ]
-        )
-    )
+    high_com_score = high_com_risk_index(com_height_norm, rear_hip_ready, rear_knee_ready)
 
     rear_elbow_height_diff = finite_scalar((rear_elbow - rear_shoulder)[ready_event, 2], "mean")
 
@@ -459,10 +460,11 @@ def compute_trial_metrics(
         zone_length = float("nan")
         zone_attack_std = float("nan")
         zone_curvature = float("nan")
-    length_score = np.clip(zone_length / 650.0, 0.0, 1.0)
-    plane_score = np.clip(1.0 - zone_attack_std / 18.0, 0.0, 1.0)
-    curvature_score = np.clip(1.0 - zone_curvature / 0.006, 0.0, 1.0)
-    stability_score = 100.0 * float(np.nanmean([length_score, plane_score, curvature_score]))
+    stability = hitting_zone_stability_score(zone_length, zone_attack_std, zone_curvature)
+    length_score = stability.length_score
+    plane_score = stability.plane_score
+    curvature_score = stability.curvature_score
+    stability_score = stability.score
 
     rows = [
         metric_row(

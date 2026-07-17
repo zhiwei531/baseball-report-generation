@@ -40,6 +40,8 @@ C3D_FILES: list[tuple[str, str, str, Path]] = []
 
 from build_vicon_2026_metrics import clean_label, read_c3d, safe_nanmean  # noqa: E402
 from event_detection import detect_pitching_events  # noqa: E402
+from metric_registry import pitching_metric_dicts  # noqa: E402
+from metric_calculations import arm_slot_deg, stride_metrics  # noqa: E402
 from pitching.player_card_contract import validate_pitch_player_cards  # noqa: E402
 import render_vicon_reconstruction_images as recon  # noqa: E402
 
@@ -233,10 +235,10 @@ def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor
     hand_speed = smooth(speed_mps(hand, trial.rate_hz), 2)
     rear_foot_pk = safe_nanmean([rhee[pk], rtoe[pk]], axis=0)
     stride_vec = lhee[fp] - rear_foot_pk
+    stride_distance_pct, stride_distance_mm, stride_direction_deg = stride_metrics(stride_vec, height_mm)
     toe_vec = ltoe[fp] - lhee[fp]
     forearm = rwrist[rel] - relb[rel]
-    forearm_horizontal = float(np.linalg.norm(forearm[:2]))
-    arm_slot = float(np.degrees(np.arctan2(forearm[2], forearm_horizontal))) if math.isfinite(forearm_horizontal) else float("nan")
+    arm_slot = arm_slot_deg(forearm)
     hss_window = hss[pk : rel + 1] if rel > pk else hss
     hss_max = float(np.nanmax(hss_window)) if np.isfinite(hss_window).any() else float("nan")
     hss_max_idx = pk + int(np.nanargmax(hss_window)) if np.isfinite(hss_window).any() and rel > pk else int(np.nanargmax(hss))
@@ -249,9 +251,9 @@ def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor
         "rear_knee_peak_deg": frame_value(channel(trial, clean_labels, "RKneeAngles", 0), pk),
         "rear_ankle_peak_deg": frame_value(channel(trial, clean_labels, "RAnkleAngles", 0), pk),
         "hss_peak_knee_deg": frame_value(hss, pk),
-        "stride_distance_pct": float(np.linalg.norm(stride_vec[:2]) / height_mm * 100),
-        "stride_distance_mm": float(np.linalg.norm(stride_vec[:2])),
-        "stride_direction_deg": float(np.degrees(np.arctan2(stride_vec[1], stride_vec[0]))),
+        "stride_distance_pct": stride_distance_pct,
+        "stride_distance_mm": stride_distance_mm,
+        "stride_direction_deg": stride_direction_deg,
         "front_toe_direction_deg": float(np.degrees(np.arctan2(toe_vec[1], toe_vec[0]))),
         "front_knee_plant_deg": frame_value(channel(trial, clean_labels, "LKneeAngles", 0), fp),
         "rear_knee_plant_deg": frame_value(channel(trial, clean_labels, "RKneeAngles", 0), fp),
@@ -353,7 +355,7 @@ def status_from_score(score: float) -> tuple[str, str]:
     return "待提高", "risk"
 
 
-METRICS = [
+_LEGACY_METRICS_SNAPSHOT = [
     {"key": "knee_height_pct", "event": "准备阶段", "section": "抬腿最高点", "name": "抬腿高度", "en": "Knee Lift Height", "unit": "pct", "image": "peak_knee", "ideal": 50, "spread": 18, "copy": "抬腿高度接近身高一半，说明准备阶段有足够的节奏和空间。"},
     {"key": "front_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "前腿收紧", "en": "Lead-Knee Tuck", "unit": "deg", "image": "peak_knee", "lo": 115, "hi": 155, "copy": "前膝角用来判断抬腿时前腿是否真正收住，而不是松散地向前摆。"},
     {"key": "rear_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "后腿蓄力", "en": "Rear-Leg Load", "unit": "deg", "image": "peak_knee", "lo": -10, "hi": 25, "copy": "后腿在抬腿最高点承担支撑任务，角度越稳定，后续跨步越容易受控。"},
