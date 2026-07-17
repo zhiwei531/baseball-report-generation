@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pipeline_config import DEFAULT_CONFIG, load_pipeline_config
+from pipeline_config import DEFAULT_CONFIG, load_pipeline_config, plot_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,10 +55,8 @@ def validate_alignment_summary(alignment_dir: Path, args: argparse.Namespace) ->
 
 
 def plot_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
-    env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
-    return env
+    """Compatibility name for the shared plotting/cache environment."""
+    return plot_environment()
 
 
 def c3d_stage(args: argparse.Namespace) -> None:
