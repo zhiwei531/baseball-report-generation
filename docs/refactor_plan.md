@@ -407,6 +407,23 @@ Migrate one group at a time. For each function:
 Metric/event modules can use shared tested primitives, while visualization no
 longer contains copied metric formulas.
 
+### Implementation record — 2026-07-17
+
+Status: complete for the first parity-proven primitive group on
+`refactor/systematic-engineering`.
+
+- Added pure finite reduction, speed/velocity, joint/vector/XY/circular angle,
+  and signed-axis-angle functions.
+- Switched the batting metric producer, generic Vicon metric producer, and
+  annotated-speed visualization through compatibility wrappers.
+- Preserved the legacy direct-division joint-angle variant separately and did
+  not merge non-equivalent smoothing/interpolation implementations.
+- Verified wrapper arrays with zero tolerance and passed all 56 tests,
+  including protected metrics and report artifacts.
+
+Completion evidence and intentionally distinct variants are recorded in
+`docs/stage3_kinematics.md`.
+
 ## 10. Stage 4 — point and channel mapping
 
 ### Scope
