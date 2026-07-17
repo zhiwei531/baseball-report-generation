@@ -299,6 +299,26 @@ sequence.
 `scripts/report_cli.py` continues accepting the same commands/configs. It may
 call a config adapter but produces identical subprocess commands.
 
+### Implementation record — 2026-07-17
+
+Status: complete on `refactor/systematic-engineering`.
+
+- Extended the existing compatibility config boundary with frozen final,
+  batting, pitching-alignment, manifest-athlete, and preflight models.
+- Removed current-working-directory dependence from public final-config
+  resolution while preserving repository-relative `root_dir` behavior and
+  manifest-relative C3D paths.
+- Added cross-config player/C3D identity checks, output isolation checks,
+  reviewed timing validation, and explicit warnings for existing outputs,
+  missing peer directories with a known fallback, and template/output overlap.
+- Added a read-only `--dry-run` to `pitching`, `batting`, and `final` without
+  changing producer commands or final pitching-then-batting order.
+- Centralized the existing Matplotlib/cache environment defaults.
+- All six tracked final configs passed real dry runs; the full 44-test suite,
+  including protected Phase 4 baselines, passed unchanged.
+
+Completion evidence is recorded in `docs/stage1_configuration.md`.
+
 ### Validation
 
 - snapshot resolved paths for all checked-in configs;

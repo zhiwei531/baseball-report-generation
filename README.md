@@ -31,6 +31,20 @@ XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
   --config configs/generated/7zai_final_report.json
 ```
 
+Validate all configured inputs and resolved output paths without generating or
+modifying report artifacts:
+
+```bash
+../baseball-analysis/.venv312/bin/python scripts/report_cli.py final \
+  --config configs/generated/<player_slug>_final_report.json \
+  --dry-run
+```
+
+The dry run is safe to call from outside the repository: final and batting
+config paths remain repository-root relative, while pitching C3D paths remain
+relative to their manifest file. Review every warning before a full build,
+especially template/output overlap and existing output directories.
+
 For a new player, create the three player-specific files under
 `configs/generated/`: final config, batting config, and pitching manifest.
 Start with `configs/final_report.example.json` and its referenced batting

@@ -13,6 +13,11 @@ Run from the repository root with a player-specific final config.
 | Build/retry pitching | `python scripts/report_cli.py pitching --config configs/<player_slug>_final_report.json` | Produces `reports/pitching_<player_slug>_coach/index.html`, researcher figures, and configured pitching 2D QA. |
 | Build/retry batting | `python scripts/report_cli.py batting --config configs/<player_slug>_final_report.json` | Requires the current pitching `index.html`; creates the combined HTML, copied `pitch_assets/`, and XLSX. |
 
+Add `--dry-run` to any execution to resolve and validate its config without
+creating directories or running a producer. The summary includes the final,
+batting, manifest, template, C3D/video/model, and output paths plus any
+compatibility or overwrite warnings.
+
 Use `final` after any change to timings, shared report copy, template assets, or
 both disciplines. Use `pitching` then `batting` only to retry a known isolated
 stage. `--skip-pitching-alignment` is valid only when no validated pitching 2D
