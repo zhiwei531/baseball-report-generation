@@ -61,7 +61,7 @@ rounded report values.
 
 ## Validation
 
-- `95` unit/characterization/integration tests: `OK` (`7` protected/local
+- `96` unit/characterization/integration tests: `OK` (`7` protected/local
   artifact cases skipped when their opt-in paths are absent).
 - Protected Bryan batting and pitching C3D golden baselines: exact.
 - Protected report HTML/artifact/XLSX baseline: exact, with the two previously
@@ -85,9 +85,9 @@ rounded report values.
 3. HTML and final-polish value binding now use ReportData 1.0.1. The final
    batting polish itself remains a compatibility pass; removal requires two
    subjects to pass DOM, screenshot, PDF/PPTX and copy parity.
-4. Several visualization scripts still combine series calculation and drawing;
-   ReportAsset ownership is stable, but series extraction requires additional
-   chart-data golden fixtures.
+4. Batting research time-series calculation is separated from drawing with an
+   exact series fixture. Some pitching/reconstruction/2D overlay generators
+   still need equivalent geometry fixtures before safe extraction.
 5. Canonical report assets now have explicit metric/event links; genuinely
    unclassified extra assets remain intentionally unbound instead of guessed.
 6. macOS `._*` AppleDouble sidecars still break naked recursive `compileall`;

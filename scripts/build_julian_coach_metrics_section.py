@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import csv
 import html
-import json
 import math
 import re
 import sys
@@ -22,6 +21,10 @@ from baseball_report.comparison.legacy_rules import (
 from baseball_report.reporting.assets import copy_report_asset_tree
 from baseball_report.reporting.legacy_rows import batting_builder_rows_from_payload
 from baseball_report.reporting.validation import load_report_payload
+from baseball_report.visualization.batting_series import (
+    build_batting_time_series,
+    build_kinetic_speed_series,
+)
 
 from pitching.player_card_contract import validate_pitch_player_cards
 
@@ -1147,266 +1150,16 @@ def row_value(rows_by_key: dict[str, dict[str, str]], key: str) -> float | None:
     return safe_float(row.get("value") if row else None)
 
 
-def parse_frame_list(value: object) -> list[int]:
-    if value in (None, ""):
-        return []
-    return [int(part) for part in str(value).split(";") if part.strip().isdigit()]
-
-
-def json_dict(value: str | None) -> dict[str, object]:
-    if not value:
-        return {}
-    try:
-        data = json.loads(value)
-    except json.JSONDecodeError:
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def load_bat_series(pose_path: Path, clip_id: str) -> list[dict[str, object]]:
-    if not pose_path.exists():
-        return []
-    frames: dict[int, dict[str, object]] = {}
-    with pose_path.open(newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row.get("clip_id") != clip_id or row.get("joint_name") not in {"Bat1", "Bat5"}:
-                continue
-            frame = int(float(row["frame_index"]))
-            item = frames.setdefault(frame, {"frame": frame, "time": safe_float(row.get("timestamp_sec")), "points": {}})
-            points = item["points"]
-            if not isinstance(points, dict):
-                continue
-            points[row["joint_name"]] = (
-                float(row["x_3d"]),
-                float(row["y_3d"]),
-                float(row["z_3d"]),
-            )
-    series = []
-    for frame in sorted(frames):
-        item = frames[frame]
-        points = item.get("points")
-        if not isinstance(points, dict) or "Bat1" not in points or "Bat5" not in points:
-            continue
-        series.append(item)
-    return series
-
-
-def load_clip_marker_frames(pose_path: Path, clip_id: str) -> list[dict[str, object]]:
-    if not pose_path.exists():
-        return []
-    frames: dict[int, dict[str, object]] = {}
-    with pose_path.open(newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row.get("clip_id") != clip_id:
-                continue
-            frame = int(float(row["frame_index"]))
-            item = frames.setdefault(frame, {"frame": frame, "time": safe_float(row.get("timestamp_sec")), "points": {}})
-            points = item["points"]
-            if not isinstance(points, dict):
-                continue
-            points[row["joint_name"]] = (
-                float(row["x_3d"]),
-                float(row["y_3d"]),
-                float(row["z_3d"]),
-            )
-    return [frames[frame] for frame in sorted(frames)]
-
-
-def vector_len(vec: tuple[float, float, float]) -> float:
-    return math.sqrt(vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2)
-
-
-def angle_between_vectors(a: tuple[float, float, float], b: tuple[float, float, float]) -> float | None:
-    denom = vector_len(a) * vector_len(b)
-    if denom <= 1e-9:
-        return None
-    cos_v = max(-1.0, min(1.0, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / denom))
-    return math.degrees(math.acos(cos_v))
-
-
-def wrap_angle_delta(current: float, previous: float) -> float:
-    return (current - previous + 180.0) % 360.0 - 180.0
-
-
-def horizontal_line_angle(points: dict[str, tuple[float, float, float]], a: str, b: str) -> float | None:
-    if a not in points or b not in points:
-        return None
-    pa = points[a]
-    pb = points[b]
-    return math.degrees(math.atan2(pa[1] - pb[1], pa[0] - pb[0]))
-
-
-def joint_angle(points: dict[str, tuple[float, float, float]], a: str, b: str, c: str) -> float | None:
-    if a not in points or b not in points or c not in points:
-        return None
-    pa = points[a]
-    pb = points[b]
-    pc = points[c]
-    return angle_between_vectors(
-        (pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]),
-        (pc[0] - pb[0], pc[1] - pb[1], pc[2] - pb[2]),
-    )
-
-
-def moving_average(values: list[float | None], radius: int = 2) -> list[float | None]:
-    out: list[float | None] = []
-    for idx in range(len(values)):
-        window = [v for v in values[max(0, idx - radius): idx + radius + 1] if v is not None and math.isfinite(v)]
-        out.append(sum(window) / len(window) if window else None)
-    return out
-
-
 def batting_time_series(rows_by_key: dict[str, dict[str, str]], clip_id: str) -> dict[str, object]:
-    raw = load_bat_series(DEFAULT_POSE3D, clip_id)
-    if not raw:
-        return {"speed": [], "angle": [], "contact_time": None, "peak_time": None}
-    speed_values: list[float | None] = [None]
-    angle_values: list[float | None] = []
-    for idx, item in enumerate(raw):
-        points = item["points"]
-        bat1 = points["Bat1"]  # type: ignore[index]
-        bat5 = points["Bat5"]  # type: ignore[index]
-        axis = (bat1[0] - bat5[0], bat1[1] - bat5[1], bat1[2] - bat5[2])
-        angle_values.append(math.degrees(math.atan2(axis[2], math.hypot(axis[0], axis[1]))))
-        if idx > 0:
-            prev = raw[idx - 1]
-            prev_points = prev["points"]
-            prev_bat1 = prev_points["Bat1"]  # type: ignore[index]
-            dt = float(item["time"]) - float(prev["time"])
-            if dt > 0:
-                diff = (bat1[0] - prev_bat1[0], bat1[1] - prev_bat1[1], bat1[2] - prev_bat1[2])
-                speed_values.append(vector_len(diff) / dt * 3.6 / 1000.0)
-            else:
-                speed_values.append(None)
-    speed_values = moving_average(speed_values, 2)
-    angle_values = moving_average(angle_values, 2)
-    speed = [(float(item["time"]), value, int(item["frame"])) for item, value in zip(raw, speed_values) if value is not None]
-    angle = [(float(item["time"]), value, int(item["frame"])) for item, value in zip(raw, angle_values) if value is not None]
-
-    contact = rows_by_key.get("contact_bat_speed_kmh", {})
-    issue = rows_by_key.get("coach_high_com_risk_index", {})
-    components = json_dict(issue.get("components_json"))
-    swing_frames = parse_frame_list(components.get("swing_segment_frames"))
-    frame_times = {int(item["frame"]): float(item["time"]) for item in raw}
-    contact_time = frame_times.get(int(contact.get("event_frame", -1))) if contact.get("event_frame") else None
-    peak_time = frame_times.get(int(components.get("swing_peak_frame", -1))) if components.get("swing_peak_frame") else None
-    if swing_frames:
-        lo_frame = min(swing_frames) - 18
-        hi_frame = max(swing_frames) + 18
-        speed = [item for item in speed if lo_frame <= item[2] <= hi_frame]
-        angle = [item for item in angle if lo_frame <= item[2] <= hi_frame]
-    if contact_time is not None:
-        speed = [(time - contact_time, value, frame) for time, value, frame in speed]
-        angle = [(time - contact_time, value, frame) for time, value, frame in angle]
-        if peak_time is not None:
-            peak_time -= contact_time
-    return {"speed": speed, "angle": angle, "contact_time": 0.0 if contact_time is not None else None, "peak_time": peak_time}
-
-
-def point_center(points: dict[str, tuple[float, float, float]], names: list[str]) -> tuple[float, float, float] | None:
-    available = [points[name] for name in names if name in points]
-    if not available:
-        return None
-    count = float(len(available))
-    return (
-        sum(point[0] for point in available) / count,
-        sum(point[1] for point in available) / count,
-        sum(point[2] for point in available) / count,
-    )
+    return build_batting_time_series(DEFAULT_POSE3D, rows_by_key, clip_id)
 
 
 def kinetic_speed_series(rows_by_key: dict[str, dict[str, str]], clip_id: str) -> list[dict[str, object]]:
-    raw = load_clip_marker_frames(DEFAULT_POSE3D, clip_id)
-    if not raw:
-        return []
-    issue = rows_by_key.get("coach_high_com_risk_index", {})
-    contact = rows_by_key.get("contact_bat_speed_kmh", {})
-    components = json_dict(issue.get("components_json"))
-    swing_frames = parse_frame_list(components.get("swing_segment_frames"))
-    contact_frame = int(contact.get("event_frame", -1)) if contact.get("event_frame") else None
-    frame_times = {int(item["frame"]): float(item["time"]) for item in raw if item.get("time") is not None}
-    contact_time = frame_times.get(contact_frame) if contact_frame is not None else None
-    if swing_frames:
-        lo_frame = min(swing_frames) - 18
-        hi_frame = max(swing_frames) + 18
-        raw = [item for item in raw if lo_frame <= int(item["frame"]) <= hi_frame]
-
-    angle_defs = [
-        ("下肢", GREEN, lambda pts: joint_angle(pts, "RASI", "RKNE", "RANK"), False),
-        ("髋部", BLUE, lambda pts: horizontal_line_angle(pts, "RASI", "LASI"), True),
-        ("躯干", PURPLE, lambda pts: horizontal_line_angle(pts, "RSHO", "LSHO"), True),
-        ("手腕", ORANGE, lambda pts: horizontal_line_angle(pts, "RWRA", "RELB"), True),
+    color_by_label = {"下肢": GREEN, "髋部": BLUE, "躯干": PURPLE, "手腕": ORANGE, "球棒": RED}
+    return [
+        {**curve, "color": color_by_label[str(curve["label"])]}
+        for curve in build_kinetic_speed_series(DEFAULT_POSE3D, rows_by_key, clip_id)
     ]
-    series: list[dict[str, object]] = []
-    for label, color, angle_fn, wrap in angle_defs:
-        samples: list[tuple[float, float, int, float] | None] = []
-        for item in raw:
-            points = item.get("points")
-            if not isinstance(points, dict) or item.get("time") is None:
-                samples.append(None)
-                continue
-            value = angle_fn(points)
-            if value is None:
-                samples.append(None)
-            else:
-                samples.append((float(item["time"]), float(item["time"]) - contact_time if contact_time is not None else float(item["time"]), int(item["frame"]), value))
-        values: list[float | None] = [None]
-        for idx in range(1, len(samples)):
-            current = samples[idx]
-            prev = samples[idx - 1]
-            if current is None or prev is None:
-                values.append(None)
-                continue
-            dt = current[0] - prev[0]
-            if dt <= 0:
-                values.append(None)
-                continue
-            delta = wrap_angle_delta(current[3], prev[3]) if wrap else current[3] - prev[3]
-            values.append(abs(delta) / dt)
-        values = moving_average(values, 2)
-        points = [
-            (sample[1], value, sample[2])
-            for sample, value in zip(samples, values)
-            if sample is not None and value is not None
-        ]
-        series.append({"label": label, "color": color, "points": points, "axis": "angular"})
-
-    centers: list[tuple[float, float, int, tuple[float, float, float]] | None] = []
-    for item in raw:
-        points = item.get("points")
-        if not isinstance(points, dict):
-            centers.append(None)
-            continue
-        center = point_center(points, ["Bat1"])
-        if center is None or item.get("time") is None:
-            centers.append(None)
-        else:
-            centers.append((float(item["time"]), float(item["time"]) - contact_time if contact_time is not None else float(item["time"]), int(item["frame"]), center))
-    values = [None]
-    for idx in range(1, len(centers)):
-        current = centers[idx]
-        prev = centers[idx - 1]
-        if current is None or prev is None:
-            values.append(None)
-            continue
-        dt = current[0] - prev[0]
-        if dt <= 0:
-            values.append(None)
-            continue
-        diff = (
-            current[3][0] - prev[3][0],
-            current[3][1] - prev[3][1],
-            current[3][2] - prev[3][2],
-        )
-        values.append(vector_len(diff) / dt * 3.6 / 1000.0)
-    values = moving_average(values, 2)
-    bat_points = [
-        (center[1], value, center[2])
-        for center, value in zip(centers, values)
-        if center is not None and value is not None
-    ]
-    series.append({"label": "球棒", "color": RED, "points": bat_points, "axis": "speed"})
-    return series
 
 
 def draw_line_chart(
