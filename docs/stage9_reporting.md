@@ -89,6 +89,15 @@ Ran 85 tests
 OK
 ```
 
+Post-stage local compatibility evidence covers all seven available player
+reports (`7zai`, `branden`, `bryan`, `green`, `james`, `xuanxuan`, `youyou`).
+For each report, ReportData 1.0.1 reconstructed all 34 player/coach metric rows
+with identical trial, metric name, unit, event frame, formula, finite value,
+and calculation components. The one legacy unavailable Youyou forearm-roll
+value is intentionally normalized from CSV `NaN` to JSON `null`; both paths
+render it unavailable. Every comparison preserved the configured eight-student
+peer membership.
+
 ## Known Issues
 
 1. Resolved after Stage 9: the HTML builder and final polish bind batting,
@@ -96,7 +105,9 @@ OK
    arguments remain fallback-compatible for direct historical invocations.
 2. `apply_batting_coach_values.py` remains a second in-place compatibility
    pass. It cannot be removed until its transformations are reproduced in one
-   renderer and two subjects pass DOM/screenshot/export comparison.
+   renderer and two subjects pass DOM/screenshot/export comparison. The
+   two-subject data-row gate is satisfied; visual/export gates are not yet
+   claimed.
 3. Comparison scores are preserved in shared functions, but ReportData does
    not claim a score for legacy direct metrics where the visible card is a
    weighted composite.

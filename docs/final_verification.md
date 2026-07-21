@@ -75,6 +75,9 @@ rounded report values.
 - No TypeScript schema comparison is applicable because there is no TypeScript
   frontend; no frontend biomechanics recalculation was found. The Node XLSX
   builder displays existing metric rows.
+- Seven local player reports passed ReportData-to-legacy row parity (34
+  player/coach rows each, eight-student peer set). One legacy unavailable
+  Youyou value is safely normalized from `NaN` to JSON `null`.
 
 ## Known Issues
 
