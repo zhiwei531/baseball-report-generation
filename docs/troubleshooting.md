@@ -15,3 +15,6 @@
 - MediaPipe macOS GPU initialization: only the documented `kGpuService`
   failure permits the recorded CPU fallback.
 - Git push DNS failure: retry; commits remain local and main is not modified.
+- unfiltered `compileall` reports null bytes in `._*.py`: these are ignored
+  AppleDouble sidecars, not source. Run `python tools/validate_sources.py`,
+  which validates only Git-tracked files.

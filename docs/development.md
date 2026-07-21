@@ -16,6 +16,13 @@ Run tests from the repository root:
 PYTHONPATH=src:scripts:. python -m unittest discover -s tests
 ```
 
+Validate tracked Python/Node sources without touching ignored macOS
+AppleDouble `._*` files or writing bytecode beside source files:
+
+```bash
+python tools/validate_sources.py
+```
+
 Protected C3D/report baselines are opt-in through the environment variables in
 `tests/integration/test_real_characterization_baselines.py`. Never commit raw
 athlete media. Commit by intent on a refactor branch; do not merge automatically.
