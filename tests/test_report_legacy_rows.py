@@ -8,6 +8,7 @@ from pathlib import Path
 from baseball_report.legacy.batting_csv import REQUIRED_COLUMNS, adapt_batting_metrics_csv
 from baseball_report.reporting.adapters import build_report_data_from_legacy
 from baseball_report.reporting.legacy_rows import batting_builder_rows_from_payload
+import apply_batting_coach_values as polish
 
 
 class ReportLegacyRowsTests(unittest.TestCase):
@@ -85,6 +86,40 @@ class ReportLegacyRowsTests(unittest.TestCase):
             },
             {"Bryan": "41.5", "Julian": "39.75"},
         )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "analysis_report_data.json"
+            report_path.write_text(report.to_json(), encoding="utf-8")
+            previous = (
+                polish.REPORT_DATA_PATH,
+                polish.METRICS_PATH,
+                polish.PEERS_DIR,
+                polish.PLAYER_SAMPLE_NAME,
+                polish.COACH_SAMPLE_NAME,
+                polish._REPORT_ROWS,
+                polish._REPORT_PEER_ROWS,
+            )
+            try:
+                polish.REPORT_DATA_PATH = report_path
+                polish.METRICS_PATH = Path(temp_dir) / "does-not-exist.csv"
+                polish.PEERS_DIR = Path(temp_dir) / "does-not-exist"
+                polish.PLAYER_SAMPLE_NAME = "bryan"
+                polish.COACH_SAMPLE_NAME = "coach"
+                polish._REPORT_ROWS = None
+                polish._REPORT_PEER_ROWS = None
+                polish_rows, polish_peers = polish.report_builder_rows()
+                self.assertEqual(polish_rows, builder_rows)
+                self.assertEqual(polish_peers, peer_rows)
+            finally:
+                (
+                    polish.REPORT_DATA_PATH,
+                    polish.METRICS_PATH,
+                    polish.PEERS_DIR,
+                    polish.PLAYER_SAMPLE_NAME,
+                    polish.COACH_SAMPLE_NAME,
+                    polish._REPORT_ROWS,
+                    polish._REPORT_PEER_ROWS,
+                ) = previous
 
     def test_report_data_1_0_0_is_rejected_at_builder_adapter_boundary(self) -> None:
         with self.assertRaisesRegex(ValueError, "1.0.1"):

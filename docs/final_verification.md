@@ -34,7 +34,7 @@ The public flow now has explicit stages and additive typed outputs:
 
 ```text
 configured raw inputs -> characterized legacy computation -> typed adapters
--> ReportData 1.0 -> report_view.v1 -> schema-gated static builder
+-> ReportData 1.0.1 -> report_view.v1 -> schema-gated static builder
 -> HTML/XLSX/assets + pipeline/asset manifests
 ```
 
@@ -61,7 +61,8 @@ rounded report values.
 
 ## Validation
 
-- `89` unit/characterization/integration tests: `OK`.
+- `95` unit/characterization/integration tests: `OK` (`7` protected/local
+  artifact cases skipped when their opt-in paths are absent).
 - Protected Bryan batting and pitching C3D golden baselines: exact.
 - Protected report HTML/artifact/XLSX baseline: exact, with the two previously
   characterized optional missing 2D images unchanged.
@@ -81,15 +82,17 @@ rounded report values.
    throwing; no unverified left-side generalization was introduced.
 2. Physical Vicon global X/Y meaning and vendor angle-channel semantics remain
    uncertain; the explicit legacy coordinate profile is preserved.
-3. HTML value binding still uses legacy CSV after ReportData validation, and
-   the final batting polish remains a compatibility pass. Removal requires two
+3. HTML and final-polish value binding now use ReportData 1.0.1. The final
+   batting polish itself remains a compatibility pass; removal requires two
    subjects to pass DOM, screenshot, PDF/PPTX and copy parity.
 4. Several visualization scripts still combine series calculation and drawing;
    ReportAsset ownership is stable, but series extraction requires additional
    chart-data golden fixtures.
-5. Some asset-to-metric/event links are unknown and intentionally empty.
-6. macOS `._*` AppleDouble sidecars exist outside Git and break unfiltered
-   `compileall`; final compilation intentionally targets Git-tracked sources.
+5. Canonical report assets now have explicit metric/event links; genuinely
+   unclassified extra assets remain intentionally unbound instead of guessed.
+6. macOS `._*` AppleDouble sidecars still break naked recursive `compileall`;
+   `tools/validate_sources.py` now validates only Git-tracked sources and is
+   sidecar-safe.
 7. The working tree contains user-owned report/builder/config changes and
    untracked `node_modules`; none were committed by this refactor.
 

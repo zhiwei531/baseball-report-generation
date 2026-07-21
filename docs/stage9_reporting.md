@@ -91,9 +91,9 @@ OK
 
 ## Known Issues
 
-1. HTML value binding still reads the legacy CSV after validating ReportData.
-   This preserves output while the remaining card-by-card renderer migration
-   is characterized.
+1. Resolved after Stage 9: the HTML builder and final polish bind batting,
+   coach-reference, and peer values from ReportData 1.0.1. Legacy CSV/peer
+   arguments remain fallback-compatible for direct historical invocations.
 2. `apply_batting_coach_values.py` remains a second in-place compatibility
    pass. It cannot be removed until its transformations are reproduced in one
    renderer and two subjects pass DOM/screenshot/export comparison.

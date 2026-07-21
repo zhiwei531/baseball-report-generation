@@ -323,6 +323,8 @@ def html_stage(args: argparse.Namespace, metrics: Path, report_data: Path) -> No
                 args.player_slug,
                 "--player-label",
                 args.player_label,
+                "--report-data",
+                report_data,
                 "--peers",
                 args.peers,
             ]
