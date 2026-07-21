@@ -97,6 +97,28 @@ class ComparisonRuleParityTests(unittest.TestCase):
 
 
 class StaticReportingBoundaryTests(unittest.TestCase):
+    def test_missing_optional_pitch_annotation_is_removed_without_reusing_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir)
+            existing = output / "assets" / "video_2d_alignment" / "existing.png"
+            existing.parent.mkdir(parents=True)
+            existing.write_bytes(b"png")
+            html = (
+                '<figure class="section-annotation"><img src="assets/video_2d_alignment/existing.png"></figure>'
+                '<figure class="section-annotation"><img src="assets/video_2d_alignment/missing.png"></figure>'
+            )
+            previous_out = pitching_builder.OUT_DIR
+            previous_assets = pitching_builder.ASSET_DIR
+            try:
+                pitching_builder.OUT_DIR = output
+                pitching_builder.ASSET_DIR = output / "assets"
+                cleaned = pitching_builder.remove_missing_annotation_figures(html)
+            finally:
+                pitching_builder.OUT_DIR = previous_out
+                pitching_builder.ASSET_DIR = previous_assets
+        self.assertIn("existing.png", cleaned)
+        self.assertNotIn("missing.png", cleaned)
+
     def test_bryan_template_tokens_are_not_stale_for_bryan(self) -> None:
         bryan_html = "球员Bryan assets/vicon_reconstruction_events/bryan_player_movement.gif"
         self.assertEqual(pitching_builder.stale_subject_references(bryan_html, "bryan"), [])

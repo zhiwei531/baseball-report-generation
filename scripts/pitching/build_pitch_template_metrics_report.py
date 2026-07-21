@@ -1478,6 +1478,23 @@ def remove_legacy_julian_assets() -> None:
             path.unlink()
 
 
+def remove_missing_annotation_figures(html_text: str) -> str:
+    """Do not leave a broken 2D annotation card when an asset is unavailable."""
+    if ASSET_DIR is None:
+        return html_text
+
+    def keep_existing(match: re.Match[str]) -> str:
+        source = match.group("source")
+        return match.group(0) if (OUT_DIR / source).is_file() else ""
+
+    return re.sub(
+        r'<figure class="section-annotation">\s*<img src="(?P<source>assets/[^"?]+)(?:\?[^"\']*)?"[^>]*>.*?</figure>',
+        keep_existing,
+        html_text,
+        flags=re.DOTALL,
+    )
+
+
 def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -> str:
     """Keep the reference DOM/CSS contract while rebinding every dynamic field."""
     html_text = template_html
@@ -1534,7 +1551,7 @@ def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -
         "球 marker": "球的位置", "同组区间": "乐风U9同组表现",
     }.items():
         html_text = html_text.replace(old, new)
-    return inject_pitch_card_styles(html_text)
+    return remove_missing_annotation_figures(inject_pitch_card_styles(html_text))
 
 
 def stale_subject_references(report_html: str, player_key: str) -> list[str]:
