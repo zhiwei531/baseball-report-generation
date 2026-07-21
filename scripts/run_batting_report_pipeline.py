@@ -292,6 +292,8 @@ def html_stage(args: argparse.Namespace, metrics: Path, report_data: Path) -> No
             args.peers,
             "--out",
             out_html,
+            "--pose3d",
+            args.report_dir / "vicon_2026_pose3d.csv",
             "--pitch-report",
             args.pitch_report,
             "--player-sample-name",

@@ -13,6 +13,8 @@
 - Follow-up: extracted batting bat-speed, bat-axis-angle, and five kinetic-chain
   time series into typed visualization data functions. The legacy builder now
   supplies those series to unchanged Pillow drawing functions.
+- The public batting pipeline now passes its report-local `vicon_2026_pose3d.csv`
+  explicitly to the builder instead of relying on the legacy Julian default.
 
 ## Files Added
 

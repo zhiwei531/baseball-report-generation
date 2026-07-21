@@ -5,15 +5,40 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from baseball_report.visualization.batting_series import (
     build_batting_time_series,
     build_kinetic_speed_series,
 )
 import build_julian_coach_metrics_section as legacy_builder
+import run_batting_report_pipeline as batting_pipeline
 
 
 class BattingVisualizationSeriesTests(unittest.TestCase):
+    def test_public_pipeline_passes_report_local_pose3d_to_builder(self) -> None:
+        args = SimpleNamespace(
+            report_dir=Path("reports/player"),
+            peers=Path("reports/player/metrics.csv"),
+            pitch_report=Path("reports/pitching/index.html"),
+            sample_name="player",
+            coach_sample_name="coach",
+            player_slug="player",
+            player_label="Player",
+            skip_final_schema=True,
+        )
+        commands: list[list[object]] = []
+        with patch.object(batting_pipeline, "run", side_effect=lambda command, **_kwargs: commands.append(command)):
+            batting_pipeline.html_stage(
+                args,
+                Path("reports/player/batting_dashboard_metrics.csv"),
+                Path("reports/player/analysis_report_data.json"),
+            )
+        command = commands[0]
+        pose_index = command.index("--pose3d")
+        self.assertEqual(command[pose_index + 1], Path("reports/player/vicon_2026_pose3d.csv"))
+
     def test_series_are_extracted_before_drawing_with_legacy_values(self) -> None:
         marker_points = {
             "Bat1": (0.0, 0.0, 1000.0),

@@ -61,7 +61,7 @@ rounded report values.
 
 ## Validation
 
-- `96` unit/characterization/integration tests: `OK` (`7` protected/local
+- `97` unit/characterization/integration tests: `OK` (`7` protected/local
   artifact cases skipped when their opt-in paths are absent).
 - Protected Bryan batting and pitching C3D golden baselines: exact.
 - Protected report HTML/artifact/XLSX baseline: exact, with the two previously

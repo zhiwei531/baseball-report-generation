@@ -2194,6 +2194,7 @@ def render(
 
 
 def main() -> None:
+    global DEFAULT_POSE3D
     parser = argparse.ArgumentParser(description="Build a standalone player-vs-coach batting report section.")
     parser.add_argument(
         "--metrics",
@@ -2208,6 +2209,12 @@ def main() -> None:
         help="Deprecated compatibility argument; peer data comes from --report-data.",
     )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--pose3d",
+        type=Path,
+        default=DEFAULT_POSE3D,
+        help="Pose3D marker CSV used to extract batting research chart series.",
+    )
     parser.add_argument(
         "--pitch-report",
         type=Path,
@@ -2225,6 +2232,7 @@ def main() -> None:
         help="Validated ReportData 1.0 contract for this rendering pass.",
     )
     args = parser.parse_args()
+    DEFAULT_POSE3D = args.pose3d
 
     report_payload = load_report_payload(args.report_data)
     expected_subjects = {
