@@ -73,7 +73,11 @@ def detect_2d(
         if "kGpuService" not in str(exc):
             raise
         cap.release()
-        return detect_2d_rtmpose(video_path, frame_indices)
+        return detect_2d_rtmpose(
+            video_path,
+            frame_indices,
+            model_path=model_path.with_name("rtmpose-m-wholebody.onnx"),
+        )
 
     with detector:
         frame_index = 0
@@ -125,6 +129,8 @@ RTMPOSE_COCO17 = dict(RTMPOSE_COCO17_TO_REPORT)
 def detect_2d_rtmpose(
     video_path: Path,
     frame_indices: set[int] | None = None,
+    *,
+    model_path: Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """CPU-only fallback for macOS sessions without an OpenGL pixel format.
 
@@ -134,7 +140,9 @@ def detect_2d_rtmpose(
     """
     from rtmlib import RTMPose
 
-    model = PROJECT_ROOT / "../baseball-analysis/models/rtmpose-m-wholebody.onnx"
+    model = model_path or DEFAULT_MODEL.with_name("rtmpose-m-wholebody.onnx")
+    if not model.is_file():
+        raise FileNotFoundError(f"RTMPose fallback model not found: {model}")
     cap, width, height, fps, frame_count = open_video(video_path)
     estimator = RTMPose(
         str(model.resolve()),

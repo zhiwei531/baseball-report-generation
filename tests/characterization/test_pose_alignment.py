@@ -82,8 +82,10 @@ class PoseAlignmentCharacterizationTests(unittest.TestCase):
 
     def test_rtmpose_fallback_duplicates_transport_points_and_keeps_z_blank(self) -> None:
         class FakeRTMPose:
-            def __init__(self, *_args: object, **_kwargs: object) -> None:
-                pass
+            model_path: str | None = None
+
+            def __init__(self, model_path: str, *_args: object, **_kwargs: object) -> None:
+                type(self).model_path = model_path
 
             def __call__(self, _frame: np.ndarray, **_kwargs: object) -> tuple[np.ndarray, np.ndarray]:
                 points = np.arange(34, dtype=float).reshape(1, 17, 2)
@@ -93,17 +95,52 @@ class PoseAlignmentCharacterizationTests(unittest.TestCase):
         fake_module = types.ModuleType("rtmlib")
         fake_module.RTMPose = FakeRTMPose  # type: ignore[attr-defined]
         cap = _FakeCapture([np.zeros((20, 10, 3), dtype=np.uint8)])
-        with (
-            patch.dict(sys.modules, {"rtmlib": fake_module}),
-            patch.object(alignment, "open_video", return_value=(cap, 10, 20, 25.0, 1)),
-        ):
-            rows, meta = alignment.detect_2d_rtmpose(Path("video.mp4"))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fallback_model = Path(temp_dir) / "rtmpose-m-wholebody.onnx"
+            fallback_model.write_bytes(b"fixture")
+            with (
+                patch.dict(sys.modules, {"rtmlib": fake_module}),
+                patch.object(alignment, "open_video", return_value=(cap, 10, 20, 25.0, 1)),
+            ):
+                rows, meta = alignment.detect_2d_rtmpose(
+                    Path("video.mp4"), model_path=fallback_model
+                )
         self.assertEqual(len(rows), 33)
         by_name = {row["landmark"]: row for row in rows}
         self.assertEqual(by_name["left_wrist"]["x_px"], by_name["left_pinky"]["x_px"])
         self.assertEqual(by_name["left_ankle"]["x_px"], by_name["left_heel"]["x_px"])
         self.assertTrue(all(row["z_norm"] == "" for row in rows))
         self.assertEqual(meta["pose_backend"], "rtmpose_cpu_fallback")
+        self.assertEqual(FakeRTMPose.model_path, str(fallback_model.resolve()))
+
+    def test_gpu_failure_resolves_fallback_beside_configured_model(self) -> None:
+        cap = _FakeCapture([])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = Path(temp_dir) / "pose_landmarker.task"
+            model.write_bytes(b"fixture")
+            expected_fallback = model.with_name("rtmpose-m-wholebody.onnx")
+            with (
+                patch.object(alignment, "open_video", return_value=(cap, 10, 20, 25.0, 1)),
+                patch.object(alignment, "BaseOptions", _FakeBaseOptions),
+                patch.object(alignment.vision, "PoseLandmarkerOptions", return_value=object()),
+                patch.object(
+                    alignment.vision.PoseLandmarker,
+                    "create_from_options",
+                    side_effect=RuntimeError('Service "kGpuService" unavailable'),
+                ),
+                patch.object(
+                    alignment,
+                    "detect_2d_rtmpose",
+                    return_value=([], {"pose_backend": "rtmpose_cpu_fallback"}),
+                ) as fallback,
+            ):
+                alignment.detect_2d(Path("video.mp4"), model)
+        fallback.assert_called_once_with(
+            Path("video.mp4"),
+            None,
+            model_path=expected_fallback,
+        )
+        self.assertTrue(cap.released)
 
     def test_alignment_uses_capture_fps_but_playback_fps_for_display_time(self) -> None:
         rows = [{"frame_index": index, "timestamp_sec": index / 100.0} for index in range(5)]
