@@ -97,6 +97,18 @@ class ComparisonRuleParityTests(unittest.TestCase):
 
 
 class StaticReportingBoundaryTests(unittest.TestCase):
+    def test_bryan_template_tokens_are_not_stale_for_bryan(self) -> None:
+        bryan_html = "球员Bryan assets/vicon_reconstruction_events/bryan_player_movement.gif"
+        self.assertEqual(pitching_builder.stale_subject_references(bryan_html, "bryan"), [])
+        self.assertEqual(
+            pitching_builder.stale_subject_references(bryan_html, "another_player"),
+            ["bryan_player_movement", "球员Bryan"],
+        )
+        self.assertEqual(
+            pitching_builder.stale_subject_references("球员Julian", "bryan"),
+            ["球员Julian"],
+        )
+
     def test_git_tracked_canonical_template_blob_is_frozen(self) -> None:
         html = subprocess.run(
             ["git", "show", f"HEAD:{CANONICAL_TEMPLATE_REPO_PATH}"],

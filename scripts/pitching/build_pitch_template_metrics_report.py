@@ -1537,6 +1537,13 @@ def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -
     return inject_pitch_card_styles(html_text)
 
 
+def stale_subject_references(report_html: str, player_key: str) -> list[str]:
+    candidates = ["球员Julian"]
+    if player_key != "bryan":
+        candidates.extend(["bryan_player_movement", "球员Bryan"])
+    return [token for token in candidates if token in report_html]
+
+
 def validate_template_contract(template_html: str, report_html: str) -> None:
     selectors = {
         "sections": r'<section\b',
@@ -1551,7 +1558,9 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
         actual = len(re.findall(pattern, report_html))
         if actual != expected:
             mismatches.append(f"{label}: expected {expected}, got {actual}")
-    stale = [token for token in ("bryan_player_movement", "球员Bryan", "球员Julian") if token in report_html]
+    # The template itself is Bryan's report, so Bryan references are expected
+    # when rebuilding Bryan. They are stale only for another active player.
+    stale = stale_subject_references(report_html, PLAYER_KEY)
     if stale:
         mismatches.append("stale subject references: " + ", ".join(stale))
     malformed_tokens = [token for token in ("<div<h4", "<h4><h4", ">lass=", "</h4>>") if token in report_html]
