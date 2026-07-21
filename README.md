@@ -1,9 +1,11 @@
 # baseball-report-generation
 
-Generate one Vicon baseball deliverable containing pitching and batting. The
-preferred report entry is `python -m baseball_report`; the legacy
-`scripts/report_cli.py` command remains a supported compatibility wrapper.
-Both execute pitching before embedding its assets in the batting report.
+Generate one Vicon baseball deliverable containing pitching and batting. New
+automation and operator documentation must use the packaged
+`python -m baseball_report` entry. The legacy `scripts/report_cli.py` command
+remains a compatibility wrapper while the characterized builders under
+`scripts/` are migrated behind the package boundary. Both entries execute
+pitching before embedding its assets in the batting report.
 
 > **Canonical workspace:** Run every report-generation command from this
 > `baseball-report-generation/` directory. Do **not** run from dated snapshot
@@ -64,6 +66,23 @@ configs/generated/bryan_coach_batting_pipeline.json
 configs/generated/bryan_coach_pitching_manifest.json
 ```
 
+### Public commands
+
+The package exposes only workflows that are implemented and covered by the
+current compatibility contract:
+
+| Goal | Command |
+| --- | --- |
+| Complete pitching + batting report | `python -m baseball_report final --config <final-config>` |
+| Pitching report only | `python -m baseball_report pitching --config <final-config>` |
+| Batting/combined report only | `python -m baseball_report batting --config <final-config>` |
+| Validate stable ReportData JSON | `python -m baseball_report validate-report --input <analysis-report-data.json>` |
+
+Use `PYTHONPATH=src` when running from a source checkout. Run
+`python -m baseball_report --help` or a subcommand with `--help` for the exact
+implemented flags. See [src/README.md](src/README.md) for package ownership and
+[scripts/README.md](scripts/README.md) for the compatibility boundary.
+
 ### Branden reproducible run
 
 Branden's reviewed inputs are checked in as:
@@ -81,7 +100,7 @@ Rebuild the complete deliverable with:
 ```bash
 MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
 XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report final \
   --config configs/generated/branden_final_report.json
 ```
 
@@ -125,21 +144,23 @@ batting metrics are present in `outputs/batting_metrics_excel/all_players`.
 
 ## Retry scopes
 
-Use only the public CLI executions below. `batting` requires the current
+Use only the packaged CLI executions below. `batting` requires the current
 `pitching.out_dir/index.html`; use `final` whenever a change affects both
 disciplines, timing, assets, or the merged deliverable.
 
 ```bash
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py pitching \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report pitching \
   --config configs/generated/<player_slug>_final_report.json
 
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py batting \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report batting \
   --config configs/generated/<player_slug>_final_report.json
 ```
 
 The lower-level builders in `scripts/` are implementation details for focused
-debugging only; they are not report-generation entries and must not be used to
-hand off a combined report.
+debugging only. `scripts/report_cli.py` is retained for callers that have not
+yet switched, but it should not be used in new automation. Lower-level scripts
+are not report-generation entries and must not be used to hand off a combined
+report.
 
 ## Report guarantees
 
@@ -152,8 +173,9 @@ hand off a combined report.
 - Validate the generated combined HTML, pitching HTML, researcher PNGs,
   alignment assets (when configured), and XLSX before handoff.
 
-See [scripts/README.md](scripts/README.md) for the public command contract and
-the packaged `skills/vicon-coach-report/` for the operational workflow.
+See [src/README.md](src/README.md) for package/module ownership,
+[scripts/README.md](scripts/README.md) for legacy-entry migration, and the
+packaged `skills/vicon-coach-report/` for the operational workflow.
 
 Validate the stable analysis/report contract independently:
 
