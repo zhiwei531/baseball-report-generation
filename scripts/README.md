@@ -1,17 +1,32 @@
-# Report commands
+# Compatibility scripts
 
-`report_cli.py` is the only public report-generation entry. Everything else in
-this directory is called by that entry or is an isolated diagnostic utility.
+New callers should use the package entry documented in
+[`../src/README.md`](../src/README.md):
+
+```bash
+PYTHONPATH=src python -m baseball_report <command> [options]
+```
+
+`report_cli.py` remains a supported compatibility target for existing callers.
+The package CLI currently delegates characterized orchestration to it, so its
+behavior and exit codes remain protected during migration. Everything else in
+this directory is an internal builder, adapter, orchestration layer, or
+isolated diagnostic utility unless explicitly documented otherwise.
 
 ## Supported executions
 
 Run from the repository root with a player-specific final config.
 
-| Goal | Command | Contract |
+| Goal | Preferred package command | Legacy compatibility command |
 | --- | --- | --- |
-| Build the complete pitching + batting deliverable | `python scripts/report_cli.py final --config configs/<player_slug>_final_report.json` | Default and required handoff path. Builds pitching first, then embeds its current HTML/assets in batting. |
-| Build/retry pitching | `python scripts/report_cli.py pitching --config configs/<player_slug>_final_report.json` | Produces `reports/pitching_<player_slug>_coach/index.html`, researcher figures, and configured pitching 2D QA. |
-| Build/retry batting | `python scripts/report_cli.py batting --config configs/<player_slug>_final_report.json` | Requires the current pitching `index.html`; creates the combined HTML, copied `pitch_assets/`, and XLSX. |
+| Build the complete pitching + batting deliverable | `PYTHONPATH=src python -m baseball_report final --config configs/<player_slug>_final_report.json` | `python scripts/report_cli.py final --config configs/<player_slug>_final_report.json` |
+| Build/retry pitching | `PYTHONPATH=src python -m baseball_report pitching --config configs/<player_slug>_final_report.json` | `python scripts/report_cli.py pitching --config configs/<player_slug>_final_report.json` |
+| Build/retry batting | `PYTHONPATH=src python -m baseball_report batting --config configs/<player_slug>_final_report.json` | `python scripts/report_cli.py batting --config configs/<player_slug>_final_report.json` |
+
+`final` is the default handoff path and builds pitching first. `pitching`
+produces the pitching HTML, metrics, researcher figures, and configured 2D QA.
+`batting` requires the current pitching `index.html` and produces the combined
+HTML, copied `pitch_assets/`, and XLSX.
 
 Add `--dry-run` to any execution to resolve and validate its config without
 creating directories or running a producer. The summary includes the final,
@@ -44,7 +59,7 @@ The following complete command was used for Branden from the repository root:
 ```bash
 MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
 XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report final \
   --config configs/generated/branden_final_report.json
 ```
 
@@ -88,13 +103,14 @@ trajectory field from failing at the standard 128 KiB parser limit.
 orchestration/implementation layers. Pitching builders, chart generators, and
 2D alignment helpers are likewise internal. Run them only for focused
 diagnosis after the public execution has established the required upstream
-artifacts; always finish by rerunning the appropriate `report_cli.py`
-execution.
+artifacts; always finish by rerunning the appropriate
+`python -m baseball_report` execution.
 
 `export_report_from_html.mjs` is an optional post-generation HTML-to-PDF/PPTX
 exporter, not a report builder. Use `--help` for its explicit input and output
 arguments.
 
 For configuration, metrics, assets, and validation requirements, see
+[`../src/README.md`](../src/README.md),
 [`../skills/vicon-coach-report/SKILL.md`](../skills/vicon-coach-report/SKILL.md)
 and [`../skills/vicon-coach-report/references/report-format.md`](../skills/vicon-coach-report/references/report-format.md).
