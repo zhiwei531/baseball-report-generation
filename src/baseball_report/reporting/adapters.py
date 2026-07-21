@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -89,6 +90,7 @@ def build_report_data_from_legacy(
     events = tuple(event for bundle in bundles for event in bundle.events.events.values())
     metrics = tuple(metric for bundle in bundles for metric in bundle.metrics)
     comparisons = _build_comparisons(bundles, all_bundles)
+    bound_assets = _bind_assets(assets, motions, metrics, events)
     warnings: list[AnalysisWarning] = []
     for report in adapted_reports:
         warnings.extend(report.warnings)
@@ -116,6 +118,12 @@ def build_report_data_from_legacy(
                     if metric.components.get("contract_scope") != "auxiliary"
                 ),
                 event_ids=_unique(event.event_id for bundle in selected for event in bundle.events.events.values()),
+                asset_ids=tuple(
+                    asset.asset_id
+                    for asset in bound_assets
+                    if set(asset.sequence_ids)
+                    & {bundle.sequence_id for bundle in selected}
+                ),
                 metadata={"sequence_ids": [bundle.sequence_id for bundle in selected]},
             )
         )
@@ -131,7 +139,7 @@ def build_report_data_from_legacy(
         metrics=metrics,
         comparisons=comparisons,
         charts=(),
-        assets=tuple(assets),
+        assets=bound_assets,
         sections=tuple(sections),
         warnings=tuple(warnings),
         provenance=Provenance(
@@ -152,6 +160,45 @@ def _bundle_matches(bundle: LegacyAnalysisBundle, selected_keys: set[str]) -> bo
         str(bundle.metadata.get("name") or ""),
     }
     return any(candidate.strip().casefold() in selected_keys for candidate in candidates if candidate.strip())
+
+
+def _bind_assets(
+    assets: Sequence[ReportAsset],
+    motions: Sequence[MotionMetadata],
+    metrics: Sequence[object],
+    events: Sequence[object],
+) -> tuple[ReportAsset, ...]:
+    sequence_ids_by_motion = {
+        motion_type: tuple(
+            motion.sequence_id for motion in motions if motion.motion_type == motion_type
+        )
+        for motion_type in MotionType
+    }
+    metric_by_id = {str(getattr(metric, "metric_id")): metric for metric in metrics}
+    available_event_ids = {str(getattr(event, "event_id")) for event in events}
+    bound: list[ReportAsset] = []
+    for asset in assets:
+        scope_value = asset.metadata.get("motion_scope")
+        try:
+            scope = MotionType(str(scope_value)) if scope_value else None
+        except ValueError:
+            scope = None
+        metric_ids = tuple(metric_id for metric_id in asset.metric_ids if metric_id in metric_by_id)
+        event_ids = list(event_id for event_id in asset.event_ids if event_id in available_event_ids)
+        for metric_id in metric_ids:
+            metric_event = getattr(metric_by_id[metric_id], "event_id", None)
+            if metric_event in available_event_ids and metric_event not in event_ids:
+                event_ids.append(metric_event)
+        sequence_ids = sequence_ids_by_motion.get(scope, ()) if scope is not None else ()
+        bound.append(
+            replace(
+                asset,
+                sequence_ids=sequence_ids,
+                metric_ids=metric_ids,
+                event_ids=tuple(event_ids),
+            )
+        )
+    return tuple(bound)
 
 
 def _bundle_role(bundle: LegacyAnalysisBundle) -> str:

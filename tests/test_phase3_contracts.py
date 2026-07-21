@@ -302,6 +302,16 @@ class LegacyAdapterTests(unittest.TestCase):
             subject_id="player",
             subject_display_name="Player",
             subject_keys=("player",),
+            assets=(
+                ReportAsset(
+                    asset_id="release-speed-chart",
+                    kind="image",
+                    file_ref="assets/release-speed.png",
+                    mime_type="image/png",
+                    metric_ids=("hand_speed_kmh", "not_available"),
+                    metadata={"motion_scope": "pitching"},
+                ),
+            ),
         )
         self.assertEqual([motion.sequence_id for motion in report.motions], ["player"])
         self.assertEqual({metric.sequence_id for metric in report.metrics}, {"player"})
@@ -313,6 +323,10 @@ class LegacyAdapterTests(unittest.TestCase):
         self.assertEqual(comparison.group_max, 50.0)
         self.assertEqual(comparison.difference, -10.0)
         self.assertEqual(comparison.included_subject_ids, ("player",))
+        self.assertEqual(report.assets[0].sequence_ids, ("player",))
+        self.assertEqual(report.assets[0].metric_ids, ("hand_speed_kmh",))
+        self.assertEqual(report.assets[0].event_ids, ("release",))
+        self.assertEqual(report.sections[0].asset_ids, ("release-speed-chart",))
         view = compose_report_view(report)
         self.assertEqual(view["schema_version"], "report_view.v1")
         section = view["sections"][0]
