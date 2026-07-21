@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import csv
 import argparse
 import importlib.util
 import re
 import sys
 from pathlib import Path
 
+from baseball_report.reporting.legacy_rows import batting_builder_rows_from_payload
+from baseball_report.reporting.validation import load_report_payload
 from pitching.player_card_contract import (
     extract_combined_player_pitch,
     pitch_reference_count,
@@ -21,6 +22,9 @@ METRICS_PATH = REPORT_DIR / "batting_dashboard_metrics.csv"
 POSE3D_PATH = REPORT_DIR / "vicon_2026_pose3d.csv"
 PEERS_DIR = PROJECT_DIR / "outputs" / "batting_metrics_excel" / "all_players"
 BUILDER_PATH = PROJECT_DIR / "scripts" / "build_julian_coach_metrics_section.py"
+REPORT_DATA_PATH: Path | None = None
+_REPORT_ROWS: list[dict[str, str]] | None = None
+_REPORT_PEER_ROWS: list[dict[str, object]] | None = None
 PLAYER_SAMPLE_NAME = "julian"
 COACH_SAMPLE_NAME = "coach"
 PLAYER_SLUG = "julian"
@@ -202,13 +206,31 @@ def axis_text(text: str, unit: str | None) -> str:
     return f"{split_axis_number(text, unit)} {axis_unit_label(unit)}".strip()
 
 
+def report_builder_rows() -> tuple[list[dict[str, str]], list[dict[str, object]]]:
+    global _REPORT_ROWS, _REPORT_PEER_ROWS
+    if _REPORT_ROWS is not None and _REPORT_PEER_ROWS is not None:
+        return _REPORT_ROWS, _REPORT_PEER_ROWS
+    if REPORT_DATA_PATH is not None:
+        payload = load_report_payload(REPORT_DATA_PATH)
+        _REPORT_ROWS, _REPORT_PEER_ROWS = batting_builder_rows_from_payload(
+            payload,
+            player_sample_name=PLAYER_SAMPLE_NAME,
+            coach_sample_name=COACH_SAMPLE_NAME,
+        )
+    else:
+        builder = load_builder_module()
+        _REPORT_ROWS = builder.read_csv(METRICS_PATH)
+        _REPORT_PEER_ROWS = builder.read_peer_metrics(PEERS_DIR)
+    return _REPORT_ROWS, _REPORT_PEER_ROWS
+
+
 def metric_units() -> dict[str, str]:
     units: dict[str, str] = {}
-    with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            key = row.get("metric_key") or ""
-            if key in PLAYER_CARD_METRIC_KEYS:
-                units[key] = row.get("unit") or ""
+    rows, _peer_rows = report_builder_rows()
+    for row in rows:
+        key = row.get("metric_key") or ""
+        if key in PLAYER_CARD_METRIC_KEYS:
+            units[key] = row.get("unit") or ""
     missing = [key for key in PLAYER_CARD_METRIC_KEYS if key not in units]
     if missing:
         raise RuntimeError(f"Missing metric units: {', '.join(missing)}")
@@ -217,17 +239,17 @@ def metric_units() -> dict[str, str]:
 
 def player_metric_values() -> dict[str, float]:
     values: dict[str, float] = {}
-    with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row.get("sample_name") != PLAYER_SAMPLE_NAME:
-                continue
-            key = row.get("metric_key") or ""
-            if key not in PLAYER_CARD_METRIC_KEYS:
-                continue
-            try:
-                values[key] = float(row.get("value") or "")
-            except ValueError:
-                continue
+    rows, _peer_rows = report_builder_rows()
+    for row in rows:
+        if row.get("sample_name") != PLAYER_SAMPLE_NAME:
+            continue
+        key = row.get("metric_key") or ""
+        if key not in PLAYER_CARD_METRIC_KEYS:
+            continue
+        try:
+            values[key] = float(row.get("value") or "")
+        except ValueError:
+            continue
     missing = [key for key in PLAYER_CARD_METRIC_KEYS if key not in values]
     if missing:
         raise RuntimeError(f"Missing player metric values: {', '.join(missing)}")
@@ -236,7 +258,7 @@ def player_metric_values() -> dict[str, float]:
 
 def peer_metric_bounds() -> dict[str, tuple[float, float]]:
     builder = load_builder_module()
-    peer_rows = builder.read_peer_metrics(PEERS_DIR)
+    _rows, peer_rows = report_builder_rows()
     bounds: dict[str, tuple[float, float]] = {}
     for key in PLAYER_CARD_METRIC_KEYS:
         peer_values = builder.peer_metric_values_for(key, peer_rows)
@@ -256,13 +278,13 @@ def marker_position(value: float, low: float, high: float) -> float:
 
 def coach_values() -> dict[str, str]:
     values: dict[str, str] = {}
-    with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row.get("sample_name") != COACH_SAMPLE_NAME:
-                continue
-            key = row.get("metric_key") or ""
-            if key in PLAYER_CARD_METRIC_KEYS:
-                values[key] = fmt(row.get("value"), row.get("unit"))
+    rows, _peer_rows = report_builder_rows()
+    for row in rows:
+        if row.get("sample_name") != COACH_SAMPLE_NAME:
+            continue
+        key = row.get("metric_key") or ""
+        if key in PLAYER_CARD_METRIC_KEYS:
+            values[key] = fmt(row.get("value"), row.get("unit"))
     missing = [key for key in PLAYER_CARD_METRIC_KEYS if key not in values]
     if missing:
         raise RuntimeError(f"Missing coach metric values: {', '.join(missing)}")
@@ -270,18 +292,18 @@ def coach_values() -> dict[str, str]:
 
 
 def sample_metric_rows(sample_name: str) -> dict[str, dict[str, str]]:
-    rows: dict[str, dict[str, str]] = {}
-    with METRICS_PATH.open(newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row.get("sample_name") != sample_name:
-                continue
-            key = row.get("metric_key") or ""
-            if key in PLAYER_CARD_METRIC_KEYS:
-                rows[key] = row
-    missing = [key for key in PLAYER_CARD_METRIC_KEYS if key not in rows]
+    metric_rows: dict[str, dict[str, str]] = {}
+    rows, _peer_rows = report_builder_rows()
+    for row in rows:
+        if row.get("sample_name") != sample_name:
+            continue
+        key = row.get("metric_key") or ""
+        if key in PLAYER_CARD_METRIC_KEYS:
+            metric_rows[key] = row
+    missing = [key for key in PLAYER_CARD_METRIC_KEYS if key not in metric_rows]
     if missing:
         raise RuntimeError(f"Missing {sample_name} metric rows: {', '.join(missing)}")
-    return rows
+    return metric_rows
 
 
 def update_player_batting_statuses(html: str) -> str:
@@ -696,7 +718,7 @@ def regenerate_research_assets() -> None:
     builder.ACTIVE_COACH_SAMPLE = COACH_SAMPLE_NAME
     builder.ACTIVE_PLAYER_SLUG = PLAYER_SLUG
     builder.ACTIVE_PLAYER_LABEL = PLAYER_LABEL
-    rows = builder.read_csv(METRICS_PATH)
+    rows, _peer_rows = report_builder_rows()
     by_sample: dict[str, dict[str, dict[str, str]]] = {}
     for row in rows:
         by_sample.setdefault(row["sample_name"], {})[row["metric_key"]] = row
@@ -797,6 +819,7 @@ def update_bat_speed_copy(html: str) -> str:
 def main() -> None:
     global REPORT_DIR, HTML_PATH, METRICS_PATH, POSE3D_PATH, PEERS_DIR, BUILDER_PATH
     global PLAYER_SAMPLE_NAME, COACH_SAMPLE_NAME, PLAYER_SLUG, PLAYER_LABEL
+    global REPORT_DATA_PATH, _REPORT_ROWS, _REPORT_PEER_ROWS
 
     parser = argparse.ArgumentParser(
         description="Apply the final vicon_2026_julian_coach 4 schema polish to a generated metrics section."
@@ -807,6 +830,12 @@ def main() -> None:
     parser.add_argument("--pose3d", type=Path, default=None)
     parser.add_argument("--peers", type=Path, default=PEERS_DIR)
     parser.add_argument("--builder", type=Path, default=BUILDER_PATH)
+    parser.add_argument(
+        "--report-data",
+        type=Path,
+        default=None,
+        help="Preferred ReportData 1.0.1 source; legacy metric/peer inputs remain fallback-only.",
+    )
     parser.add_argument("--player-sample-name", default=PLAYER_SAMPLE_NAME)
     parser.add_argument("--coach-sample-name", default=COACH_SAMPLE_NAME)
     parser.add_argument("--player-slug", default=PLAYER_SLUG)
@@ -819,6 +848,9 @@ def main() -> None:
     POSE3D_PATH = args.pose3d or REPORT_DIR / "vicon_2026_pose3d.csv"
     PEERS_DIR = args.peers
     BUILDER_PATH = args.builder
+    REPORT_DATA_PATH = args.report_data
+    _REPORT_ROWS = None
+    _REPORT_PEER_ROWS = None
     PLAYER_SAMPLE_NAME = args.player_sample_name
     COACH_SAMPLE_NAME = args.coach_sample_name
     PLAYER_SLUG = args.player_slug

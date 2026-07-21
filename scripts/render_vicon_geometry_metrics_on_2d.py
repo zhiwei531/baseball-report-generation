@@ -12,6 +12,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from point_mappings import POSE_GEOMETRY_CONNECTIONS
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ALIGN_DIR = ROOT / "outputs" / "julian_bat_2d_vicon_alignment"
@@ -91,24 +93,7 @@ METRIC_EN = {
     "contact_front_knee_flexion_deg": "Vicon 3D value | Front knee flexion",
 }
 
-SKELETON_CONNECTIONS = [
-    ("left_shoulder", "right_shoulder"),
-    ("left_hip", "right_hip"),
-    ("left_shoulder", "left_hip"),
-    ("right_shoulder", "right_hip"),
-    ("left_shoulder", "left_elbow"),
-    ("left_elbow", "left_wrist"),
-    ("right_shoulder", "right_elbow"),
-    ("right_elbow", "right_wrist"),
-    ("left_hip", "left_knee"),
-    ("left_knee", "left_ankle"),
-    ("right_hip", "right_knee"),
-    ("right_knee", "right_ankle"),
-    ("left_ankle", "left_heel"),
-    ("left_heel", "left_foot_index"),
-    ("right_ankle", "right_heel"),
-    ("right_heel", "right_foot_index"),
-]
+SKELETON_CONNECTIONS = list(POSE_GEOMETRY_CONNECTIONS)
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:

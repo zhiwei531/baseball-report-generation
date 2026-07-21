@@ -19,6 +19,13 @@ import numpy as np
 from PIL import Image
 
 from build_vicon_2026_metrics import C3DTrial, clean_label, infer_action, is_reconstruction_point, read_c3d, trial_id
+from point_mappings import (
+    VICON_BAT_MARKERS,
+    VICON_BODY_SEGMENTS,
+    VICON_FOOT_MARKERS,
+    VICON_RAW_MARKER_PARTS,
+    VICON_RAW_MARKERS,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,71 +57,14 @@ TRAJECTORY_COLOR = "#666666"
 BODY_SURFACE_ALPHA = 0.035
 LABEL_COLOR = "#1f2937"
 BAT_LABEL_COLOR = "#0f6b0f"
-BODY_SEGMENTS = [
-    ("C7", "T10", "躯干"),
-    ("C7", "CLAV", "躯干"),
-    ("CLAV", "STRN", "躯干"),
-    ("STRN", "T10", "躯干"),
-    ("T10", "RBAK", "躯干"),
-    ("LSHO", "RSHO", "躯干"),
-    ("LSHO", "C7", "躯干"),
-    ("RSHO", "C7", "躯干"),
-    ("LASI", "RASI", "骨盆"),
-    ("LASI", "LPSI", "骨盆"),
-    ("RASI", "RPSI", "骨盆"),
-    ("LPSI", "RPSI", "骨盆"),
-    ("LSHO", "LUPA", "左臂"),
-    ("LUPA", "LELB", "左臂"),
-    ("LELB", "LFRM", "左臂"),
-    ("LFRM", "LWRA", "左臂"),
-    ("LFRM", "LWRB", "左臂"),
-    ("LWRA", "LWRB", "左臂"),
-    ("LELB", "LWRB", "左臂"),
-    ("LWRA", "LFIN", "左臂"),
-    ("LWRB", "LFIN", "左臂"),
-    ("RSHO", "RUPA", "右臂"),
-    ("RUPA", "RELB", "右臂"),
-    ("RELB", "RFRM", "右臂"),
-    ("RFRM", "RWRA", "右臂"),
-    ("RFRM", "RWRB", "右臂"),
-    ("RWRA", "RWRB", "右臂"),
-    ("RELB", "RWRB", "右臂"),
-    ("RWRA", "RFIN", "右臂"),
-    ("RWRB", "RFIN", "右臂"),
-    ("LASI", "LTHI", "左腿"),
-    ("LTHI", "LKNE", "左腿"),
-    ("LKNE", "LTIB", "左腿"),
-    ("LTIB", "LANK", "左腿"),
-    ("LANK", "LHEE", "左腿"),
-    ("LANK", "LTOE", "左腿"),
-    ("LHEE", "LTOE", "左腿"),
-    ("RASI", "RTHI", "右腿"),
-    ("RTHI", "RKNE", "右腿"),
-    ("RKNE", "RTIB", "右腿"),
-    ("RTIB", "RANK", "右腿"),
-    ("RANK", "RHEE", "右腿"),
-    ("RANK", "RTOE", "右腿"),
-    ("RHEE", "RTOE", "右腿"),
-]
-BAT_MARKERS = ["Bat1", "Bat2", "Bat3", "Bat4", "Bat5"]
+# Mutable compatibility aliases keep the existing renderer API while the
+# authoritative labels live in point_mappings.py.
+BODY_SEGMENTS = list(VICON_BODY_SEGMENTS)
+BAT_MARKERS = list(VICON_BAT_MARKERS)
 LABEL_POINTS: list[str] = []
-FOOT_MARKERS = {"LANK", "LHEE", "LTOE", "RANK", "RHEE", "RTOE"}
-RAW_MARKERS = {
-    "LFHD", "RFHD", "LBHD", "RBHD", "C7", "T10", "CLAV", "STRN", "RBAK",
-    "LSHO", "LUPA", "LELB", "LFRM", "LWRA", "LWRB", "LFIN",
-    "RSHO", "RUPA", "RELB", "RFRM", "RWRA", "RWRB", "RFIN",
-    "LASI", "RASI", "LPSI", "RPSI", "LTHI", "LKNE", "LTIB", "LANK", "LHEE", "LTOE",
-    "RTHI", "RKNE", "RTIB", "RANK", "RHEE", "RTOE",
-}
-RAW_MARKER_PARTS = {
-    "头颈": {"LFHD", "RFHD", "LBHD", "RBHD"},
-    "躯干": {"C7", "T10", "CLAV", "STRN", "RBAK"},
-    "左臂": {"LSHO", "LUPA", "LELB", "LFRM", "LWRA", "LWRB", "LFIN"},
-    "右臂": {"RSHO", "RUPA", "RELB", "RFRM", "RWRA", "RWRB", "RFIN"},
-    "骨盆": {"LASI", "RASI", "LPSI", "RPSI"},
-    "左腿": {"LTHI", "LKNE", "LTIB", "LANK", "LHEE", "LTOE"},
-    "右腿": {"RTHI", "RKNE", "RTIB", "RANK", "RHEE", "RTOE"},
-}
+FOOT_MARKERS = set(VICON_FOOT_MARKERS)
+RAW_MARKERS = set(VICON_RAW_MARKERS)
+RAW_MARKER_PARTS = {part: set(labels) for part, labels in VICON_RAW_MARKER_PARTS.items()}
 ZH_FONT_PATHS = [
     Path("/System/Library/Fonts/PingFang.ttc"),
     Path("/System/Library/Fonts/STHeiti Medium.ttc"),

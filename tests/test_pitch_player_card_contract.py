@@ -1,12 +1,6 @@
-import sys
 import unittest
-from pathlib import Path
 
-
-SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-sys.path.insert(0, str(SCRIPTS))
-
-from pitching.player_card_contract import (  # noqa: E402
+from pitching.player_card_contract import (
     COACH_VIEW_HEADING,
     PLAYER_PITCH_HEADING,
     extract_combined_player_pitch,

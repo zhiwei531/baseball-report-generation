@@ -1,0 +1,49 @@
+{
+  "schema_version": "characterization.v1",
+  "case_id": "synthetic_batting_a",
+  "structure_sha256": "4b6b2d00a6610b29780d2f562028b507eade053c75084ba5e967d68a27302473",
+  "metric_values": {
+    "ready_com_height_ratio": 0.5294117647058824,
+    "ready_rear_hip_flexion_deg": 11.59411864520311,
+    "ready_rear_knee_flexion_deg": 0.477056248832497,
+    "ready_hip_shoulder_separation_deg": 0.0,
+    "ready_bat_tilt_deg": 11.309932474020213,
+    "ready_hand_height_ratio": 0.6470588235294118,
+    "contact_bat_speed_kmh": 18.418016618338186,
+    "contact_attack_angle_deg": -3.9628178306146196,
+    "contact_pelvis_rotation_open_deg": 0.0,
+    "contact_torso_rotation_open_deg": 0.0,
+    "contact_front_knee_flexion_deg": 0.477056248832497,
+    "ready_to_contact_head_displacement_mm": 0.0,
+    "coach_high_com_risk_index": 66.93501550708093,
+    "coach_rear_elbow_height_diff_mm": -200.0,
+    "coach_bat_loading_angle_to_catcher_deg": 0.0,
+    "coach_rollover_forearm_roll_velocity_deg_s": 0.0,
+    "coach_hitting_zone_stability_score": 61.85661702488464
+  },
+  "units": {
+    "ready_com_height_ratio": "height_ratio",
+    "ready_rear_hip_flexion_deg": "deg",
+    "ready_rear_knee_flexion_deg": "deg",
+    "ready_hip_shoulder_separation_deg": "deg",
+    "ready_bat_tilt_deg": "deg",
+    "ready_hand_height_ratio": "height_ratio",
+    "contact_bat_speed_kmh": "km/h",
+    "contact_attack_angle_deg": "deg",
+    "contact_pelvis_rotation_open_deg": "deg",
+    "contact_torso_rotation_open_deg": "deg",
+    "contact_front_knee_flexion_deg": "deg",
+    "ready_to_contact_head_displacement_mm": "mm",
+    "coach_high_com_risk_index": "0-100 risk",
+    "coach_rear_elbow_height_diff_mm": "mm",
+    "coach_bat_loading_angle_to_catcher_deg": "deg",
+    "coach_rollover_forearm_roll_velocity_deg_s": "deg/s",
+    "coach_hitting_zone_stability_score": "0-100 score"
+  },
+  "events": {
+    "Ready Position": "1;2;3;4;5",
+    "Contact Position": "38;39;40;41;42",
+    "Ready to Contact": "38;39;40;41;42",
+    "High-Speed Hitting Zone": "31;32;33;34;47;48;49;50"
+  }
+}

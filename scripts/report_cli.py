@@ -3,92 +3,58 @@ from __future__ import annotations
 """Public report executions: pitching, batting, and their final orchestration."""
 
 import argparse
-import json
-import os
-import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+
+from pipeline_config import (
+    FinalReportConfig,
+    PreflightResult,
+    load_final_report_config,
+    load_pitching_manifest,
+    plot_environment,
+    preflight_final_report,
+)
+from pipeline_runtime import (
+    StageExecutionResult,
+    configure_logging,
+    run_command_stage,
+    write_pipeline_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PIPELINE_STAGES: list[StageExecutionResult] = []
 
 
 def run(command: list[str], *, env: dict[str, str]) -> None:
-    print("+", " ".join(str(part) for part in command))
-    subprocess.run([str(part) for part in command], cwd=ROOT, check=True, env=env)
-
-
-def resolve_path(value: str, *, root: Path) -> Path:
-    path = Path(value).expanduser()
-    return path.resolve() if path.is_absolute() else (root / path).resolve()
-
-
-def required(mapping: dict[str, Any], key: str) -> str:
-    value = mapping.get(key)
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"Missing required final report config field: {key}")
-    return value
-
-
-@dataclass(frozen=True)
-class FinalReportConfig:
-    root: Path
-    batting_config: Path
-    pitching_manifest: Path
-    pitching_template_dir: Path
-    pitching_out_dir: Path
-    pitching_previous_assets: Path | None
-    pitching_alignment: dict[str, Any] | None
-
-    @property
-    def pitch_html(self) -> Path:
-        return self.pitching_out_dir / "index.html"
-
-
-def load_config(path: Path) -> FinalReportConfig:
-    config_path = path.expanduser().resolve()
-    data = json.loads(config_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError(f"Final report config must be a JSON object: {config_path}")
-    root = resolve_path(str(data.get("root_dir", ".")), root=ROOT)
-    pitching = data.get("pitching")
-    if not isinstance(pitching, dict):
-        raise ValueError("Missing required final report config object: pitching")
-    previous_assets = pitching.get("previous_assets")
-    alignment = pitching.get("alignment")
-    if alignment is not None and not isinstance(alignment, dict):
-        raise ValueError("pitching.alignment must be an object when provided")
-    return FinalReportConfig(
-        root=root,
-        batting_config=resolve_path(required(data, "batting_config"), root=root),
-        pitching_manifest=resolve_path(required(pitching, "manifest"), root=root),
-        pitching_template_dir=resolve_path(required(pitching, "template_dir"), root=root),
-        pitching_out_dir=resolve_path(required(pitching, "out_dir"), root=root),
-        pitching_previous_assets=resolve_path(str(previous_assets), root=root) if previous_assets else None,
-        pitching_alignment=alignment,
+    executable = Path(str(command[1] if len(command) > 1 else command[0])).stem
+    PIPELINE_STAGES.append(
+        run_command_stage(executable, command, cwd=ROOT, env=env)
     )
 
 
+def load_config(path: Path) -> FinalReportConfig:
+    """Compatibility wrapper for callers of the original Stage 0 loader."""
+    return load_final_report_config(path)
+
+
 def execution_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
-    env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
-    return env
+    """Compatibility name for the shared plotting/cache environment."""
+    return plot_environment()
 
 
 def pitching_player_key(manifest_path: Path) -> str:
-    data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    rows = data.get("athletes") if isinstance(data, dict) else data
-    if not isinstance(rows, list):
-        raise ValueError(f"Pitching manifest does not contain an athletes list: {manifest_path}")
-    for row in rows:
-        if isinstance(row, dict) and row.get("role") == "student":
-            key = str(row.get("key") or "").strip()
-            if key and key != "coach":
-                return key
-    raise ValueError(f"Pitching manifest does not contain a student athlete: {manifest_path}")
+    return load_pitching_manifest(manifest_path).player.key
+
+
+def print_preflight(result: PreflightResult) -> None:
+    print(f"Preflight: {result.execution}")
+    for label, path in result.resolved_paths:
+        print(f"  {label}: {path}")
+    for warning in result.warnings:
+        print(f"  WARNING: {warning}")
+    if result.ok:
+        print("  status: ready")
 
 
 def require_outputs(paths: list[Path], stage: str) -> None:
@@ -138,22 +104,23 @@ def execute_pitching(config: FinalReportConfig, *, skip_alignment: bool) -> None
     alignment = config.pitching_alignment
     if alignment is None or skip_alignment:
         return
-    alignment_out_dir = resolve_path(required(alignment, "out_dir"), root=config.root)
+    alignment_out_dir = alignment.out_dir
     command = [
         sys.executable,
         "scripts/pitching/run_vicon_2d_alignment.py",
-        "--video", resolve_path(required(alignment, "video"), root=config.root),
-        "--c3d", resolve_path(required(alignment, "c3d"), root=config.root),
-        "--model", resolve_path(required(alignment, "model"), root=config.root),
+        "--video", alignment.video,
+        "--c3d", alignment.c3d,
+        "--model", alignment.model,
         "--out-dir", alignment_out_dir,
-        "--player-slug", required(alignment, "player_slug"),
-        "--player-label", required(alignment, "player_label"),
-        "--video-capture-fps", str(alignment["video_capture_fps"]),
-        "--video-event-frame", str(alignment["video_event_frame"]),
+        "--player-slug", alignment.player_slug,
+        "--player-label", alignment.player_label,
+        "--video-capture-fps", str(alignment.video_capture_fps),
+        "--video-event-frame", str(alignment.video_event_frame),
     ]
     for key in ("min_visibility", "sample_step", "max_frames"):
-        if key in alignment:
-            command.extend(["--" + key.replace("_", "-"), str(alignment[key])])
+        value = getattr(alignment, key)
+        if value is not None:
+            command.extend(["--" + key.replace("_", "-"), str(value)])
     run(command, env=env)
     geometry_dir = config.pitching_out_dir / "assets" / "video_2d_alignment"
     run(
@@ -205,10 +172,28 @@ def main() -> None:
     ):
         child = sub.add_parser(name, help=help_text)
         child.add_argument("--config", required=True, type=Path, help="Combined final-report JSON config.")
+        child.add_argument("--log-level", default="INFO")
+        child.add_argument("--run-manifest", type=Path, default=None)
+        child.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Resolve and validate configuration without generating or modifying outputs.",
+        )
         if name in {"pitching", "final"}:
             child.add_argument("--skip-pitching-alignment", action="store_true")
     args = parser.parse_args()
+    configure_logging(args.log_level)
+    PIPELINE_STAGES.clear()
     config = load_config(args.config)
+    result = preflight_final_report(
+        config,
+        execution=args.execution,
+        skip_pitching_alignment=getattr(args, "skip_pitching_alignment", False),
+    )
+    print_preflight(result)
+    result.require_valid()
+    if args.dry_run:
+        return
 
     if args.execution == "pitching":
         execute_pitching(config, skip_alignment=args.skip_pitching_alignment)
@@ -217,6 +202,18 @@ def main() -> None:
     else:
         execute_pitching(config, skip_alignment=args.skip_pitching_alignment)
         execute_batting(config)
+
+    if PIPELINE_STAGES:
+        manifest_path = args.run_manifest or config.pitching_out_dir / f"{args.execution}_pipeline_run.json"
+        write_pipeline_manifest(
+            manifest_path,
+            pipeline_name=f"report_{args.execution}",
+            stages=PIPELINE_STAGES,
+            metadata={
+                "config": str(config.config_path),
+                "pitching_out_dir": str(config.pitching_out_dir),
+            },
+        )
 
 
 if __name__ == "__main__":

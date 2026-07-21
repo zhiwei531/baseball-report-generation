@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+
+MAPPING_VERSION = "legacy_v1"
+
+MEDIAPIPE_LANDMARK_NAMES = (
+    "nose",
+    "left_eye_inner",
+    "left_eye",
+    "left_eye_outer",
+    "right_eye_inner",
+    "right_eye",
+    "right_eye_outer",
+    "left_ear",
+    "right_ear",
+    "mouth_left",
+    "mouth_right",
+    "left_shoulder",
+    "right_shoulder",
+    "left_elbow",
+    "right_elbow",
+    "left_wrist",
+    "right_wrist",
+    "left_pinky",
+    "right_pinky",
+    "left_index",
+    "right_index",
+    "left_thumb",
+    "right_thumb",
+    "left_hip",
+    "right_hip",
+    "left_knee",
+    "right_knee",
+    "left_ankle",
+    "right_ankle",
+    "left_heel",
+    "right_heel",
+    "left_foot_index",
+    "right_foot_index",
+)
+
+RTMPOSE_COCO17_TO_REPORT = {
+    "nose": 0,
+    "left_eye_inner": 1,
+    "left_eye": 1,
+    "left_eye_outer": 1,
+    "right_eye_inner": 2,
+    "right_eye": 2,
+    "right_eye_outer": 2,
+    "left_ear": 3,
+    "right_ear": 4,
+    "mouth_left": 0,
+    "mouth_right": 0,
+    "left_shoulder": 5,
+    "right_shoulder": 6,
+    "left_elbow": 7,
+    "right_elbow": 8,
+    "left_wrist": 9,
+    "right_wrist": 10,
+    "left_pinky": 9,
+    "right_pinky": 10,
+    "left_index": 9,
+    "right_index": 10,
+    "left_thumb": 9,
+    "right_thumb": 10,
+    "left_hip": 11,
+    "right_hip": 12,
+    "left_knee": 13,
+    "right_knee": 14,
+    "left_ankle": 15,
+    "right_ankle": 16,
+    "left_heel": 15,
+    "right_heel": 16,
+    "left_foot_index": 15,
+    "right_foot_index": 16,
+}
+
+# Render-only topology. It must not be used as an analysis point definition.
+POSE_OVERLAY_CONNECTIONS = (
+    ("left_shoulder", "right_shoulder"),
+    ("left_hip", "right_hip"),
+    ("left_shoulder", "left_hip"),
+    ("right_shoulder", "right_hip"),
+    ("left_shoulder", "left_elbow"),
+    ("left_elbow", "left_wrist"),
+    ("right_shoulder", "right_elbow"),
+    ("right_elbow", "right_wrist"),
+    ("left_hip", "left_knee"),
+    ("left_knee", "left_ankle"),
+    ("right_hip", "right_knee"),
+    ("right_knee", "right_ankle"),
+    ("left_ankle", "left_heel"),
+    ("left_heel", "left_foot_index"),
+    ("right_ankle", "right_heel"),
+    ("right_heel", "right_foot_index"),
+    ("left_wrist", "left_index"),
+    ("right_wrist", "right_index"),
+)
+
+# The geometry renderer intentionally omits hand/index edges.
+POSE_GEOMETRY_CONNECTIONS = POSE_OVERLAY_CONNECTIONS[:-2]
+POSE_CORE_LANDMARKS = frozenset(
+    {
+        "left_shoulder",
+        "right_shoulder",
+        "left_hip",
+        "right_hip",
+        "left_knee",
+        "right_knee",
+        "left_ankle",
+        "right_ankle",
+    }
+)
+
+BATTING_POINT_ALIASES = {
+    "left_hip": ("LASI", "LPSI"),
+    "right_hip": ("RASI", "RPSI"),
+    "left_shoulder": ("LSHO",),
+    "right_shoulder": ("RSHO",),
+    "left_knee": ("LKNE",),
+    "right_knee": ("RKNE",),
+    "left_ankle": ("LANK", "LHEE", "LTOE"),
+    "right_ankle": ("RANK", "RHEE", "RTOE"),
+    "left_elbow": ("LELB",),
+    "right_elbow": ("RELB",),
+    "left_wrist": ("LWRA", "LWRB"),
+    "right_wrist": ("RWRA", "RWRB"),
+    "head": ("LFHD", "RFHD", "LBHD", "RBHD"),
+    "trunk_mid": ("C7", "T10", "CLAV", "STRN", "RBAK"),
+    "center_of_mass": ("CentreOfMass",),
+    "bat_barrel": ("Bat1",),
+    "bat_handle": ("Bat5",),
+    "right_wrist_a": ("RWRA",),
+    "right_wrist_b": ("RWRB",),
+    "left_wrist_a": ("LWRA",),
+    "left_wrist_b": ("LWRB",),
+}
+
+RIGHT_HANDED_BATTING_PROFILE = {
+    "batting_side": "right",
+    "rear_marker_prefix": "R",
+    "front_marker_prefix": "L",
+}
+
+PITCHING_POINT_ALIASES = {
+    "head": ("LFHD", "RFHD", "LBHD", "RBHD"),
+    "floor_points": ("LHEE", "LTOE", "RHEE", "RTOE", "LANK", "RANK"),
+    "left_foot": ("LHEE", "LTOE"),
+    "left_hip": ("LASI", "LPSI"),
+    "right_hip": ("RASI", "RPSI"),
+    "left_shoulder": ("LSHO",),
+    "right_shoulder": ("RSHO",),
+    "left_knee": ("LKNE",),
+    "left_heel": ("LHEE",),
+    "left_toe": ("LTOE",),
+    "right_heel": ("RHEE",),
+    "right_toe": ("RTOE",),
+    "right_elbow": ("RELB",),
+    "right_wrist": ("RWRA", "RWRB"),
+    "right_finger": ("RFIN",),
+    "throwing_hand": ("RWRA", "RWRB", "RFIN"),
+}
+
+# These are legacy Vicon export label/component indices, not vendor-neutral
+# anatomical definitions.
+PITCHING_ANGLE_CHANNELS = {
+    "front_knee": ("LKneeAngles", 0),
+    "front_hip": ("LHipAngles", 0),
+    "rear_knee": ("RKneeAngles", 0),
+    "rear_ankle": ("RAnkleAngles", 0),
+    "throwing_elbow": ("RElbowAngles", 0),
+    "throwing_shoulder_abduction": ("RShoulderAngles", 1),
+    "throwing_shoulder_rotation": ("RShoulderAngles", 2),
+    "throwing_wrist": ("RWristAngles", 0),
+}
+
+RIGHT_HANDED_PITCHING_PROFILE = {
+    "throwing_arm": "R",
+    "drive_leg": "R",
+    "lead_leg": "L",
+}
+
+VICON_BODY_SEGMENTS = (
+    ("C7", "T10", "躯干"),
+    ("C7", "CLAV", "躯干"),
+    ("CLAV", "STRN", "躯干"),
+    ("STRN", "T10", "躯干"),
+    ("T10", "RBAK", "躯干"),
+    ("LSHO", "RSHO", "躯干"),
+    ("LSHO", "C7", "躯干"),
+    ("RSHO", "C7", "躯干"),
+    ("LASI", "RASI", "骨盆"),
+    ("LASI", "LPSI", "骨盆"),
+    ("RASI", "RPSI", "骨盆"),
+    ("LPSI", "RPSI", "骨盆"),
+    ("LSHO", "LUPA", "左臂"),
+    ("LUPA", "LELB", "左臂"),
+    ("LELB", "LFRM", "左臂"),
+    ("LFRM", "LWRA", "左臂"),
+    ("LFRM", "LWRB", "左臂"),
+    ("LWRA", "LWRB", "左臂"),
+    ("LELB", "LWRB", "左臂"),
+    ("LWRA", "LFIN", "左臂"),
+    ("LWRB", "LFIN", "左臂"),
+    ("RSHO", "RUPA", "右臂"),
+    ("RUPA", "RELB", "右臂"),
+    ("RELB", "RFRM", "右臂"),
+    ("RFRM", "RWRA", "右臂"),
+    ("RFRM", "RWRB", "右臂"),
+    ("RWRA", "RWRB", "右臂"),
+    ("RELB", "RWRB", "右臂"),
+    ("RWRA", "RFIN", "右臂"),
+    ("RWRB", "RFIN", "右臂"),
+    ("LASI", "LTHI", "左腿"),
+    ("LTHI", "LKNE", "左腿"),
+    ("LKNE", "LTIB", "左腿"),
+    ("LTIB", "LANK", "左腿"),
+    ("LANK", "LHEE", "左腿"),
+    ("LANK", "LTOE", "左腿"),
+    ("LHEE", "LTOE", "左腿"),
+    ("RASI", "RTHI", "右腿"),
+    ("RTHI", "RKNE", "右腿"),
+    ("RKNE", "RTIB", "右腿"),
+    ("RTIB", "RANK", "右腿"),
+    ("RANK", "RHEE", "右腿"),
+    ("RANK", "RTOE", "右腿"),
+    ("RHEE", "RTOE", "右腿"),
+)
+
+VICON_BAT_MARKERS = ("Bat1", "Bat2", "Bat3", "Bat4", "Bat5")
+VICON_FOOT_MARKERS = frozenset({"LANK", "LHEE", "LTOE", "RANK", "RHEE", "RTOE"})
+VICON_RAW_MARKER_PARTS = {
+    "头颈": frozenset({"LFHD", "RFHD", "LBHD", "RBHD"}),
+    "躯干": frozenset({"C7", "T10", "CLAV", "STRN", "RBAK"}),
+    "左臂": frozenset({"LSHO", "LUPA", "LELB", "LFRM", "LWRA", "LWRB", "LFIN"}),
+    "右臂": frozenset({"RSHO", "RUPA", "RELB", "RFRM", "RWRA", "RWRB", "RFIN"}),
+    "骨盆": frozenset({"LASI", "RASI", "LPSI", "RPSI"}),
+    "左腿": frozenset({"LTHI", "LKNE", "LTIB", "LANK", "LHEE", "LTOE"}),
+    "右腿": frozenset({"RTHI", "RKNE", "RTIB", "RANK", "RHEE", "RTOE"}),
+}
+VICON_RAW_MARKERS = frozenset().union(*VICON_RAW_MARKER_PARTS.values())

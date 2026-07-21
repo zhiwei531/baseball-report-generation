@@ -15,6 +15,12 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from build_vicon_2026_metrics import clean_label, read_c3d
+from kinematics import (
+    finite_mean,
+    signed_angle_about_axis_deg,
+    speed_kmh_from_mm,
+    velocity_mm_s as _velocity_mm_s,
+)
 from render_vicon_reconstruction_images import (
     DEFAULT_GIF_AFTER_SEC,
     DEFAULT_GIF_BEFORE_SEC,
@@ -49,37 +55,19 @@ def point_series(trial, *names: str) -> np.ndarray:
             series.append(trial.points[:, clean.index(name), :3])
     if not series:
         return np.full((trial.points.shape[0], 3), np.nan)
-    stacked = np.stack(series)
-    valid = np.isfinite(stacked)
-    counts = valid.sum(axis=0)
-    total = np.nansum(stacked, axis=0)
-    return np.divide(total, counts, out=np.full_like(total, np.nan, dtype=float), where=counts > 0)
+    return finite_mean(np.stack(series), axis=0)
 
 
 def speed_kmh(points_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    diff_m = np.diff(points_mm, axis=0) / 1000.0
-    speed = np.linalg.norm(diff_m, axis=1) * rate_hz * 3.6
-    return np.concatenate([[np.nan], speed])
+    return speed_kmh_from_mm(points_mm, rate_hz)
 
 
 def velocity_mm_s(points_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    return np.vstack([np.full(3, np.nan), np.diff(points_mm, axis=0) * rate_hz])
+    return _velocity_mm_s(points_mm, rate_hz)
 
 
 def signed_angle_about_axis(radial: np.ndarray, axis: np.ndarray, reference: np.ndarray) -> np.ndarray:
-    axis_norm = np.linalg.norm(axis, axis=1, keepdims=True)
-    axis_unit = np.divide(axis, axis_norm, out=np.full_like(axis, np.nan), where=axis_norm > 0)
-    ref_proj = reference - axis_unit * np.einsum("ij,ij->i", reference, axis_unit)[:, None]
-    radial_proj = radial - axis_unit * np.einsum("ij,ij->i", radial, axis_unit)[:, None]
-    ref_norm = np.linalg.norm(ref_proj, axis=1, keepdims=True)
-    radial_norm = np.linalg.norm(radial_proj, axis=1, keepdims=True)
-    ref_unit = np.divide(ref_proj, ref_norm, out=np.full_like(ref_proj, np.nan), where=ref_norm > 0)
-    radial_unit = np.divide(
-        radial_proj, radial_norm, out=np.full_like(radial_proj, np.nan), where=radial_norm > 0
-    )
-    sin_v = np.einsum("ij,ij->i", np.cross(ref_unit, radial_unit), axis_unit)
-    cos_v = np.einsum("ij,ij->i", ref_unit, radial_unit)
-    return np.degrees(np.arctan2(sin_v, cos_v))
+    return signed_angle_about_axis_deg(radial, axis, reference)
 
 
 def frame_metrics(trial) -> dict[str, np.ndarray]:

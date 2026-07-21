@@ -10,6 +10,33 @@ from pathlib import Path
 
 import numpy as np
 
+from event_detection import (
+    detect_batting_contact,
+    detect_batting_ready,
+    detect_batting_swing_segment,
+    first_valid_indices,
+    lowest_z_indices,
+    primary_index,
+)
+from kinematics import (
+    circular_difference_deg,
+    finite_mean as _finite_mean,
+    finite_scalar as _finite_scalar,
+    joint_angle_deg,
+    signed_angle_about_axis_deg,
+    speed_kmh_from_mm,
+    vector_angle_deg as _vector_angle_deg,
+    velocity_mm_s as _velocity_mm_s,
+    xy_angle_deg as _xy_angle_deg,
+)
+from metric_registry import BATTING_METRICS_BY_ID
+from metric_calculations import (
+    high_com_risk_index,
+    hitting_zone_stability_score,
+    point_displacement_mm,
+)
+from point_mappings import BATTING_POINT_ALIASES, RIGHT_HANDED_BATTING_PROFILE
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POINTS = ROOT / "reports" / "vicon_2026_julian_coach" / "vicon_2026_points_all.csv"
@@ -40,31 +67,11 @@ class TrialSeries:
 
 
 def finite_mean(values: np.ndarray, axis: int = 0) -> np.ndarray:
-    values = np.asarray(values, dtype=float)
-    valid = np.isfinite(values)
-    counts = valid.sum(axis=axis)
-    total = np.nansum(values, axis=axis)
-    return np.divide(total, counts, out=np.full_like(total, np.nan, dtype=float), where=counts > 0)
+    return _finite_mean(values, axis=axis)
 
 
 def finite_scalar(values: np.ndarray, fn: str = "mean") -> float:
-    finite = np.asarray(values, dtype=float)
-    finite = finite[np.isfinite(finite)]
-    if finite.size == 0:
-        return float("nan")
-    if fn == "max":
-        return float(np.nanmax(finite))
-    if fn == "min":
-        return float(np.nanmin(finite))
-    if fn == "std":
-        return float(np.nanstd(finite))
-    if fn == "sum":
-        return float(np.nansum(finite))
-    if fn == "p05":
-        return float(np.nanpercentile(finite, 5))
-    if fn == "p95":
-        return float(np.nanpercentile(finite, 95))
-    return float(np.nanmean(finite))
+    return _finite_scalar(values, fn)
 
 
 def load_trials(path: Path) -> list[TrialSeries]:
@@ -127,10 +134,12 @@ def point(trial: TrialSeries, *names: str) -> np.ndarray:
     return finite_mean(np.stack(series), axis=0)
 
 
+def mapped_point(trial: TrialSeries, point_name: str) -> np.ndarray:
+    return point(trial, *BATTING_POINT_ALIASES[point_name])
+
+
 def speed_kmh(series_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    diff_m = np.diff(series_mm, axis=0) / 1000.0
-    speed = np.linalg.norm(diff_m, axis=1) * rate_hz * 3.6
-    return np.concatenate([[np.nan], speed])
+    return speed_kmh_from_mm(series_mm, rate_hz)
 
 
 def smooth_nan(values: np.ndarray, radius: int = 2) -> np.ndarray:
@@ -143,18 +152,11 @@ def smooth_nan(values: np.ndarray, radius: int = 2) -> np.ndarray:
 
 
 def velocity_mm_s(series_mm: np.ndarray, rate_hz: float) -> np.ndarray:
-    return np.vstack([np.full(3, np.nan), np.diff(series_mm, axis=0) * rate_hz])
+    return _velocity_mm_s(series_mm, rate_hz)
 
 
 def angle_at(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    ba = a - b
-    bc = c - b
-    denom = np.linalg.norm(ba, axis=1) * np.linalg.norm(bc, axis=1)
-    dot = np.einsum("ij,ij->i", ba, bc)
-    cos_v = np.divide(dot, denom, out=np.full_like(dot, np.nan), where=denom > 0)
-    out = np.degrees(np.arccos(np.clip(cos_v, -1.0, 1.0)))
-    out[~np.isfinite(out)] = np.nan
-    return out
+    return joint_angle_deg(a, b, c)
 
 
 def flexion_angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
@@ -162,34 +164,19 @@ def flexion_angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
 
 
 def xy_angle_deg(vec: np.ndarray) -> np.ndarray:
-    return np.degrees(np.arctan2(vec[:, 1], vec[:, 0]))
+    return _xy_angle_deg(vec)
 
 
 def circular_diff_deg(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    return (a - b + 180.0) % 360.0 - 180.0
+    return circular_difference_deg(a, b)
 
 
 def vector_angle_deg(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    dot = np.einsum("ij,ij->i", a, b)
-    denom = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)
-    cos_v = np.divide(dot, denom, out=np.full_like(dot, np.nan), where=denom > 0)
-    return np.degrees(np.arccos(np.clip(cos_v, -1.0, 1.0)))
+    return _vector_angle_deg(a, b)
 
 
 def signed_angle_about_axis(radial: np.ndarray, axis: np.ndarray, reference: np.ndarray) -> np.ndarray:
-    axis_norm = np.linalg.norm(axis, axis=1, keepdims=True)
-    axis_unit = np.divide(axis, axis_norm, out=np.full_like(axis, np.nan), where=axis_norm > 0)
-    ref_proj = reference - axis_unit * np.einsum("ij,ij->i", reference, axis_unit)[:, None]
-    radial_proj = radial - axis_unit * np.einsum("ij,ij->i", radial, axis_unit)[:, None]
-    ref_norm = np.linalg.norm(ref_proj, axis=1, keepdims=True)
-    radial_norm = np.linalg.norm(radial_proj, axis=1, keepdims=True)
-    ref_unit = np.divide(ref_proj, ref_norm, out=np.full_like(ref_proj, np.nan), where=ref_norm > 0)
-    radial_unit = np.divide(
-        radial_proj, radial_norm, out=np.full_like(radial_proj, np.nan), where=radial_norm > 0
-    )
-    sin_v = np.einsum("ij,ij->i", np.cross(ref_unit, radial_unit), axis_unit)
-    cos_v = np.einsum("ij,ij->i", ref_unit, radial_unit)
-    return np.degrees(np.arctan2(sin_v, cos_v))
+    return signed_angle_about_axis_deg(radial, axis, reference)
 
 
 def curvature_1_per_mm(path: np.ndarray) -> np.ndarray:
@@ -213,23 +200,11 @@ def infer_height_mm(head: np.ndarray, foot: np.ndarray, event_indices: np.ndarra
 
 
 def first_valid_event_indices(series: list[np.ndarray], count: int, n: int) -> np.ndarray:
-    valid = np.ones(n, dtype=bool)
-    for values in series:
-        valid &= np.isfinite(values).all(axis=1)
-    indices = np.where(valid)[0][:count]
-    if indices.size:
-        return indices
-    return np.arange(min(count, n), dtype=int)
+    return first_valid_indices(series, count, n)
 
 
 def lowest_z_event_indices(series: np.ndarray, count: int, candidates: np.ndarray | None = None) -> np.ndarray:
-    if candidates is None:
-        candidates = np.arange(series.shape[0])
-    valid = np.array([idx for idx in candidates if np.isfinite(series[idx, 2])], dtype=int)
-    if valid.size == 0:
-        return np.array([], dtype=int)
-    lowest = valid[np.argsort(series[valid, 2])[:count]]
-    return np.array(sorted(lowest), dtype=int)
+    return lowest_z_indices(series, count, candidates)
 
 
 def detect_swing_segment(
@@ -240,26 +215,13 @@ def detect_swing_segment(
     min_threshold_kmh: float = 8.0,
     expansion_sec: float = 0.15,
 ) -> tuple[np.ndarray, np.ndarray, int, float, float]:
-    speed_smooth = smooth_nan(bat_speed_kmh, radius=2)
-    if not np.isfinite(speed_smooth).any():
-        fallback = np.arange(len(bat_speed_kmh), dtype=int)
-        return fallback, fallback, len(bat_speed_kmh) // 2, float("nan"), float("nan")
-    peak_idx = int(np.nanargmax(speed_smooth))
-    peak_speed = float(speed_smooth[peak_idx])
-    threshold = max(min_threshold_kmh, peak_speed * threshold_ratio)
-    active = np.isfinite(speed_smooth) & (speed_smooth >= threshold)
-    start = peak_idx
-    while start > 0 and active[start - 1]:
-        start -= 1
-    end = peak_idx
-    while end + 1 < len(active) and active[end + 1]:
-        end += 1
-    margin = max(1, round(expansion_sec * rate_hz))
-    expanded_start = max(0, start - margin)
-    expanded_end = min(len(active) - 1, end + margin)
-    raw = np.arange(start, end + 1, dtype=int)
-    expanded = np.arange(expanded_start, expanded_end + 1, dtype=int)
-    return raw, expanded, peak_idx, peak_speed, threshold
+    return detect_batting_swing_segment(
+        bat_speed_kmh,
+        rate_hz,
+        threshold_ratio=threshold_ratio,
+        min_threshold_kmh=min_threshold_kmh,
+        expansion_sec=expansion_sec,
+    ).as_legacy_tuple()
 
 
 def detect_ready_event(
@@ -274,50 +236,18 @@ def detect_ready_event(
     lookback_sec: float,
     valid_start_frame: int | None,
 ) -> np.ndarray:
-    lookback = max(count, round(lookback_sec * rate_hz))
-    start = max(0, swing_start_idx - lookback)
-    if valid_start_frame is not None:
-        start = max(start, valid_start_frame)
-    stop = max(start, swing_start_idx)
-    candidates = np.arange(start, stop, dtype=int)
-    if candidates.size == 0:
-        return first_valid_event_indices([bat1, bat5, head], count, len(bat1))
-
-    valid = (
-        np.isfinite(bat1[candidates]).all(axis=1)
-        & np.isfinite(bat5[candidates]).all(axis=1)
-        & np.isfinite(head[candidates]).all(axis=1)
-        & np.isfinite(bat_speed_kmh[candidates])
-    )
-    valid_candidates = candidates[valid]
-    if valid_candidates.size == 0:
-        return first_valid_event_indices([bat1, bat5, head], count, len(bat1))
-
-    speed_limit = max(6.0, peak_speed_kmh * 0.12) if math.isfinite(peak_speed_kmh) else 6.0
-    low_speed = np.zeros(len(bat1), dtype=bool)
-    low_speed[valid_candidates] = bat_speed_kmh[valid_candidates] <= speed_limit
-
-    blocks: list[tuple[float, int, np.ndarray]] = []
-    for block_start in range(start, max(start, stop - count + 1)):
-        idx = np.arange(block_start, block_start + count, dtype=int)
-        if idx[-1] >= stop:
-            continue
-        if not np.all(np.isin(idx, valid_candidates)):
-            continue
-        if not np.all(low_speed[idx]):
-            continue
-        bat_height = finite_scalar(bat1[idx, 2], "mean")
-        mean_speed = finite_scalar(bat_speed_kmh[idx], "mean")
-        if math.isfinite(bat_height):
-            # Highest raised-bat block wins; slower blocks win ties.
-            blocks.append((bat_height - 0.02 * mean_speed, block_start, idx))
-    if blocks:
-        return max(blocks, key=lambda item: (item[0], -item[1]))[2]
-
-    low_speed_candidates = valid_candidates[bat_speed_kmh[valid_candidates] <= speed_limit]
-    if low_speed_candidates.size >= count:
-        return np.array(sorted(low_speed_candidates[:count]), dtype=int)
-    return np.array(sorted(valid_candidates[:count]), dtype=int)
+    return detect_batting_ready(
+        bat1,
+        bat5,
+        head,
+        bat_speed_kmh,
+        swing_start_idx,
+        rate_hz,
+        count,
+        peak_speed_kmh,
+        lookback_sec,
+        valid_start_frame,
+    ).as_legacy_indices()
 
 
 def indices_label(indices: np.ndarray) -> str:
@@ -325,14 +255,15 @@ def indices_label(indices: np.ndarray) -> str:
 
 
 def event_frame(indices: np.ndarray) -> int | None:
-    if indices.size == 0:
-        return None
-    return int(round(float(np.median(indices))))
+    return primary_index(tuple(int(index) for index in indices))
 
 
 def choose_batting_side() -> tuple[str, str]:
     # Current Vicon batting trials are treated as right-handed swings.
-    return "R", "L"
+    return (
+        RIGHT_HANDED_BATTING_PROFILE["rear_marker_prefix"],
+        RIGHT_HANDED_BATTING_PROFILE["front_marker_prefix"],
+    )
 
 
 def metric_row(
@@ -351,6 +282,9 @@ def metric_row(
     notes: str = "",
     components: dict[str, float | str] | None = None,
 ) -> dict[str, object]:
+    definition = BATTING_METRICS_BY_ID[key]
+    if definition.display_name_zh != name or definition.unit != unit or definition.event_id != event_name:
+        raise ValueError(f"metric registry drift for {key}")
     primary_event_frame = event_frame(event_indices)
     return {
         "trial_id": trial.trial_id,
@@ -359,10 +293,10 @@ def metric_row(
         "action_type": trial.action_type,
         "source_file": trial.source_file,
         "module": module,
-        "metric_name_zh": name,
+        "metric_name_zh": definition.display_name_zh,
         "metric_key": key,
         "value": value,
-        "unit": unit,
+        "unit": definition.unit,
         "aggregation": aggregation,
         "event_name": event_name,
         "event_rule": event_rule,
@@ -389,22 +323,22 @@ def compute_trial_metrics(
     rear_prefix = rear
     front_prefix = front
 
-    lhip = point(trial, "LASI", "LPSI")
-    rhip = point(trial, "RASI", "RPSI")
-    lsho = point(trial, "LSHO")
-    rsho = point(trial, "RSHO")
-    lkne = point(trial, "LKNE")
-    rkne = point(trial, "RKNE")
-    lank = point(trial, "LANK", "LHEE", "LTOE")
-    rank = point(trial, "RANK", "RHEE", "RTOE")
-    lelb = point(trial, "LELB")
-    relb = point(trial, "RELB")
-    lwrist = point(trial, "LWRA", "LWRB")
-    rwrist = point(trial, "RWRA", "RWRB")
-    head = point(trial, "LFHD", "RFHD", "LBHD", "RBHD")
-    trunk_mid = point(trial, "C7", "T10", "CLAV", "STRN", "RBAK")
-    bat1 = point(trial, "Bat1")
-    bat5 = point(trial, "Bat5")
+    lhip = mapped_point(trial, "left_hip")
+    rhip = mapped_point(trial, "right_hip")
+    lsho = mapped_point(trial, "left_shoulder")
+    rsho = mapped_point(trial, "right_shoulder")
+    lkne = mapped_point(trial, "left_knee")
+    rkne = mapped_point(trial, "right_knee")
+    lank = mapped_point(trial, "left_ankle")
+    rank = mapped_point(trial, "right_ankle")
+    lelb = mapped_point(trial, "left_elbow")
+    relb = mapped_point(trial, "right_elbow")
+    lwrist = mapped_point(trial, "left_wrist")
+    rwrist = mapped_point(trial, "right_wrist")
+    head = mapped_point(trial, "head")
+    trunk_mid = mapped_point(trial, "trunk_mid")
+    bat1 = mapped_point(trial, "bat_barrel")
+    bat5 = mapped_point(trial, "bat_handle")
     bat_axis = bat1 - bat5
     bat_speed = speed_kmh(bat1, rate_hz)
     swing_raw, swing_segment, swing_peak_idx, swing_peak_speed, swing_threshold = detect_swing_segment(
@@ -422,7 +356,11 @@ def compute_trial_metrics(
         ready_lookback_sec,
         ready_valid_start_frame,
     )
-    contact_event = lowest_z_event_indices(bat1, contact_event_frames, candidates=swing_segment)
+    contact_event = detect_batting_contact(
+        bat1,
+        contact_event_frames,
+        swing_segment,
+    ).as_legacy_indices()
     if contact_event.size == 0:
         contact_event = np.array([swing_peak_idx], dtype=int)
     ready_rule = (
@@ -438,7 +376,7 @@ def compute_trial_metrics(
 
     hip_mid = finite_mean(np.stack([lhip, rhip]), axis=0)
     shoulder_mid = finite_mean(np.stack([lsho, rsho]), axis=0)
-    com = point(trial, "CentreOfMass")
+    com = mapped_point(trial, "center_of_mass")
     com_fallback = 0.6 * hip_mid + 0.4 * trunk_mid
     com_valid = np.isfinite(com).all(axis=1)
     com = np.where(com_valid[:, None], com, com_fallback)
@@ -450,8 +388,8 @@ def compute_trial_metrics(
     rear_ankle = rank if rear_prefix == "R" else lank
     rear_shoulder = rsho if rear_prefix == "R" else lsho
     rear_elbow = relb if rear_prefix == "R" else lelb
-    rear_wrist_a = point(trial, "RWRA") if rear_prefix == "R" else point(trial, "LWRA")
-    rear_wrist_b = point(trial, "RWRB") if rear_prefix == "R" else point(trial, "LWRB")
+    rear_wrist_a = mapped_point(trial, "right_wrist_a" if rear_prefix == "R" else "left_wrist_a")
+    rear_wrist_b = mapped_point(trial, "right_wrist_b" if rear_prefix == "R" else "left_wrist_b")
     front_hip = lhip if front_prefix == "L" else rhip
     front_knee = lkne if front_prefix == "L" else rkne
     front_ankle = lank if front_prefix == "L" else rank
@@ -477,20 +415,12 @@ def compute_trial_metrics(
     )
     head_ready = finite_mean(head[ready_event], axis=0)
     head_contact = finite_mean(head[contact_event], axis=0)
-    head_displacement = float(np.linalg.norm(head_contact - head_ready))
+    head_displacement = point_displacement_mm(head_ready, head_contact)
 
     com_height_norm = finite_scalar(com[ready_event, 2], "mean") / height_mm
     rear_hip_ready = finite_scalar(rear_hip_flex[ready_event], "mean")
     rear_knee_ready = finite_scalar(rear_knee_flex[ready_event], "mean")
-    high_com_score = 100.0 * float(
-        np.nanmean(
-            [
-                np.clip((com_height_norm - 0.48) / 0.14, 0.0, 1.0),
-                np.clip((35.0 - rear_hip_ready) / 35.0, 0.0, 1.0),
-                np.clip((35.0 - rear_knee_ready) / 35.0, 0.0, 1.0),
-            ]
-        )
-    )
+    high_com_score = high_com_risk_index(com_height_norm, rear_hip_ready, rear_knee_ready)
 
     rear_elbow_height_diff = finite_scalar((rear_elbow - rear_shoulder)[ready_event, 2], "mean")
 
@@ -530,10 +460,11 @@ def compute_trial_metrics(
         zone_length = float("nan")
         zone_attack_std = float("nan")
         zone_curvature = float("nan")
-    length_score = np.clip(zone_length / 650.0, 0.0, 1.0)
-    plane_score = np.clip(1.0 - zone_attack_std / 18.0, 0.0, 1.0)
-    curvature_score = np.clip(1.0 - zone_curvature / 0.006, 0.0, 1.0)
-    stability_score = 100.0 * float(np.nanmean([length_score, plane_score, curvature_score]))
+    stability = hitting_zone_stability_score(zone_length, zone_attack_std, zone_curvature)
+    length_score = stability.length_score
+    plane_score = stability.plane_score
+    curvature_score = stability.curvature_score
+    stability_score = stability.score
 
     rows = [
         metric_row(

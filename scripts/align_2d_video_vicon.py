@@ -4,7 +4,6 @@ import argparse
 import csv
 import json
 import math
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +14,8 @@ from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python import vision
 
 from pipeline_config import load_pipeline_config
+from point_mappings import MEDIAPIPE_LANDMARK_NAMES, RTMPOSE_COCO17_TO_REPORT
+from event_detection import detect_video_wrist_peak
 
 
 ROOT = Path(__file__).resolve().parent
@@ -22,10 +23,6 @@ PROJECT_ROOT = ROOT.parents[0]
 PIPELINE_DEFAULTS = load_pipeline_config()
 DEFAULT_MODEL = PIPELINE_DEFAULTS.mediapipe_model or PROJECT_ROOT / "models" / "pose_landmarker_heavy.task"
 DEFAULT_OUT = PIPELINE_DEFAULTS.report_dir / "alignment_2d"
-
-SCRIPTS_DIR = PROJECT_ROOT / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from build_vicon_2026_metrics import (  # noqa: E402
     all_point_rows,
@@ -36,41 +33,7 @@ from build_vicon_2026_metrics import (  # noqa: E402
 )
 
 
-LANDMARK_NAMES = [
-    "nose",
-    "left_eye_inner",
-    "left_eye",
-    "left_eye_outer",
-    "right_eye_inner",
-    "right_eye",
-    "right_eye_outer",
-    "left_ear",
-    "right_ear",
-    "mouth_left",
-    "mouth_right",
-    "left_shoulder",
-    "right_shoulder",
-    "left_elbow",
-    "right_elbow",
-    "left_wrist",
-    "right_wrist",
-    "left_pinky",
-    "right_pinky",
-    "left_index",
-    "right_index",
-    "left_thumb",
-    "right_thumb",
-    "left_hip",
-    "right_hip",
-    "left_knee",
-    "right_knee",
-    "left_ankle",
-    "right_ankle",
-    "left_heel",
-    "right_heel",
-    "left_foot_index",
-    "right_foot_index",
-]
+LANDMARK_NAMES = list(MEDIAPIPE_LANDMARK_NAMES)
 
 
 def open_video(path: Path) -> tuple[cv2.VideoCapture, int, int, float, int]:
@@ -110,7 +73,11 @@ def detect_2d(
         if "kGpuService" not in str(exc):
             raise
         cap.release()
-        return detect_2d_rtmpose(video_path, frame_indices)
+        return detect_2d_rtmpose(
+            video_path,
+            frame_indices,
+            model_path=model_path.with_name("rtmpose-m-wholebody.onnx"),
+        )
 
     with detector:
         frame_index = 0
@@ -156,46 +123,14 @@ def detect_2d(
     return rows, meta
 
 
-RTMPOSE_COCO17 = {
-    "nose": 0,
-    "left_eye_inner": 1,
-    "left_eye": 1,
-    "left_eye_outer": 1,
-    "right_eye_inner": 2,
-    "right_eye": 2,
-    "right_eye_outer": 2,
-    "left_ear": 3,
-    "right_ear": 4,
-    "mouth_left": 0,
-    "mouth_right": 0,
-    "left_shoulder": 5,
-    "right_shoulder": 6,
-    "left_elbow": 7,
-    "right_elbow": 8,
-    "left_wrist": 9,
-    "right_wrist": 10,
-    "left_pinky": 9,
-    "right_pinky": 10,
-    "left_index": 9,
-    "right_index": 10,
-    "left_thumb": 9,
-    "right_thumb": 10,
-    "left_hip": 11,
-    "right_hip": 12,
-    "left_knee": 13,
-    "right_knee": 14,
-    "left_ankle": 15,
-    "right_ankle": 16,
-    "left_heel": 15,
-    "right_heel": 16,
-    "left_foot_index": 15,
-    "right_foot_index": 16,
-}
+RTMPOSE_COCO17 = dict(RTMPOSE_COCO17_TO_REPORT)
 
 
 def detect_2d_rtmpose(
     video_path: Path,
     frame_indices: set[int] | None = None,
+    *,
+    model_path: Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """CPU-only fallback for macOS sessions without an OpenGL pixel format.
 
@@ -205,7 +140,9 @@ def detect_2d_rtmpose(
     """
     from rtmlib import RTMPose
 
-    model = PROJECT_ROOT / "../baseball-analysis/models/rtmpose-m-wholebody.onnx"
+    model = model_path or DEFAULT_MODEL.with_name("rtmpose-m-wholebody.onnx")
+    if not model.is_file():
+        raise FileNotFoundError(f"RTMPose fallback model not found: {model}")
     cap, width, height, fps, frame_count = open_video(video_path)
     estimator = RTMPose(
         str(model.resolve()),
@@ -313,12 +250,13 @@ def infer_video_event(rows: list[dict[str, Any]], fps: float) -> dict[str, Any]:
         fps,
     )
     combined = np.nanmax(np.vstack([left, right]), axis=0)
-    frame = finite_argmax(combined)
+    detected = detect_video_wrist_peak(combined, fps)
+    frame = int(detected.primary_index)
     return {
         "frame_index": frame,
         "time_sec": frame / fps,
-        "rule": "2d_wrist_peak_speed",
-        "peak_speed_px_s": float(combined[frame]) if math.isfinite(float(combined[frame])) else None,
+        "rule": detected.rule,
+        "peak_speed_px_s": detected.metadata["peak_speed_px_s"],
     }
 
 

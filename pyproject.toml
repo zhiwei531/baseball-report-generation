@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baseball-report-generation"
+version = "0.1.0"
+description = "Typed contracts for the Vicon baseball report-generation pipeline"
+requires-python = ">=3.10"
+dependencies = ["numpy"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

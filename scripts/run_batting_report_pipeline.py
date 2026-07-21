@@ -4,21 +4,29 @@ import argparse
 import json
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
-from pipeline_config import DEFAULT_CONFIG, load_pipeline_config
+from pipeline_config import DEFAULT_CONFIG, load_pipeline_config, plot_environment
+from pipeline_runtime import (
+    StageExecutionResult,
+    configure_logging,
+    run_command_stage,
+    write_pipeline_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
 BUNDLED_BATTING_ILLUSTRATIONS = ROOT / "assets" / "batting" / "frontend_metric_illustrations"
+PIPELINE_STAGES: list[StageExecutionResult] = []
 
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
-    print("+", " ".join(str(item) for item in cmd))
-    subprocess.run([str(item) for item in cmd], cwd=ROOT, check=True, env=env)
+    executable = Path(str(cmd[1] if len(cmd) > 1 else cmd[0])).stem
+    PIPELINE_STAGES.append(
+        run_command_stage(executable, cmd, cwd=ROOT, env=env)
+    )
 
 
 def require_paths(paths: list[Path], stage: str) -> None:
@@ -55,10 +63,8 @@ def validate_alignment_summary(alignment_dir: Path, args: argparse.Namespace) ->
 
 
 def plot_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env.setdefault("MPLCONFIGDIR", "/private/tmp/baseball_mpl_cache")
-    env.setdefault("XDG_CACHE_HOME", "/private/tmp/baseball_xdg_cache")
-    return env
+    """Compatibility name for the shared plotting/cache environment."""
+    return plot_environment()
 
 
 def c3d_stage(args: argparse.Namespace) -> None:
@@ -274,7 +280,7 @@ def illustration_stage(args: argparse.Namespace, metrics: Path) -> None:
     )
 
 
-def html_stage(args: argparse.Namespace, metrics: Path) -> None:
+def html_stage(args: argparse.Namespace, metrics: Path, report_data: Path) -> None:
     out_html = args.report_dir / f"{args.player_slug}_coach_metrics_section.html"
     run(
         [
@@ -286,6 +292,8 @@ def html_stage(args: argparse.Namespace, metrics: Path) -> None:
             args.peers,
             "--out",
             out_html,
+            "--pose3d",
+            args.report_dir / "vicon_2026_pose3d.csv",
             "--pitch-report",
             args.pitch_report,
             "--player-sample-name",
@@ -296,6 +304,8 @@ def html_stage(args: argparse.Namespace, metrics: Path) -> None:
             args.player_slug,
             "--player-label",
             args.player_label,
+            "--report-data",
+            report_data,
         ]
     )
     if not args.skip_final_schema:
@@ -315,6 +325,8 @@ def html_stage(args: argparse.Namespace, metrics: Path) -> None:
                 args.player_slug,
                 "--player-label",
                 args.player_label,
+                "--report-data",
+                report_data,
                 "--peers",
                 args.peers,
             ]
@@ -330,6 +342,46 @@ def xlsx_stage(args: argparse.Namespace, metrics: Path) -> None:
     if args.trial_id:
         env["TRIAL_ID"] = args.trial_id
     run(["node", "scripts/build_batting_metrics_xlsx.mjs"], env=env)
+
+
+def report_data_stage(args: argparse.Namespace, metrics: Path) -> Path:
+    output = args.report_dir / "analysis_report_data.json"
+    view_output = args.report_dir / "analysis_report_view.json"
+    pitch_summary = args.pitch_report.parent / "pitch_metrics_summary.json"
+    env = os.environ.copy()
+    source_root = str(ROOT / "src")
+    current_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        source_root if not current_pythonpath else os.pathsep.join((source_root, current_pythonpath))
+    )
+    command = [
+        PYTHON,
+        "-m",
+        "baseball_report.reporting.build_legacy",
+        "--batting",
+        metrics,
+        "--output",
+        output,
+        "--view-output",
+        view_output,
+        "--asset-root",
+        args.report_dir,
+        "--report-id",
+        f"{args.player_slug}-combined-report",
+        "--subject-id",
+        args.player_slug,
+        "--subject-label",
+        args.player_label,
+        "--subject-key",
+        args.sample_name,
+        "--subject-key",
+        args.player_slug,
+    ]
+    if pitch_summary.is_file():
+        command.extend(["--pitching", pitch_summary])
+    run(command, env=env)
+    require_paths([output, view_output], "ReportData serialization")
+    return output
 
 
 def apply_config_defaults(args: argparse.Namespace) -> None:
@@ -389,7 +441,11 @@ def main() -> None:
     parser.add_argument("--skip-xlsx", action="store_true")
     parser.add_argument("--require-2d", action="store_true")
     parser.add_argument("--require-static-assets", action="store_true")
+    parser.add_argument("--log-level", default="INFO")
+    parser.add_argument("--run-manifest", type=Path, default=None)
     args = parser.parse_args()
+    configure_logging(args.log_level)
+    PIPELINE_STAGES.clear()
     apply_config_defaults(args)
 
     args.report_dir.mkdir(parents=True, exist_ok=True)
@@ -402,13 +458,27 @@ def main() -> None:
         geometry_stage(args, metrics, alignment_dir)
     if not args.skip_illustrations:
         illustration_stage(args, metrics)
-    html_stage(args, metrics)
+    report_data = report_data_stage(args, metrics)
+    html_stage(args, metrics, report_data)
     if not args.skip_xlsx:
         xlsx_stage(args, metrics)
+
+    manifest_path = args.run_manifest or args.report_dir / "batting_pipeline_run.json"
+    write_pipeline_manifest(
+        manifest_path,
+        pipeline_name="batting_report",
+        stages=PIPELINE_STAGES,
+        metadata={
+            "player_slug": args.player_slug,
+            "sample_name": args.sample_name,
+            "report_dir": str(args.report_dir.resolve()),
+        },
+    )
 
     print("Batting report pipeline outputs:")
     print(args.report_dir / f"{args.player_slug}_coach_metrics_section.html")
     print(metrics)
+    print(report_data)
     print(args.report_dir / "assets")
 
 

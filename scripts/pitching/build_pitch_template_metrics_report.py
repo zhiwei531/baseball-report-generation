@@ -22,12 +22,16 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.lines import Line2D
 from PIL import Image, ImageDraw, ImageFont
 
+from baseball_report.comparison.legacy_rules import (
+    pitching_score,
+    status_from_score as comparison_status_from_score,
+    summarize_peer_values,
+)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = ROOT / "scripts"
 BUNDLED_LINEART_DIR = ROOT / "assets" / "pitching" / "lineart_actions"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 TEMPLATE_DIR: Path | None = None
 PREV_PITCH_ASSETS: Path | None = None
 OUT_DIR = ROOT / "reports" / "pitching"
@@ -39,6 +43,9 @@ PLAYER_SLUG = "julian"
 C3D_FILES: list[tuple[str, str, str, Path]] = []
 
 from build_vicon_2026_metrics import clean_label, read_c3d, safe_nanmean  # noqa: E402
+from event_detection import detect_pitching_events  # noqa: E402
+from metric_registry import pitching_metric_dicts  # noqa: E402
+from metric_calculations import arm_slot_deg, stride_metrics  # noqa: E402
 from pitching.player_card_contract import validate_pitch_player_cards  # noqa: E402
 import render_vicon_reconstruction_images as recon  # noqa: E402
 
@@ -201,27 +208,16 @@ def estimate_floor_height(trial, clean_labels: list[str]) -> tuple[float, float]
 
 
 def detect_events(trial, clean_labels: list[str], floor_mm: float) -> dict[str, int]:
-    lkne_z = smooth(marker(trial, clean_labels, "LKNE")[:, 2], 2)
-    peak = int(np.nanargmax(lkne_z))
+    lead_knee = marker(trial, clean_labels, "LKNE")
     lfoot = safe_nanmean([marker(trial, clean_labels, "LHEE"), marker(trial, clean_labels, "LTOE")], axis=0)
-    lfoot_z = smooth(lfoot[:, 2], 2)
-    foot_speed = smooth(speed_mps(lfoot, trial.rate_hz), 2)
-    contact_candidates = np.where((np.arange(len(lfoot_z)) > peak + 10) & (lfoot_z <= floor_mm + 70))[0]
-    contact = int(contact_candidates[0]) if contact_candidates.size else min(len(lfoot_z) - 1, peak + int(1.0 * trial.rate_hz))
-    plant = contact
-    search_end = min(len(lfoot_z), contact + int(0.28 * trial.rate_hz))
-    stable = np.where((np.arange(len(lfoot_z)) >= contact) & (np.arange(len(lfoot_z)) < search_end) & (foot_speed <= 0.75))[0]
-    if stable.size:
-        plant = int(stable[min(len(stable) - 1, 3)])
-    else:
-        plant = min(search_end - 1, contact + int(0.14 * trial.rate_hz))
     hand = safe_nanmean([marker(trial, clean_labels, "RWRA"), marker(trial, clean_labels, "RWRB"), marker(trial, clean_labels, "RFIN")], axis=0)
-    hand_speed = smooth(speed_mps(hand, trial.rate_hz), 2)
-    rel_start = plant
-    rel_end = min(len(hand_speed), plant + int(0.55 * trial.rate_hz))
-    window = hand_speed[rel_start:rel_end]
-    release = rel_start + int(np.nanargmax(window)) if np.isfinite(window).any() else min(len(hand_speed) - 1, plant + int(0.2 * trial.rate_hz))
-    return {"peak_knee": peak, "foot_contact": contact, "foot_plant": plant, "release": release}
+    return detect_pitching_events(
+        lead_knee=lead_knee,
+        lead_foot=lfoot,
+        throwing_hand=hand,
+        rate_hz=trial.rate_hz,
+        floor_mm=floor_mm,
+    ).as_legacy_frames()
 
 
 def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor_mm: float, height_mm: float) -> dict[str, float]:
@@ -243,10 +239,10 @@ def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor
     hand_speed = smooth(speed_mps(hand, trial.rate_hz), 2)
     rear_foot_pk = safe_nanmean([rhee[pk], rtoe[pk]], axis=0)
     stride_vec = lhee[fp] - rear_foot_pk
+    stride_distance_pct, stride_distance_mm, stride_direction_deg = stride_metrics(stride_vec, height_mm)
     toe_vec = ltoe[fp] - lhee[fp]
     forearm = rwrist[rel] - relb[rel]
-    forearm_horizontal = float(np.linalg.norm(forearm[:2]))
-    arm_slot = float(np.degrees(np.arctan2(forearm[2], forearm_horizontal))) if math.isfinite(forearm_horizontal) else float("nan")
+    arm_slot = arm_slot_deg(forearm)
     hss_window = hss[pk : rel + 1] if rel > pk else hss
     hss_max = float(np.nanmax(hss_window)) if np.isfinite(hss_window).any() else float("nan")
     hss_max_idx = pk + int(np.nanargmax(hss_window)) if np.isfinite(hss_window).any() and rel > pk else int(np.nanargmax(hss))
@@ -259,9 +255,9 @@ def compute_values(trial, clean_labels: list[str], events: dict[str, int], floor
         "rear_knee_peak_deg": frame_value(channel(trial, clean_labels, "RKneeAngles", 0), pk),
         "rear_ankle_peak_deg": frame_value(channel(trial, clean_labels, "RAnkleAngles", 0), pk),
         "hss_peak_knee_deg": frame_value(hss, pk),
-        "stride_distance_pct": float(np.linalg.norm(stride_vec[:2]) / height_mm * 100),
-        "stride_distance_mm": float(np.linalg.norm(stride_vec[:2])),
-        "stride_direction_deg": float(np.degrees(np.arctan2(stride_vec[1], stride_vec[0]))),
+        "stride_distance_pct": stride_distance_pct,
+        "stride_distance_mm": stride_distance_mm,
+        "stride_direction_deg": stride_direction_deg,
         "front_toe_direction_deg": float(np.degrees(np.arctan2(toe_vec[1], toe_vec[0]))),
         "front_knee_plant_deg": frame_value(channel(trial, clean_labels, "LKneeAngles", 0), fp),
         "rear_knee_plant_deg": frame_value(channel(trial, clean_labels, "RKneeAngles", 0), fp),
@@ -332,57 +328,14 @@ def fmt(value: float, unit: str) -> str:
 
 
 def score_metric(value: float, metric: dict[str, object], coach_value: float | None = None) -> float:
-    if not finite(value):
-        return 45
-    ideal = metric.get("ideal")
-    lo = metric.get("lo")
-    hi = metric.get("hi")
-    direction = metric.get("direction", "target")
-    if finite(ideal):
-        spread = float(metric.get("spread", max(abs(float(ideal)) * 0.35, 8)))
-        return max(0, min(100, 100 - abs(value - float(ideal)) / spread * 45))
-    if finite(lo) and finite(hi):
-        lo_f, hi_f = float(lo), float(hi)
-        if lo_f <= value <= hi_f:
-            return 88
-        dist = min(abs(value - lo_f), abs(value - hi_f))
-        return max(35, 88 - dist / max(abs(hi_f - lo_f), 1) * 60)
-    if direction == "higher":
-        target = float(metric.get("target", coach_value if finite(coach_value) else value))
-        return max(35, min(100, 60 + value / max(target, 1) * 35))
-    if direction == "lower_abs":
-        return max(35, min(100, 100 - abs(value) / float(metric.get("spread", 30)) * 60))
-    return 72
+    return pitching_score(value, metric, coach_value)
 
 
 def status_from_score(score: float) -> tuple[str, str]:
-    if score >= 82:
-        return "优秀", "good"
-    if score >= 66:
-        return "良好", "review"
-    return "待提高", "risk"
+    return comparison_status_from_score(score)
 
 
-METRICS = [
-    {"key": "knee_height_pct", "event": "准备阶段", "section": "抬腿最高点", "name": "抬腿高度", "en": "Knee Lift Height", "unit": "pct", "image": "peak_knee", "ideal": 50, "spread": 18, "copy": "抬腿高度接近身高一半，说明准备阶段有足够的节奏和空间。"},
-    {"key": "front_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "前腿收紧", "en": "Lead-Knee Tuck", "unit": "deg", "image": "peak_knee", "lo": 115, "hi": 155, "copy": "前膝角用来判断抬腿时前腿是否真正收住，而不是松散地向前摆。"},
-    {"key": "rear_knee_peak_deg", "event": "准备阶段", "section": "抬腿最高点", "name": "后腿蓄力", "en": "Rear-Leg Load", "unit": "deg", "image": "peak_knee", "lo": -10, "hi": 25, "copy": "后腿在抬腿最高点承担支撑任务，角度越稳定，后续跨步越容易受控。"},
-    {"key": "stride_distance_pct", "event": "前脚落地", "section": "落脚质量", "name": "跨步距离", "en": "Stride Distance", "unit": "pct", "image": "foot_plant", "ideal": 55, "spread": 22, "copy": "跨步距离用身高归一化，帮助判断身体推进是否足够。"},
-    {"key": "stride_direction_deg", "event": "前脚落地", "section": "落脚质量", "name": "跨步方向", "en": "Stride Direction", "unit": "deg", "image": "foot_plant", "ideal": 0, "spread": 35, "copy": "跨步方向越接近目标线，身体越容易把力量送向投球方向。"},
-    {"key": "front_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "前膝屈曲", "en": "Lead-Knee Flexion", "unit": "deg", "image": "foot_plant", "lo": 40, "hi": 70, "copy": "前脚落地后的前膝角代表前腿支撑质量，过软或过硬都会影响传力。"},
-    {"key": "rear_knee_plant_deg", "event": "前脚落地", "section": "落地支撑", "name": "后膝屈曲", "en": "Rear-Knee Flexion", "unit": "deg", "image": "foot_plant", "lo": 35, "hi": 75, "copy": "后膝角反映后腿是否还在参与推进，而不是提前失去下肢连接。"},
-    {"key": "elbow_vs_shoulder_cm", "event": "前脚落地", "section": "手臂到位", "name": "投球肘相对肩线", "en": "Throwing-Elbow Height", "unit": "cm", "image": "foot_plant", "ideal": 0, "spread": 18, "copy": "负值表示肘低于肩线，前脚落地时肘的位置会影响后续出手路径。"},
-    {"key": "shoulder_abduction_plant_deg", "event": "前脚落地", "section": "手臂到位", "name": "肩外展", "en": "Shoulder Abduction", "unit": "deg", "image": "foot_plant", "lo": 70, "hi": 100, "copy": "肩外展帮助判断投球手臂是否在落地时及时进入准备位置。"},
-    {"key": "front_knee_release_deg", "event": "出手点", "section": "前腿制动", "name": "出手前膝角", "en": "Release Lead-Knee Angle", "unit": "deg", "image": "release", "lo": 40, "hi": 75, "copy": "出手时前腿能否稳住，是身体传力到手臂的重要前提。"},
-    {"key": "front_knee_change_plant_to_release_deg", "event": "出手点", "section": "前腿制动", "name": "落地到出手前膝变化", "en": "Lead-Knee Change: Plant to Release", "unit": "deg", "image": "release", "ideal": 0, "spread": 18, "copy": "这个变化量越小，说明前腿在落地后越能保持支撑。"},
-    {"key": "shoulder_abduction_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肩外展", "en": "Release Shoulder Abduction", "unit": "deg", "image": "release", "lo": 80, "hi": 105, "copy": "出手时上臂抬起角度决定手臂路径和出手槽位。"},
-    {"key": "elbow_flex_release_deg", "event": "出手点", "section": "出手角度", "name": "出手肘屈曲", "en": "Release Elbow Flexion", "unit": "deg", "image": "release", "lo": 60, "hi": 95, "copy": "肘屈曲角用于观察出手时手臂是否有足够延展和控制。"},
-    {"key": "arm_slot_deg", "event": "出手点", "section": "出手角度", "name": "出手手臂角度", "en": "Release Arm Angle", "unit": "deg", "image": "release", "lo": 55, "hi": 85, "copy": "出手手臂角度描述前臂抬升方向，是观察投球手臂出手路径的核心指标。"},
-    {"key": "release_height_pct", "event": "出手点", "section": "出手点", "name": "出手高度", "en": "Release Height", "unit": "pct", "image": "release", "lo": 85, "hi": 105, "copy": "以投球手手部位置近似出手点高度；后续可结合实际出手位置继续校准。"},
-    {"key": "hand_speed_kmh", "event": "出手点", "section": "出手点", "name": "出手手速", "en": "Release Hand Speed", "unit": "kmh", "image": "release", "direction": "higher", "copy": "出手手速不是球速，但能作为同一套 Vicon 数据中的出手强度参考。"},
-    {"key": "max_hss_deg", "event": "专项问题", "section": "身体带动程度", "name": "最大髋肩分离", "en": "Maximum Hip-Shoulder Separation", "unit": "deg", "image": "release", "lo": 15, "hi": 35, "copy": "最大髋肩分离越清楚，说明身体有更明显的先后顺序。"},
-    {"key": "hss_release_amount_deg", "event": "专项问题", "section": "身体带动程度", "name": "髋肩分离释放量", "en": "Hip-Shoulder Separation Release", "unit": "deg", "image": "release", "lo": 8, "hi": 24, "copy": "释放量表示从最大分离到出手时释放了多少躯干旋转空间。"},
-]
+METRICS = pitching_metric_dicts()
 
 
 def write_metric_csv(bundles: list[TrialBundle]) -> None:
@@ -673,20 +626,25 @@ def make_kinetic_chain(bundles: list[TrialBundle]) -> None:
 
 
 def peer_stats(bundles: list[TrialBundle], metric_key: str) -> dict[str, float]:
-    students = [b for b in bundles if b.role == "student"]
-    values = [b.values.get(metric_key, float("nan")) for b in students]
-    values = [float(v) for v in values if finite(v)]
+    stats = summarize_peer_values(
+        (bundle.key, bundle.values.get(metric_key, float("nan")))
+        for bundle in bundles
+        if bundle.role == "student"
+    )
     return {
-        "min": min(values) if values else float("nan"),
-        "max": max(values) if values else float("nan"),
-        "mean": float(np.mean(values)) if values else float("nan"),
+        "min": stats.minimum if stats.minimum is not None else float("nan"),
+        "max": stats.maximum if stats.maximum is not None else float("nan"),
+        "mean": stats.mean if stats.mean is not None else float("nan"),
     }
 
 
 def group_mean_all(bundles: list[TrialBundle], metric_key: str) -> float:
-    vals = [b.values.get(metric_key, float("nan")) for b in bundles if b.role == "student"]
-    vals = [float(v) for v in vals if finite(v)]
-    return float(np.mean(vals)) if vals else float("nan")
+    stats = summarize_peer_values(
+        (bundle.key, bundle.values.get(metric_key, float("nan")))
+        for bundle in bundles
+        if bundle.role == "student"
+    )
+    return stats.mean if stats.mean is not None else float("nan")
 
 
 def range_html(metric: dict[str, object], bundles: list[TrialBundle], show_all: bool = False) -> str:
@@ -1520,6 +1478,23 @@ def remove_legacy_julian_assets() -> None:
             path.unlink()
 
 
+def remove_missing_annotation_figures(html_text: str) -> str:
+    """Do not leave a broken 2D annotation card when an asset is unavailable."""
+    if ASSET_DIR is None:
+        return html_text
+
+    def keep_existing(match: re.Match[str]) -> str:
+        source = match.group("source")
+        return match.group(0) if (OUT_DIR / source).is_file() else ""
+
+    return re.sub(
+        r'<figure class="section-annotation">\s*<img src="(?P<source>assets/[^"?]+)(?:\?[^"\']*)?"[^>]*>.*?</figure>',
+        keep_existing,
+        html_text,
+        flags=re.DOTALL,
+    )
+
+
 def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -> str:
     """Keep the reference DOM/CSS contract while rebinding every dynamic field."""
     html_text = template_html
@@ -1576,7 +1551,14 @@ def build_template_report_html(template_html: str, bundles: list[TrialBundle]) -
         "球 marker": "球的位置", "同组区间": "乐风U9同组表现",
     }.items():
         html_text = html_text.replace(old, new)
-    return inject_pitch_card_styles(html_text)
+    return remove_missing_annotation_figures(inject_pitch_card_styles(html_text))
+
+
+def stale_subject_references(report_html: str, player_key: str) -> list[str]:
+    candidates = ["球员Julian"]
+    if player_key != "bryan":
+        candidates.extend(["bryan_player_movement", "球员Bryan"])
+    return [token for token in candidates if token in report_html]
 
 
 def validate_template_contract(template_html: str, report_html: str) -> None:
@@ -1593,7 +1575,9 @@ def validate_template_contract(template_html: str, report_html: str) -> None:
         actual = len(re.findall(pattern, report_html))
         if actual != expected:
             mismatches.append(f"{label}: expected {expected}, got {actual}")
-    stale = [token for token in ("bryan_player_movement", "球员Bryan", "球员Julian") if token in report_html]
+    # The template itself is Bryan's report, so Bryan references are expected
+    # when rebuilding Bryan. They are stale only for another active player.
+    stale = stale_subject_references(report_html, PLAYER_KEY)
     if stale:
         mismatches.append("stale subject references: " + ", ".join(stale))
     malformed_tokens = [token for token in ("<div<h4", "<h4><h4", ">lass=", "</h4>>") if token in report_html]
