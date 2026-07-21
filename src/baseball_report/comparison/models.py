@@ -1,9 +1,36 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Mapping
 
+from baseball_report.core.frames import FrameReference
 from baseball_report.core.provenance import AnalysisWarning
-from baseball_report.core.validation import optional_finite, require_text
+from baseball_report.core.validation import frozen_mapping, optional_finite, require_text
+
+
+@dataclass(frozen=True)
+class ComparisonPoint:
+    """A report-safe snapshot of one subject's metric used in a comparison."""
+
+    subject_id: str
+    sequence_id: str
+    display_name: str
+    role: str
+    value: float | None
+    unit: str | None
+    event_id: str | None
+    event_frame: FrameReference | None
+    components: Mapping[str, object] = field(default_factory=dict)
+    warnings: tuple[AnalysisWarning, ...] = ()
+
+    def __post_init__(self) -> None:
+        require_text(self.subject_id, "subject_id")
+        require_text(self.sequence_id, "sequence_id")
+        require_text(self.display_name, "display_name")
+        require_text(self.role, "role")
+        object.__setattr__(self, "value", optional_finite(self.value, "value"))
+        object.__setattr__(self, "components", frozen_mapping(self.components))
+        object.__setattr__(self, "warnings", tuple(self.warnings))
 
 
 @dataclass(frozen=True)
@@ -20,6 +47,8 @@ class ComparisonResult:
     status: str
     included_subject_ids: tuple[str, ...] = ()
     warnings: tuple[AnalysisWarning, ...] = ()
+    reference_result: ComparisonPoint | None = None
+    peer_results: tuple[ComparisonPoint, ...] = ()
 
     def __post_init__(self) -> None:
         require_text(self.metric_id, "metric_id")
@@ -37,3 +66,6 @@ class ComparisonResult:
             object.__setattr__(self, field_name, optional_finite(getattr(self, field_name), field_name))
         object.__setattr__(self, "included_subject_ids", tuple(self.included_subject_ids))
         object.__setattr__(self, "warnings", tuple(self.warnings))
+        object.__setattr__(self, "peer_results", tuple(self.peer_results))
+        if self.reference_result is not None and self.reference_value != self.reference_result.value:
+            raise ValueError("reference_value must match reference_result.value")

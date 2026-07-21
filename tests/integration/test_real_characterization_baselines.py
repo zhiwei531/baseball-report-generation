@@ -43,7 +43,7 @@ class ProtectedBaselineIntegrationTests(unittest.TestCase):
             subject_keys=("bryan",),
         )
         payload = validate_report_payload(report.to_dict())
-        self.assertEqual(payload["schema_version"], "1.0.0")
+        self.assertEqual(payload["schema_version"], "1.0.1")
         self.assertGreater(len(payload["motions"]), 0)
         self.assertGreater(len(payload["metrics"]), 0)
         self.assertEqual(len(payload["comparisons"]), len(payload["metrics"]))

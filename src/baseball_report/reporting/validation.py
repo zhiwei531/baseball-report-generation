@@ -110,6 +110,9 @@ def validate_report_payload(payload: object) -> dict[str, object]:
             raise ReportSchemaError(
                 f"comparison references unknown metric {metric_id!r} for motion {sequence_id!r}"
             )
+    if str(payload["schema_version"]) != "1.0.0":
+        for comparison in comparisons:
+            _validate_comparison_snapshots(comparison)
 
     chart_ids = _unique(charts, "artifact_id", "chart")
     asset_ids = _unique(assets, "asset_id", "asset")
@@ -150,6 +153,36 @@ def validate_report_payload(payload: object) -> dict[str, object]:
     if orders != sorted(orders) or len(orders) != len(set(orders)):
         raise ReportSchemaError("section order must be sorted and unique")
     return payload
+
+
+def _validate_comparison_snapshots(comparison: dict[str, object]) -> None:
+    if "reference_result" not in comparison or "peer_results" not in comparison:
+        raise ReportSchemaError(
+            "ReportData 1.0.1+ comparisons require reference_result and peer_results"
+        )
+    reference = comparison["reference_result"]
+    if reference is not None:
+        _validate_comparison_point(reference, "reference_result")
+        if comparison.get("reference_value") != reference.get("value"):
+            raise ReportSchemaError("reference_value must match reference_result.value")
+    peers = comparison["peer_results"]
+    if not isinstance(peers, list):
+        raise ReportSchemaError("peer_results must be an array")
+    for peer in peers:
+        _validate_comparison_point(peer, "peer_results")
+
+
+def _validate_comparison_point(value: object, field: str) -> None:
+    if not isinstance(value, dict):
+        raise ReportSchemaError(f"{field} entries must be objects")
+    for key in ("subject_id", "sequence_id", "display_name", "role"):
+        item = value.get(key)
+        if not isinstance(item, str) or not item.strip():
+            raise ReportSchemaError(f"{field} requires non-empty {key}")
+    if not isinstance(value.get("components"), dict):
+        raise ReportSchemaError(f"{field} components must be an object")
+    if not isinstance(value.get("warnings"), list):
+        raise ReportSchemaError(f"{field} warnings must be an array")
 
 
 def _validate_artifact_references(

@@ -15,7 +15,7 @@ from baseball_report.events.models import MotionEvent
 from baseball_report.metrics.models import MetricResult
 from baseball_report.visualization.models import ChartArtifact
 
-CURRENT_REPORT_SCHEMA_VERSION = "1.0.0"
+CURRENT_REPORT_SCHEMA_VERSION = "1.0.1"
 _SUPPORTED_SCHEMA = re.compile(r"^(?:0\.\d+\.\d+|1\.0\.\d+)$")
 
 

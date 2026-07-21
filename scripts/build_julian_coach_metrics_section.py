@@ -20,6 +20,7 @@ from baseball_report.comparison.legacy_rules import (
     summarize_peer_values,
 )
 from baseball_report.reporting.assets import copy_report_asset_tree
+from baseball_report.reporting.legacy_rows import batting_builder_rows_from_payload
 from baseball_report.reporting.validation import load_report_payload
 
 from pitching.player_card_contract import validate_pitch_player_cards
@@ -2441,8 +2442,18 @@ def render(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a standalone player-vs-coach batting report section.")
-    parser.add_argument("--metrics", type=Path, default=DEFAULT_METRICS)
-    parser.add_argument("--peers", type=Path, default=DEFAULT_PEERS)
+    parser.add_argument(
+        "--metrics",
+        type=Path,
+        default=DEFAULT_METRICS,
+        help="Deprecated compatibility argument; card data comes from --report-data.",
+    )
+    parser.add_argument(
+        "--peers",
+        type=Path,
+        default=DEFAULT_PEERS,
+        help="Deprecated compatibility argument; peer data comes from --report-data.",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument(
         "--pitch-report",
@@ -2473,8 +2484,11 @@ def main() -> None:
     if "batting_analysis" not in section_ids:
         raise RuntimeError("ReportData is missing the batting_analysis section required by this builder.")
 
-    rows = read_csv(args.metrics)
-    peer_rows = read_peer_metrics(args.peers)
+    rows, peer_rows = batting_builder_rows_from_payload(
+        report_payload,
+        player_sample_name=args.player_sample_name,
+        coach_sample_name=args.coach_sample_name,
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     html_text = "\n".join(
         line.rstrip()

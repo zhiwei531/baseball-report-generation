@@ -204,13 +204,13 @@ class LegacyAdapterTests(unittest.TestCase):
             subject_id="bryan",
             subject_display_name="Bryan",
         )
-        self.assertEqual(report.schema_version, "1.0.0")
+        self.assertEqual(report.schema_version, "1.0.1")
         self.assertEqual([motion.sequence_id for motion in report.motions], ["bryan_bat_01"])
         self.assertEqual(report.sections[0].section_id, "batting_analysis")
         with tempfile.TemporaryDirectory() as output_dir:
             output = write_report_data(Path(output_dir) / "analysis_report_data.json", report)
             payload = json.loads(output.read_text(encoding="utf-8"))
-        self.assertEqual(payload["schema_version"], "1.0.0")
+        self.assertEqual(payload["schema_version"], "1.0.1")
         self.assertNotIn("NaN", json.dumps(payload))
 
     def test_batting_csv_rejects_missing_contract_columns(self) -> None:

@@ -7,9 +7,10 @@ from .legacy_rules import (
     summarize_peer_values,
     weighted_batting_score,
 )
-from .models import ComparisonResult
+from .models import ComparisonPoint, ComparisonResult
 
 __all__ = [
+    "ComparisonPoint",
     "ComparisonResult",
     "PeerStatistics",
     "batting_component_score",

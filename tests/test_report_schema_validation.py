@@ -35,6 +35,15 @@ class ReportSchemaValidationTests(unittest.TestCase):
         payload = minimal_payload()
         self.assertIs(validate_report_payload(payload), payload)
 
+    def test_1_0_1_comparisons_require_renderable_snapshots(self) -> None:
+        payload = minimal_payload()
+        payload["schema_version"] = "1.0.1"
+        payload["motions"] = [{"sequence_id": "trial"}]
+        payload["metrics"] = [{"sequence_id": "trial", "metric_id": "speed", "event_id": None}]
+        payload["comparisons"] = [{"sequence_id": "trial", "metric_id": "speed"}]
+        with self.assertRaisesRegex(ReportSchemaError, "reference_result"):
+            validate_report_payload(payload)
+
     def test_builder_boundary_rejects_internal_schema_missing_fields_and_non_finite(self) -> None:
         payload = minimal_payload()
         payload["schema_version"] = "0.9.0"

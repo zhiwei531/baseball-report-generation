@@ -7,7 +7,7 @@ from typing import Iterable, Sequence
 from baseball_report.core.enums import MotionType, SubjectRole
 from baseball_report.core.provenance import AnalysisWarning, Provenance
 from baseball_report.comparison.legacy_rules import summarize_peer_values
-from baseball_report.comparison.models import ComparisonResult
+from baseball_report.comparison.models import ComparisonPoint, ComparisonResult
 from baseball_report.legacy.models import LegacyAdaptedReport, LegacyAnalysisBundle
 
 from .models import (
@@ -217,6 +217,30 @@ def _metrics_by_id(bundle: LegacyAnalysisBundle) -> dict[str, object]:
     return {metric.metric_id: metric for metric in bundle.metrics}
 
 
+def _bundle_display_name(bundle: LegacyAnalysisBundle) -> str:
+    return str(
+        bundle.metadata.get("athlete")
+        or bundle.metadata.get("name")
+        or bundle.metadata.get("sample_name")
+        or bundle.context.subject_id
+    )
+
+
+def _comparison_point(bundle: LegacyAnalysisBundle, metric: object) -> ComparisonPoint:
+    return ComparisonPoint(
+        subject_id=bundle.context.subject_id,
+        sequence_id=bundle.sequence_id,
+        display_name=_bundle_display_name(bundle),
+        role=_bundle_role(bundle),
+        value=getattr(metric, "value", None),
+        unit=getattr(metric, "unit", None),
+        event_id=getattr(metric, "event_id", None),
+        event_frame=getattr(metric, "event_frame", None),
+        components=getattr(metric, "components", {}),
+        warnings=getattr(metric, "warnings", ()),
+    )
+
+
 def _build_comparisons(
     subject_bundles: Sequence[LegacyAnalysisBundle],
     all_bundles: Sequence[LegacyAnalysisBundle],
@@ -231,7 +255,8 @@ def _build_comparisons(
         coaches = [bundle for bundle in related if _bundle_role(bundle) == "coach"]
         students = [bundle for bundle in related if _bundle_role(bundle) == "student"]
         student_metrics = [(bundle, _metrics_by_id(bundle)) for bundle in students]
-        coach_metrics = _metrics_by_id(coaches[0]) if coaches else {}
+        coach_bundle = coaches[0] if coaches else None
+        coach_metrics = _metrics_by_id(coach_bundle) if coach_bundle is not None else {}
         for metric in subject_bundle.metrics:
             stats = summarize_peer_values(
                 (
@@ -242,6 +267,16 @@ def _build_comparisons(
             )
             reference_metric = coach_metrics.get(metric.metric_id)
             reference_value = getattr(reference_metric, "value", None)
+            reference_result = (
+                _comparison_point(coach_bundle, reference_metric)
+                if coach_bundle is not None and reference_metric is not None
+                else None
+            )
+            peer_results = tuple(
+                _comparison_point(bundle, by_id[metric.metric_id])
+                for bundle, by_id in student_metrics
+                if metric.metric_id in by_id
+            )
             difference = (
                 metric.value - reference_value
                 if metric.value is not None and reference_value is not None
@@ -260,6 +295,8 @@ def _build_comparisons(
                     score=None,
                     status=metric.status,
                     included_subject_ids=stats.included_subject_ids,
+                    reference_result=reference_result,
+                    peer_results=peer_results,
                 )
             )
     return tuple(results)
