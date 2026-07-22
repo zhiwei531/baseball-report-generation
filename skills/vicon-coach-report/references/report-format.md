@@ -22,12 +22,24 @@ Keep Chinese as the primary language. Use English subtitles where the template p
 Use the config-driven public CLI:
 
 ```bash
-python scripts/report_cli.py final --config configs/<player_slug>_final_report.json
+PYTHONPATH=src python -m baseball_report final \
+  --config configs/generated/<player_slug>_final_report.json
 ```
 
 `final` rebuilds pitching first, generates its researcher charts, then runs batting and embeds the pitching report/assets. `pitching` and `batting` are retry scopes; individual builders are debugging tools, not complete report entries.
 
+Run `final --dry-run` before a new or changed configuration. The legacy
+`scripts/report_cli.py` entry remains a compatibility implementation but must
+not be used in new automation. The package CLI's `--help` output is the
+authoritative option list; low-level partial-build flags are not public CLI
+options.
+
 The final config references a batting pipeline config plus a pitching manifest/template/output. The batting config must supply reviewed 2D video timing (`video_capture_fps`, `video_event_frame`) when 2D alignment is enabled. Keep the pitching output separate from the combined report output.
+
+Use the latest Git-tracked `reports/pitching_bryan_coach/index.html` as the
+canonical pitching DOM template. Never use a dated snapshot or another
+athlete's generated assets as the template source. For a clean build, generate
+all athlete assets into distinct empty output directories.
 
 ## Metric Card Contract
 

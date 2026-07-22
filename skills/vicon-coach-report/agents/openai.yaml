@@ -1,4 +1,4 @@
 interface:
   display_name: "Vicon Coach Report"
-  short_description: "Build and repair config-driven Vicon baseball reports."
-  default_prompt: "Use $vicon-coach-report to build or repair a player-vs-coach Vicon baseball report with the current final pipeline."
+  short_description: "Build and validate Vicon baseball coach reports."
+  default_prompt: "Use $vicon-coach-report to build or validate a player-vs-coach report through the packaged baseball_report pipeline."
