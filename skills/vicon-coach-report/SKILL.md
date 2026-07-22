@@ -1,13 +1,14 @@
 ---
 name: vicon-coach-report
-description: Build, repair, standardize, or regenerate the config-driven Vicon baseball player-vs-coach report (batting, pitching, or combined). Use for a new athlete’s report, a change to report metrics/cards/researcher charts, validated 2D/Vicon alignment, or refreshing a combined HTML/XLSX deliverable without overwriting a reference athlete’s report.
+description: Build, repair, standardize, validate, or regenerate the config-driven Vicon baseball player-vs-coach report through the packaged baseball_report CLI (batting, pitching, or combined). Use for a new athlete report, report metrics/cards/researcher charts, validated 2D/Vicon alignment, ReportData/HTML/XLSX delivery, or a clean rebuild that must not reuse another athlete's assets.
 ---
 
 # Vicon Coach Report
 
-Use `scripts/report_cli.py` as the only report-generation entry. Read
-`references/report-format.md` before changing a report contract, report inputs,
-researcher assets, or validation rules.
+Use `PYTHONPATH=src python -m baseball_report` as the public report-generation
+entry. Treat `scripts/report_cli.py` as a compatibility implementation, not a
+command for new automation. Read `references/report-format.md` before changing
+a report contract, report inputs, researcher assets, or validation rules.
 
 ## Canonical workspace
 
@@ -16,7 +17,7 @@ Run report generation **only** from the maintained
 such as `baseball-report-generation-YYYYMMDD`: those folders can contain stale
 configs, templates, and outputs. Before creating configs, running the CLI, or
 validating a delivery, confirm the working directory ends in
-`baseball-report-generation`.
+`baseball-report-generation` and contains `src/baseball_report/`.
 
 ## Scope and safety
 
@@ -25,6 +26,8 @@ validating a delivery, confirm the working directory ends in
 - Treat the batting config’s reviewed `video_capture_fps` and `video_event_frame` as required report inputs. Do not infer them during report generation.
 - Use C3D-derived values for displayed biomechanics metrics. A 2D pose may locate visual overlays but must not replace the displayed Vicon value.
 - Keep hand speed in `km/h`; it is a hand-marker proxy, not ball speed. State proxy/event limitations rather than making medical claims.
+- Use the latest Git-tracked `reports/pitching_bryan_coach/index.html` as the canonical pitching DOM template. Do not substitute a generated snapshot or copy assets from an earlier athlete report.
+- For a clean rebuild, write to athlete-specific empty output directories and regenerate assets from configured source inputs. Existing outputs may be retained only for an intentional retry whose required upstream artifacts are known and validated.
 
 ## Configure a new athlete
 
@@ -52,9 +55,13 @@ Run from `baseball-report-generation/` with the project virtual environment:
 ```bash
 MPLCONFIGDIR=/private/tmp/baseball_mpl_cache \
 XDG_CACHE_HOME=/private/tmp/baseball_xdg_cache \
-../baseball-analysis/.venv312/bin/python -u scripts/report_cli.py final \
-  --config configs/<player_slug>_final_report.json
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report final \
+  --config configs/generated/<player_slug>_final_report.json
 ```
+
+Run the same command with `--dry-run` first for a new or changed config. Review
+resolved source, manifest, template, model, and output paths plus overwrite or
+compatibility warnings before generating files.
 
 Use `pitching` to rebuild only `reports/pitching_<player_slug>_coach/`; use
 `batting` only after a current pitching `index.html` exists. Add
@@ -74,10 +81,10 @@ pitching HTML/assets + researcher charts
 
 Use these only after the relevant upstream artifacts exist:
 
-- Change a pitching metric/card/researcher chart: run `report_cli.py pitching`, then `report_cli.py batting` (or `final`) to refresh embedded `pitch_assets/`.
-- Change batting HTML/card copy or legend order: run `report_cli.py batting` after a current pitching build; use `final` if any shared assets or inputs changed.
-- Change 2D geometry or a reviewed event frame: run `final` so alignment, overlay, geometry annotations, HTML, and XLSX remain consistent.
-- Use `--skip-c3d`, `--skip-reconstruction`, `--skip-2d`, or `--skip-illustrations` only for a deliberate partial rebuild with known-good retained inputs. Never use partial flags to conceal a missing required artifact.
+- Change a pitching metric/card/researcher chart: run `python -m baseball_report pitching`, then `python -m baseball_report batting` (or `final`) to refresh embedded `pitch_assets/`.
+- Change batting HTML/card copy or legend order: run `python -m baseball_report batting` after a current pitching build; use `final` if any shared assets or inputs changed.
+- Change 2D geometry or a reviewed event frame: run `python -m baseball_report final` so alignment, overlay, geometry annotations, HTML, and XLSX remain consistent.
+- Do not pass internal pipeline flags such as `--skip-c3d`, `--skip-reconstruction`, `--skip-2d`, or `--skip-illustrations` to the package CLI; they are not public options. If focused diagnosis requires a low-level script, finish with the appropriate package command before handoff.
 
 ## Validate before handoff
 
@@ -87,6 +94,17 @@ non-empty. Confirm relative `pitch_assets/` links resolve in the combined
 report. Inspect researcher charts visually when labels, fonts, axes, or layout
 change. Confirm every pitching researcher asset uses the active player slug;
 never retain a prior athlete's flow, timing, angle, or speed curve.
+
+Validate the stable analysis/report contract before handoff:
+
+```bash
+PYTHONPATH=src ../baseball-analysis/.venv312/bin/python -m baseball_report \
+  validate-report --input reports/vicon_2026_<player_slug>_coach/analysis_report_data.json
+```
+
+Confirm the validator reports the expected subject, motions, metrics, sections,
+and assets. Check that every relative HTML asset reference exists and that no
+absolute path or prior-athlete slug remains in the generated deliverable.
 
 For player and coach cards, require Chinese metric names, matching English metric subtitles, `乐风U9同组表现` group labels, and the shared peer legend order/colors. Search generated pitching HTML for stale labels (`m/s`, `hand_speed_mps`, `手臂槽位`, `右腿蹬地伸展线索`, `同组区间`) before delivery.
 
